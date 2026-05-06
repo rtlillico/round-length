@@ -118,10 +118,10 @@ router.get('/:id/chart', async (req, res) => {
     const scenario = await getScenario(req.params.id);
     if (!scenario) return res.status(404).json({ error: 'Scenario not found' });
 
-    // Past 6 months actual daily state
+    // Past 12 months actual daily state
     const endDate   = new Date();
     const startDate = new Date();
-    startDate.setMonth(startDate.getMonth() - 6);
+    startDate.setMonth(startDate.getMonth() - 12);
     const actual = await getDailyStateRange(
       scenario.id,
       startDate.toISOString().slice(0, 10),
@@ -144,9 +144,9 @@ router.get('/:id/chart', async (req, res) => {
       Number(scenario.target_leaves)
     );
 
-    // Build projected daily LAR series for next 6 months (~180 days)
+    // Build projected daily LAR series for next 12 months (~365 days)
     const projectedSeries = [];
-    for (let d = 0; d < 180; d++) {
+    for (let d = 0; d < 365; d++) {
       const date = new Date();
       date.setDate(date.getDate() + d);
       const doy = (todayDoy + d) % 365;

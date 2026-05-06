@@ -295,8 +295,8 @@ export default function ScenarioDetail({ scenario, farmId, onBack }) {
           const isLAR   = chartView === 'lar';
           const isSolar = chartView === 'solar';
 
-          const defaultBrushStart = Math.max(0, todayIdx - 90);
-          const defaultBrushEnd   = Math.min(series.length - 1, todayIdx + 90);
+          const defaultBrushStart = Math.max(0, todayIdx - 180);
+          const defaultBrushEnd   = Math.min(series.length - 1, todayIdx + 180);
           // Read brush range from ref (no re-renders on drag)
           const brushStart = brushRangeRef.current?.startIndex ?? defaultBrushStart;
           const brushEnd   = brushRangeRef.current?.endIndex   ?? defaultBrushEnd;
