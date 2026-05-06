@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { api } from '../lib/api';
 import { C, styles } from '../App';
+import { SOIL_PARAMS } from '../lib/formula';
 
 const PASTURE_PARAMS_UI = {
   perennialRyegrass: { name: 'Perennial ryegrass', region: 'Temperate', desc: 'Most common dairy pasture in Tasmania. Grows best in cool mild conditions.' },
@@ -195,6 +196,7 @@ export default function Setup({ onComplete, onCancel, farmId, scenarioOnly }) {
   const [location, setLocation]   = useState(null);
   const [scenarioName, setScenarioName] = useState('');
   const [pastureKey, setPastureKey]     = useState('perennialRyegrass');
+  const [soilType, setSoilType]         = useState('sandyLoam');
   const [targetLeaves, setTargetLeaves] = useState(3.0);
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState(null);
@@ -223,6 +225,7 @@ export default function Setup({ onComplete, onCancel, farmId, scenarioOnly }) {
         name: scenarioName || PASTURE_PARAMS_UI[pastureKey].name,
         pastureKey,
         targetLeaves,
+        soilType,
       });
 
       onComplete(fId);
@@ -343,6 +346,49 @@ export default function Setup({ onComplete, onCancel, farmId, scenarioOnly }) {
             much in cool temperate regions like Tasmania.
           </div>
         )}
+      </div>
+      <div style={{ padding: '0 16px' }}>
+        <button style={styles.btn} onClick={() => setStep('soil')}>Next — Choose soil type →</button>
+      </div>
+    </div>
+  );
+
+  // Soil type
+  if (step === 'soil') return (
+    <div style={styles.screen}>
+      <div style={styles.header}>
+        <div><div style={styles.headerTitle}>Soil type</div><div style={styles.headerSub}>What's your dominant soil?</div></div>
+        <button onClick={() => setStep('pasture')} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 13 }}>← Back</button>
+      </div>
+      <div style={styles.card}>
+        <p style={styles.h3}>Choose your soil type</p>
+        <p style={{ ...styles.muted, fontSize: 13, marginBottom: 16 }}>
+          Soil type affects how quickly moisture drains and how much water the soil holds.
+          Choose the type closest to your paddock — you can add different scenarios for different soils.
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {Object.entries(SOIL_PARAMS).map(([key, soil]) => {
+            const active = soilType === key;
+            return (
+              <button key={key} onClick={() => setSoilType(key)} style={{
+                padding: '12px 16px',
+                border: `2px solid ${active ? C.green2 : C.border}`,
+                borderRadius: 12,
+                background: active ? C.green2 : '#fff',
+                color: active ? '#fff' : C.text,
+                cursor: 'pointer',
+                textAlign: 'left',
+                fontSize: 15,
+                fontWeight: active ? 'bold' : 'normal',
+              }}>
+                {soil.name}
+                <span style={{ fontSize: 12, opacity: 0.75, marginLeft: 8 }}>
+                  {soil.SWmax}mm capacity
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
       <div style={{ padding: '0 16px' }}>
         <button style={styles.btn} onClick={() => setStep('leaves')}>Next — Set leaf target →</button>

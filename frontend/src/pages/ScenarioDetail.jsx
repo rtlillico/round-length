@@ -42,9 +42,12 @@ export default function ScenarioDetail({ scenario, farmId, onBack }) {
   const state   = scenario.todayState;
   const pasture = PASTURE_PARAMS[scenario.pasture_key];
   const maxLAR  = pasture ? (pasture.optimumTemp - pasture.baseTemp) / pasture.phyllochron : 0.17;
-  const larPct     = state?.temp_lar ? Math.min(100, (Number(state.temp_lar) / maxLAR) * 100) : 0;
-  const solarPct   = state?.solar_factor != null ? Math.min(100, Number(state.solar_factor) * 100) : null;
-  const combinedPct = solarPct != null ? larPct * solarPct / 100 : null;
+  const larPct      = state?.temp_lar ? Math.min(100, (Number(state.temp_lar) / maxLAR) * 100) : 0;
+  const solarPct    = state?.solar_factor   != null ? Math.min(100, Number(state.solar_factor)   * 100) : null;
+  const moisturePct = state?.moisture_factor != null ? Math.min(100, Number(state.moisture_factor) * 100) : null;
+  const combinedPct = solarPct != null && moisturePct != null ? larPct * solarPct / 100 * moisturePct / 100
+                    : solarPct != null                        ? larPct * solarPct / 100
+                    : null;
   const rl      = state?.true_round;
   const rlDisplay = rl == null ? '—' : rl >= 365 ? '365+' : Math.round(rl);
   const rlColor = rl == null ? C.muted : rl <= 20 ? C.green2 : rl <= 50 ? C.amber : C.red;
@@ -211,6 +214,13 @@ export default function ScenarioDetail({ scenario, farmId, onBack }) {
           </span>
         </div>
         <ProgressBar pct={solarPct ?? 0} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 8, marginBottom: 2 }}>
+          <span style={{ fontSize: 13, color: C.muted }}>💧 Moisture</span>
+          <span style={{ fontSize: 14, fontWeight: 'bold', color: C.green1 }}>
+            {moisturePct != null ? `${Math.round(moisturePct)}%` : '—'}
+          </span>
+        </div>
+        <ProgressBar pct={moisturePct ?? 0} />
         <div style={{ borderTop: `1px solid ${C.border}`, margin: '10px 0 6px' }} />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 2 }}>
           <span style={{ fontSize: 13, fontWeight: 'bold', color: C.green1 }}>Combined growth</span>

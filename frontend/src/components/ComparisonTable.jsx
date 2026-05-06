@@ -20,14 +20,19 @@ function computeMetrics(scenario) {
   const solPct = state?.solar_factor != null
     ? Math.min(100, Number(state.solar_factor) * 100)
     : null;
-  const combPct = tempPct != null && solPct != null
-    ? tempPct * solPct / 100
-    : tempPct; // fall back to temp-only if no solar
+  const moistPct = state?.moisture_factor != null
+    ? Math.min(100, Number(state.moisture_factor) * 100)
+    : null;
+  let combPct = tempPct;
+  if (tempPct != null && solPct != null) {
+    combPct = tempPct * solPct / 100;
+    if (moistPct != null) combPct = combPct * moistPct / 100;
+  }
   const roundLen = state?.true_round != null ? Number(state.true_round) : null;
   const larRaw   = state?.actual_lar ?? state?.temp_lar;
   const larVal   = larRaw != null ? Number(larRaw) : null;
 
-  return { tempPct, solPct, combPct, roundLen, larVal };
+  return { tempPct, solPct, moistPct, combPct, roundLen, larVal };
 }
 
 // Return the index of the best value (null values are excluded)
@@ -72,17 +77,19 @@ export default function ComparisonTable({ scenarios, onSelectScenario }) {
 
   const metrics = scenarios.map(computeMetrics);
 
-  const bRound = bestIdx(metrics.map(m => m.roundLen), true);
-  const bComb  = bestIdx(metrics.map(m => m.combPct),  false);
-  const bTemp  = bestIdx(metrics.map(m => m.tempPct),  false);
-  const bSolar = bestIdx(metrics.map(m => m.solPct),   false);
-  const bLAR   = bestIdx(metrics.map(m => m.larVal),   false);
+  const bRound  = bestIdx(metrics.map(m => m.roundLen),  true);
+  const bComb   = bestIdx(metrics.map(m => m.combPct),   false);
+  const bTemp   = bestIdx(metrics.map(m => m.tempPct),   false);
+  const bSolar  = bestIdx(metrics.map(m => m.solPct),    false);
+  const bMoist  = bestIdx(metrics.map(m => m.moistPct),  false);
+  const bLAR    = bestIdx(metrics.map(m => m.larVal),    false);
 
   const ROWS = [
     { label: 'Round length', unit: 'days', bestIdx: bRound, getValue: m => m.roundLen, fmt: fmtRound },
     { label: 'Overall %',    unit: '',     bestIdx: bComb,  getValue: m => m.combPct,  fmt: fmtPct   },
     { label: 'Temperature',  unit: '',     bestIdx: bTemp,  getValue: m => m.tempPct,  fmt: fmtPct   },
     { label: 'Solar',        unit: '',     bestIdx: bSolar, getValue: m => m.solPct,   fmt: fmtPct   },
+    { label: 'Moisture',     unit: '',     bestIdx: bMoist, getValue: m => m.moistPct, fmt: fmtPct   },
     { label: 'LAR',          unit: 'l/d',  bestIdx: bLAR,   getValue: m => m.larVal,   fmt: fmtLAR   },
   ];
 

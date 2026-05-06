@@ -93,7 +93,8 @@ async function updateScenario(scenario, allSILO) {
   const { dailySeries, percentiles } = processHistoricalData(
     allSILO,
     scenario.pasture_key,
-    Number(scenario.target_leaves)
+    Number(scenario.target_leaves),
+    scenario.soil_type || 'sandyLoam'
   );
 
   // Save percentiles
@@ -102,14 +103,16 @@ async function updateScenario(scenario, allSILO) {
   // Save last 365 days of daily state for chart history
   if (dailySeries.length > 0) {
     const last365 = dailySeries.slice(-365).map(row => ({
-      date:        row.date,
-      tMean:       row.tMean,
-      tempLAR:     row.tempLAR,
-      actualLAR:   row.actualLAR,
-      solarFactor: row.solarFactor,
-      radiation:   row.radiation,
-      trueRound:   row.trueRound,
-      dataSource:  'silo',
+      date:           row.date,
+      tMean:          row.tMean,
+      tempLAR:        row.tempLAR,
+      actualLAR:      row.actualLAR,
+      solarFactor:    row.solarFactor,
+      radiation:      row.radiation,
+      trueRound:      row.trueRound,
+      moistureFactor: row.moistureFactor,
+      soilWater:      row.soilWater,
+      dataSource:     'silo',
     }));
     await upsertDailyStateBulk(scenario.id, last365);
   }

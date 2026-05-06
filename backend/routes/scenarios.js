@@ -50,14 +50,14 @@ router.get('/:id', async (req, res) => {
 
 // POST /api/scenarios — create scenario and compute percentiles
 router.post('/', async (req, res) => {
-  const { farmId, name, pastureKey, targetLeaves } = req.body;
+  const { farmId, name, pastureKey, targetLeaves, soilType } = req.body;
   if (!farmId || !name || !pastureKey || !targetLeaves) {
     return res.status(400).json({ error: 'farmId, name, pastureKey and targetLeaves are required' });
   }
 
   try {
     const shortCode = await getNextShortCode(farmId);
-    const scenario = await createScenario({ farmId, name, pastureKey, targetLeaves, shortCode });
+    const scenario = await createScenario({ farmId, name, pastureKey, targetLeaves, shortCode, soilType });
 
     // Respond immediately
     res.status(201).json({ scenario, status: 'computing' });
@@ -70,21 +70,24 @@ router.post('/', async (req, res) => {
       const { dailySeries, percentiles } = processHistoricalData(
         allSILO,
         pastureKey,
-        Number(targetLeaves)
+        Number(targetLeaves),
+        soilType || 'sandyLoam'
       );
       await upsertPercentiles(scenario.id, percentiles);
 
       // Save last 365 days of daily state for chart history
       if (dailySeries.length > 0) {
         const last365 = dailySeries.slice(-365).map(row => ({
-          date:        row.date,
-          tMean:       row.tMean,
-          tempLAR:     row.tempLAR,
-          actualLAR:   row.actualLAR,
-          solarFactor: row.solarFactor,
-          radiation:   row.radiation,
-          trueRound:   row.trueRound,
-          dataSource:  'silo',
+          date:           row.date,
+          tMean:          row.tMean,
+          tempLAR:        row.tempLAR,
+          actualLAR:      row.actualLAR,
+          solarFactor:    row.solarFactor,
+          radiation:      row.radiation,
+          trueRound:      row.trueRound,
+          moistureFactor: row.moistureFactor,
+          soilWater:      row.soilWater,
+          dataSource:     'silo',
         }));
         await upsertDailyStateBulk(scenario.id, last365);
       }
@@ -164,6 +167,11 @@ router.get('/:id/chart', async (req, res) => {
         solarP50: percentiles[doy]?.solar_p50,
         solarP75: percentiles[doy]?.solar_p75,
         solarP90: percentiles[doy]?.solar_p90,
+        moistureP10: percentiles[doy]?.moisture_p10,
+        moistureP25: percentiles[doy]?.moisture_p25,
+        moistureP50: percentiles[doy]?.moisture_p50,
+        moistureP75: percentiles[doy]?.moisture_p75,
+        moistureP90: percentiles[doy]?.moisture_p90,
       });
     }
 

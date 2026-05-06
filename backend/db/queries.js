@@ -136,12 +136,12 @@ async function getNextShortCode(farmId) {
   return 'S999';
 }
 
-async function createScenario({ farmId, name, pastureKey, targetLeaves, shortCode }) {
+async function createScenario({ farmId, name, pastureKey, targetLeaves, shortCode, soilType }) {
   const { rows } = await pool.query(
-    `INSERT INTO scenarios (farm_id, name, pasture_key, target_leaves, short_code)
-     VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO scenarios (farm_id, name, pasture_key, target_leaves, short_code, soil_type)
+     VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING *`,
-    [farmId, name, pastureKey, targetLeaves, shortCode || null]
+    [farmId, name, pastureKey, targetLeaves, shortCode || null, soilType || 'sandyLoam']
   );
   return rows[0];
 }
@@ -175,8 +175,8 @@ async function deleteScenario(id) {
 async function upsertPercentiles(scenarioId, percentileRows) {
   if (percentileRows.length === 0) return;
 
-  // Single bulk INSERT for all 365 rows (365 * 25 = 9125 params, within pg limit)
-  const COLS = 25;
+  // Single bulk INSERT for all 365 rows (365 * 30 = 10950 params, within pg limit)
+  const COLS = 30;
   const values = [];
   const params = [];
   percentileRows.forEach((row, i) => {
@@ -184,7 +184,8 @@ async function upsertPercentiles(scenarioId, percentileRows) {
     values.push(
       `($${b+1},$${b+2},$${b+3},$${b+4},$${b+5},$${b+6},$${b+7},$${b+8},$${b+9},$${b+10}` +
       `,$${b+11},$${b+12},$${b+13},$${b+14},$${b+15},$${b+16},$${b+17},$${b+18},$${b+19}` +
-      `,$${b+20},$${b+21},$${b+22},$${b+23},$${b+24},$${b+25})`
+      `,$${b+20},$${b+21},$${b+22},$${b+23},$${b+24},$${b+25},$${b+26},$${b+27},$${b+28}` +
+      `,$${b+29},$${b+30})`
     );
     params.push(
       scenarioId, row.dayOfYear,
@@ -193,6 +194,7 @@ async function upsertPercentiles(scenarioId, percentileRows) {
       row.tempP10, row.tempP25, row.tempP50, row.tempP75, row.tempP90,
       row.solarP10, row.solarP25, row.solarP50, row.solarP75, row.solarP90,
       row.solarHistoricalMax, row.solarHistoricalMin,
+      row.moistureP10, row.moistureP25, row.moistureP50, row.moistureP75, row.moistureP90,
       row.yearsCount,
     );
   });
@@ -205,6 +207,7 @@ async function upsertPercentiles(scenarioId, percentileRows) {
         temp_p10, temp_p25, temp_p50, temp_p75, temp_p90,
         solar_p10, solar_p25, solar_p50, solar_p75, solar_p90,
         solar_historical_max, solar_historical_min,
+        moisture_p10, moisture_p25, moisture_p50, moisture_p75, moisture_p90,
         years_counted)
      VALUES ${values.join(',')}
      ON CONFLICT (scenario_id, day_of_year) DO UPDATE SET
@@ -218,6 +221,9 @@ async function upsertPercentiles(scenarioId, percentileRows) {
        solar_p75=EXCLUDED.solar_p75, solar_p90=EXCLUDED.solar_p90,
        solar_historical_max=EXCLUDED.solar_historical_max,
        solar_historical_min=EXCLUDED.solar_historical_min,
+       moisture_p10=EXCLUDED.moisture_p10, moisture_p25=EXCLUDED.moisture_p25,
+       moisture_p50=EXCLUDED.moisture_p50, moisture_p75=EXCLUDED.moisture_p75,
+       moisture_p90=EXCLUDED.moisture_p90,
        years_counted=EXCLUDED.years_counted`,
     params
   );
@@ -252,28 +258,30 @@ async function upsertDailyState(scenarioId, { date, tMean, tempLAR, actualLAR, s
 
 async function upsertDailyStateBulk(scenarioId, rows) {
   if (rows.length === 0) return;
-  // 365 rows * 9 cols = 3285 params, well within pg limit
-  const COLS = 9;
+  // 365 rows * 11 cols = 4015 params, well within pg limit
+  const COLS = 11;
   const values = [];
   const params = [];
   rows.forEach((row, i) => {
     const b = i * COLS;
-    values.push(`($${b+1},$${b+2},$${b+3},$${b+4},$${b+5},$${b+6},$${b+7},$${b+8},$${b+9})`);
+    values.push(`($${b+1},$${b+2},$${b+3},$${b+4},$${b+5},$${b+6},$${b+7},$${b+8},$${b+9},$${b+10},$${b+11})`);
     params.push(
       scenarioId, row.date, row.tMean, row.tempLAR,
       row.actualLAR ?? null, row.solarFactor ?? null, row.radiation ?? null,
-      row.trueRound, row.dataSource || 'silo'
+      row.trueRound, row.dataSource || 'silo',
+      row.moistureFactor ?? null, row.soilWater ?? null
     );
   });
   await pool.query(
     `INSERT INTO scenario_daily_state
-       (scenario_id, date, t_mean, temp_lar, actual_lar, solar_factor, radiation, true_round, data_source)
+       (scenario_id, date, t_mean, temp_lar, actual_lar, solar_factor, radiation, true_round, data_source, moisture_factor, soil_water)
      VALUES ${values.join(',')}
      ON CONFLICT (scenario_id, date) DO UPDATE SET
        t_mean=EXCLUDED.t_mean, temp_lar=EXCLUDED.temp_lar,
        actual_lar=EXCLUDED.actual_lar, solar_factor=EXCLUDED.solar_factor,
        radiation=EXCLUDED.radiation, true_round=EXCLUDED.true_round,
-       data_source=EXCLUDED.data_source`,
+       data_source=EXCLUDED.data_source,
+       moisture_factor=EXCLUDED.moisture_factor, soil_water=EXCLUDED.soil_water`,
     params
   );
 }

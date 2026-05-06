@@ -1,5 +1,5 @@
 // round-length/backend/lib/formula.js
-// Core pasture growth formula — v1 temperature only.
+// Core pasture growth formula — v2 includes solar factor and moisture factor.
 // This same logic is mirrored in frontend/src/lib/formula.js.
 // Keep both files in sync when making changes.
 
@@ -71,25 +71,33 @@ const PASTURE_PARAMS = {
   },
 };
 
+// ─── SOIL PARAMETERS ──────────────────────────────────────────────────────────
+// SWmax: field capacity (mm). drainageRate: fraction of excess drained per day.
+
+const SOIL_PARAMS = {
+  sand:      { name: 'Sand',        SWmax: 18, drainageRate: 0.90 },
+  sandyLoam: { name: 'Sandy loam',  SWmax: 30, drainageRate: 0.60 },
+  sandyClay: { name: 'Sandy clay',  SWmax: 35, drainageRate: 0.40 },
+  clay:      { name: 'Clay',        SWmax: 45, drainageRate: 0.20 },
+  peat:      { name: 'Peat',        SWmax: 75, drainageRate: 0.50 },
+};
+
+// Waterlogging thresholds per soil type.
+// Check severe first, then moderate, else return 1.0.
+const WATERLOGGING_THRESHOLDS = {
+  sand:      { severe: 0.99, severeF: 0.70, moderate: 0.95, moderateF: 0.85 },
+  sandyLoam: { severe: 0.95, severeF: 0.50, moderate: 0.90, moderateF: 0.75 },
+  sandyClay: { severe: 0.92, severeF: 0.40, moderate: 0.85, moderateF: 0.65 },
+  clay:      { severe: 0.88, severeF: 0.30, moderate: 0.80, moderateF: 0.55 },
+  peat:      { severe: 0.92, severeF: 0.55, moderate: 0.85, moderateF: 0.70 },
+};
+
 // ─── CORE CALCULATIONS ────────────────────────────────────────────────────────
 
-/**
- * Calculate mean daily temperature from max and min.
- * @param {number} tMax - Maximum temperature (°C)
- * @param {number} tMin - Minimum temperature (°C)
- * @returns {number} Mean temperature (°C)
- */
 function calcTMean(tMax, tMin) {
   return (tMax + tMin) / 2;
 }
 
-/**
- * Calculate Temp LAR (Leaf Appearance Rate driven by temperature only).
- * Returns 0 if temperature is below base temp — no growth.
- * @param {number} tMean - Mean daily temperature (°C)
- * @param {string} pastureKey - Key into PASTURE_PARAMS
- * @returns {number} Temp LAR (leaves/day)
- */
 function calcTempLAR(tMean, pastureKey) {
   const pasture = PASTURE_PARAMS[pastureKey];
   if (!pasture) throw new Error(`Unknown pasture key: ${pastureKey}`);
@@ -101,11 +109,6 @@ function calcTempLAR(tMean, pastureKey) {
   return 0;
 }
 
-/**
- * Calculate the maximum possible Temp LAR (at optimum temperature).
- * @param {string} pastureKey
- * @returns {number} Max Temp LAR (leaves/day)
- */
 function calcMaxTempLAR(pastureKey) {
   const pasture = PASTURE_PARAMS[pastureKey];
   if (!pasture) throw new Error(`Unknown pasture key: ${pastureKey}`);
@@ -113,78 +116,72 @@ function calcMaxTempLAR(pastureKey) {
   return (optimumTemp - baseTemp) / phyllochron;
 }
 
-/**
- * Calculate the Solar factor (0–1) — fraction of maximum possible solar radiation.
- * Returns null if radiation data is missing.
- * @param {number|null} radiation - MJ/m²/day from SILO
- * @param {number} month - 0-based month (0 = January)
- * @returns {number|null}
- */
 function calcSolarFactor(radiation, month) {
   if (radiation == null || radiation < 0) return null;
   return Math.min(1, radiation / MAX_SOLAR_BY_MONTH[month]);
 }
 
 /**
- * Calculate Actual LAR = Temp LAR × Solar factor.
- * Falls back to Temp LAR alone if radiation is unavailable.
- * @param {number} tMean - Mean daily temperature (°C)
- * @param {number|null} radiation - MJ/m²/day
- * @param {number} month - 0-based month
- * @param {string} pastureKey
- * @returns {{ tempLAR: number, solarFactor: number|null, actualLAR: number }}
+ * Waterlogging factor: penalises growth when soil is near saturation.
  */
-function calcActualLAR(tMean, radiation, month, pastureKey) {
-  const tempLAR = calcTempLAR(tMean, pastureKey);
-  const solarFactor = calcSolarFactor(radiation, month);
-  if (solarFactor == null) return { tempLAR, solarFactor: null, actualLAR: tempLAR };
-  return { tempLAR, solarFactor, actualLAR: tempLAR * solarFactor };
+function calcWaterloggingFactor(SW, SWmax, soilType) {
+  const t = WATERLOGGING_THRESHOLDS[soilType] || WATERLOGGING_THRESHOLDS.sandyLoam;
+  if (SW >= SWmax * t.severe)   return t.severeF;
+  if (SW >= SWmax * t.moderate) return t.moderateF;
+  return 1.0;
 }
 
 /**
- * Calculate instantaneous round length from today's Temp LAR.
- * Note: this assumes today's growth rate continues — use calcTrueRoundLength
- * for a more accurate measure that accounts for seasonal variation.
- * @param {number} tempLAR - Leaves per day
- * @param {number} targetLeaves - Target leaf stage (1.5, 2.0, 2.5, or 3.0)
- * @returns {number} Round length in days (Infinity if no growth)
+ * Moisture factor (0–1): scales growth by soil water availability.
+ * Reaches 1.0 at 50% of field capacity; penalised below that and for waterlogging.
  */
+function calcMoistureFactor(SW, SWmax, soilType) {
+  const waterlogging = calcWaterloggingFactor(SW, SWmax, soilType);
+  return Math.min(1, SW / (SWmax * 0.5)) * waterlogging;
+}
+
+/**
+ * Update soil water balance for one day.
+ * Uses simplified ET₀ = 0.0135 × radiation × (tMean + 17.8).
+ * Drainage removes excess water above field capacity.
+ */
+function calcSoilWater(SW_prev, rainfall, radiation, tMean, soilParams) {
+  const ET0 = Math.max(0, 0.0135 * (radiation ?? 10) * (tMean + 17.8));
+  const potential = SW_prev + rainfall - ET0;
+  const drainage  = Math.max(0, potential - soilParams.SWmax) * soilParams.drainageRate;
+  return Math.min(soilParams.SWmax, Math.max(0, potential - drainage));
+}
+
+/**
+ * Calculate Actual LAR = Temp LAR × Solar factor × Moisture factor.
+ * Falls back gracefully when radiation or moisture data is unavailable.
+ */
+function calcActualLAR(tMean, radiation, month, pastureKey, moistureFactor = 1.0) {
+  const tempLAR    = calcTempLAR(tMean, pastureKey);
+  const solarFactor = calcSolarFactor(radiation, month);
+  if (solarFactor == null) {
+    return { tempLAR, solarFactor: null, actualLAR: tempLAR * moistureFactor };
+  }
+  return { tempLAR, solarFactor, actualLAR: tempLAR * solarFactor * moistureFactor };
+}
+
 function calcInstantRoundLength(tempLAR, targetLeaves) {
   if (tempLAR <= 0) return Infinity;
   return targetLeaves / tempLAR;
 }
 
-/**
- * Calculate true round length by summing LAR backwards from a given date index.
- * Finds how many past days of cumulative LAR are needed to reach targetLeaves.
- * This is the preferred method — accounts for real seasonal temperature variation.
- *
- * @param {Array<number>} larSeries - Array of daily Temp LAR values (oldest first)
- * @param {number} endIndex - Index in larSeries to count backwards from (today)
- * @param {number} targetLeaves - Target leaf stage
- * @returns {number} True round length in days (capped at 365)
- */
 function calcTrueRoundLength(larSeries, endIndex, targetLeaves) {
   let cumLAR = 0;
-  let days = 0;
+  let days   = 0;
   for (let i = endIndex; i >= 0; i--) {
     cumLAR += larSeries[i];
     days++;
     if (cumLAR >= targetLeaves) return days;
-    if (days >= 365) return 365; // cap — more than a year means near-zero growth
+    if (days >= 365) return 365;
   }
-  return days; // ran out of data before reaching target
+  return days;
 }
 
-/**
- * Calculate true round length projecting FORWARD from today using
- * historical median LAR values for each future day of year.
- *
- * @param {Array<number>} medianLARByDoy - Array of 365 median LAR values indexed by day-of-year (0-based)
- * @param {number} startDoy - Day of year to start from (0-based, today)
- * @param {number} targetLeaves - Target leaf stage
- * @returns {number} Projected round length in days (capped at 365)
- */
 function calcProjectedRoundLength(medianLARByDoy, startDoy, targetLeaves) {
   let cumLAR = 0;
   for (let d = 0; d < 365; d++) {
@@ -195,18 +192,11 @@ function calcProjectedRoundLength(medianLARByDoy, startDoy, targetLeaves) {
   return 365;
 }
 
-/**
- * Convert a Date object to day-of-year (1-based, leap years normalised to 365).
- * Leap day (Feb 29) is treated as day 59 (same as Feb 28).
- * @param {Date} date
- * @returns {number} Day of year (1–365)
- */
 function dateToDayOfYear(date) {
   const start = new Date(date.getFullYear(), 0, 0);
-  const diff = date - start;
+  const diff  = date - start;
   const oneDay = 1000 * 60 * 60 * 24;
   let doy = Math.floor(diff / oneDay);
-  // Normalise leap years: if after Feb 28 in a leap year, subtract 1
   const isLeap =
     date.getFullYear() % 4 === 0 &&
     (date.getFullYear() % 100 !== 0 || date.getFullYear() % 400 === 0);
@@ -214,12 +204,6 @@ function dateToDayOfYear(date) {
   return Math.min(doy, 365);
 }
 
-/**
- * Calculate percentile from a sorted array of numbers.
- * @param {Array<number>} sorted - Sorted array (ascending)
- * @param {number} p - Percentile (0–100)
- * @returns {number}
- */
 function percentile(sorted, p) {
   if (sorted.length === 0) return null;
   const index = (p / 100) * (sorted.length - 1);
@@ -230,32 +214,39 @@ function percentile(sorted, p) {
 }
 
 /**
- * Process a full SILO dataset for one farm+scenario to compute:
- * - Daily Temp LAR for every day in the dataset
- * - Daily true round length for every day
- * - Day-of-year percentiles (p10, p50, p90) for LAR, true round, and temperature
+ * Process a full SILO dataset for one scenario to compute daily series and
+ * day-of-year percentiles. Includes soil water balance and moisture factor.
  *
- * This is the heavy computation run once on scenario creation and nightly thereafter.
- *
- * @param {Array<{date, max_temp, min_temp}>} siloData - Raw SILO rows, oldest first
+ * @param {Array} siloData - Raw SILO rows, oldest first
  * @param {string} pastureKey
  * @param {number} targetLeaves
- * @returns {{
- *   dailySeries: Array<{date, tMean, tempLAR, trueRound}>,
- *   percentiles: Array<{dayOfYear, larP10, larP50, larP90, roundP10, roundP50, roundP90, tempP10, tempP50, tempP90, yearsCount}>
- * }}
+ * @param {string} soilType - Key into SOIL_PARAMS (default: 'sandyLoam')
  */
-function processHistoricalData(siloData, pastureKey, targetLeaves) {
-  // Step 1: calculate Actual LAR (Temp LAR × Solar factor) for every day
+function processHistoricalData(siloData, pastureKey, targetLeaves, soilType = 'sandyLoam') {
+  const soilParams = SOIL_PARAMS[soilType] || SOIL_PARAMS.sandyLoam;
+  const { SWmax } = soilParams;
+
+  // Step 1: forward pass — soil water balance, moisture factor, LAR
+  let SW = SWmax; // start at field capacity
   const dailySeries = siloData.map((row) => {
-    const tMean = calcTMean(Number(row.max_temp), Number(row.min_temp));
-    const month = new Date(row.date).getUTCMonth(); // 0-based, UTC-safe
-    const radiation = row.radiation != null ? Number(row.radiation) : null;
-    const { tempLAR, solarFactor, actualLAR } = calcActualLAR(tMean, radiation, month, pastureKey);
-    return { date: row.date, tMean, tempLAR, solarFactor, actualLAR, radiation, trueRound: null };
+    const tMean     = calcTMean(Number(row.max_temp), Number(row.min_temp));
+    const month     = new Date(row.date).getUTCMonth(); // 0-based, UTC-safe
+    const radiation = row.radiation  != null ? Number(row.radiation)  : null;
+    const rainfall  = row.daily_rain != null ? Number(row.daily_rain) : 0;
+
+    SW = calcSoilWater(SW, rainfall, radiation, tMean, soilParams);
+    const moistureFactor = calcMoistureFactor(SW, SWmax, soilType);
+
+    const { tempLAR, solarFactor, actualLAR: baseActual } = calcActualLAR(tMean, radiation, month, pastureKey);
+    const actualLAR = baseActual * moistureFactor;
+
+    return {
+      date: row.date, tMean, tempLAR, solarFactor, actualLAR,
+      radiation, moistureFactor, soilWater: SW, trueRound: null,
+    };
   });
 
-  // Step 2: calculate true round length using actualLAR (backwards cumulative sum)
+  // Step 2: backward pass — true round length from actualLAR (includes all factors)
   const larValues = dailySeries.map((d) => d.actualLAR);
   for (let i = 0; i < dailySeries.length; i++) {
     dailySeries[i].trueRound = calcTrueRoundLength(larValues, i, targetLeaves);
@@ -264,7 +255,7 @@ function processHistoricalData(siloData, pastureKey, targetLeaves) {
   // Step 3: group by day-of-year and compute percentiles
   const buckets = {};
   for (let doy = 1; doy <= 365; doy++) {
-    buckets[doy] = { lars: [], rounds: [], temps: [], solars: [] };
+    buckets[doy] = { lars: [], rounds: [], temps: [], solars: [], moistures: [] };
   }
 
   for (const row of dailySeries) {
@@ -272,41 +263,34 @@ function processHistoricalData(siloData, pastureKey, targetLeaves) {
     buckets[doy].lars.push(row.actualLAR);
     buckets[doy].rounds.push(row.trueRound);
     buckets[doy].temps.push(row.tMean);
+    buckets[doy].moistures.push(row.moistureFactor);
     if (row.solarFactor != null) buckets[doy].solars.push(row.solarFactor);
   }
 
   const percentileRows = [];
   for (let doy = 1; doy <= 365; doy++) {
     const b = buckets[doy];
-    const sortedLars   = [...b.lars].sort((a, b) => a - b);
-    const sortedRounds = [...b.rounds].sort((a, b) => a - b);
-    const sortedTemps  = [...b.temps].sort((a, b) => a - b);
-    const sortedSolars = [...b.solars].sort((a, b) => a - b);
+    const sL = [...b.lars].sort((a, b) => a - b);
+    const sR = [...b.rounds].sort((a, b) => a - b);
+    const sT = [...b.temps].sort((a, b) => a - b);
+    const sS = [...b.solars].sort((a, b) => a - b);
+    const sM = [...b.moistures].sort((a, b) => a - b);
 
     percentileRows.push({
       dayOfYear: doy,
-      larP10: percentile(sortedLars, 10),
-      larP25: percentile(sortedLars, 25),
-      larP50: percentile(sortedLars, 50),
-      larP75: percentile(sortedLars, 75),
-      larP90: percentile(sortedLars, 90),
-      roundP10: percentile(sortedRounds, 10),
-      roundP25: percentile(sortedRounds, 25),
-      roundP50: percentile(sortedRounds, 50),
-      roundP75: percentile(sortedRounds, 75),
-      roundP90: percentile(sortedRounds, 90),
-      tempP10: percentile(sortedTemps, 10),
-      tempP25: percentile(sortedTemps, 25),
-      tempP50: percentile(sortedTemps, 50),
-      tempP75: percentile(sortedTemps, 75),
-      tempP90: percentile(sortedTemps, 90),
-      solarP10: percentile(sortedSolars, 10),
-      solarP25: percentile(sortedSolars, 25),
-      solarP50: percentile(sortedSolars, 50),
-      solarP75: percentile(sortedSolars, 75),
-      solarP90: percentile(sortedSolars, 90),
-      solarHistoricalMax: sortedSolars.length > 0 ? sortedSolars[sortedSolars.length - 1] : null,
-      solarHistoricalMin: sortedSolars.length > 0 ? sortedSolars[0] : null,
+      larP10: percentile(sL, 10), larP25: percentile(sL, 25), larP50: percentile(sL, 50),
+      larP75: percentile(sL, 75), larP90: percentile(sL, 90),
+      roundP10: percentile(sR, 10), roundP25: percentile(sR, 25), roundP50: percentile(sR, 50),
+      roundP75: percentile(sR, 75), roundP90: percentile(sR, 90),
+      tempP10: percentile(sT, 10), tempP25: percentile(sT, 25), tempP50: percentile(sT, 50),
+      tempP75: percentile(sT, 75), tempP90: percentile(sT, 90),
+      solarP10: percentile(sS, 10), solarP25: percentile(sS, 25), solarP50: percentile(sS, 50),
+      solarP75: percentile(sS, 75), solarP90: percentile(sS, 90),
+      solarHistoricalMax: sS.length > 0 ? sS[sS.length - 1] : null,
+      solarHistoricalMin: sS.length > 0 ? sS[0] : null,
+      moistureP10: percentile(sM, 10), moistureP25: percentile(sM, 25),
+      moistureP50: percentile(sM, 50), moistureP75: percentile(sM, 75),
+      moistureP90: percentile(sM, 90),
       yearsCount: b.lars.length,
     });
   }
@@ -316,11 +300,15 @@ function processHistoricalData(siloData, pastureKey, targetLeaves) {
 
 module.exports = {
   PASTURE_PARAMS,
+  SOIL_PARAMS,
   MAX_SOLAR_BY_MONTH,
   calcTMean,
   calcTempLAR,
   calcMaxTempLAR,
   calcSolarFactor,
+  calcWaterloggingFactor,
+  calcMoistureFactor,
+  calcSoilWater,
   calcActualLAR,
   calcInstantRoundLength,
   calcTrueRoundLength,

@@ -144,6 +144,20 @@ ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS solar_historical_min D
 -- Short code for scenario — e.g. S1, S2, S3 — assigned at creation time
 ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS short_code VARCHAR(10);
 
+-- Soil type for scenario — drives moisture factor calculation
+ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS soil_type VARCHAR(20) DEFAULT 'sandyLoam';
+
+-- Moisture factor and soil water balance in daily state
+ALTER TABLE scenario_daily_state ADD COLUMN IF NOT EXISTS moisture_factor DECIMAL(5,4);
+ALTER TABLE scenario_daily_state ADD COLUMN IF NOT EXISTS soil_water      DECIMAL(6,2);
+
+-- Moisture factor percentiles
+ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS moisture_p10 DECIMAL(5,4);
+ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS moisture_p25 DECIMAL(5,4);
+ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS moisture_p50 DECIMAL(5,4);
+ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS moisture_p75 DECIMAL(5,4);
+ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS moisture_p90 DECIMAL(5,4);
+
 -- ─── INDEXES ──────────────────────────────────────────────────────────────────
 -- Optimise the queries the app runs most frequently.
 

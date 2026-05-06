@@ -68,9 +68,53 @@ export default function Settings({ farmId, onFarmDeleted }) {
         <p style={styles.h3}>About</p>
         <p style={{ ...styles.muted, lineHeight: 1.6 }}>
           Round Length is a free pasture growth calculator for Australian dairy farmers.
-          Climate data provided by SILO (Queensland Government), sourced from the Bureau of Meteorology.
         </p>
-        <p style={{ ...styles.muted, fontSize: 12, marginTop: 8 }}>v1.0 — Temperature LAR only</p>
+      </div>
+
+      <div style={styles.card}>
+        <p style={styles.h3}>Data sources</p>
+
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: C.green1, marginBottom: 4 }}>Climate data</div>
+          <p style={{ ...styles.muted, fontSize: 13, lineHeight: 1.6, margin: 0 }}>
+            Daily weather data (temperature, rainfall, solar radiation) is sourced from the{' '}
+            <strong>SILO climate database</strong>, provided by the Queensland Department of Environment
+            and Science.
+          </p>
+          <p style={{ fontSize: 12, color: C.muted, marginTop: 4, wordBreak: 'break-all' }}>
+            longpaddock.qld.gov.au/silo
+          </p>
+        </div>
+
+        <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 14, marginBottom: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: C.green1, marginBottom: 4 }}>Pasture growth model</div>
+          <p style={{ ...styles.muted, fontSize: 13, lineHeight: 1.6, margin: 0 }}>
+            Leaf appearance rate formula based on published phyllochron and base/optimum temperature
+            parameters for temperate and tropical pasture species.
+          </p>
+        </div>
+
+        <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 14, marginBottom: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: C.green1, marginBottom: 4 }}>Soil hydraulic conductivity (Ksat)</div>
+          <p style={{ ...styles.muted, fontSize: 13, lineHeight: 1.6, margin: 0 }}>
+            Default Ksat values are based on global literature: Brunetti et al. (2021) SoilKsatDB
+            (Earth System Science Data, 13, 1593–1612) and Saxton &amp; Rawls (2006) soil hydraulic
+            property estimates by texture class. These are representative middle values and may not
+            reflect local soil conditions.
+          </p>
+        </div>
+
+        <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 14 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: C.green1, marginBottom: 4 }}>Rainfall infiltration</div>
+          <p style={{ ...styles.muted, fontSize: 13, lineHeight: 1.6, margin: 0 }}>
+            Runoff and infiltration parameters are derived from BOM (Bureau of Meteorology)
+            Intensity-Frequency-Duration (IFD) data, downloaded from the Design Rainfall Data
+            System (2016).
+          </p>
+          <p style={{ fontSize: 12, color: C.muted, marginTop: 4, wordBreak: 'break-all' }}>
+            bom.gov.au/water/designRainfalls/revised-ifd
+          </p>
+        </div>
       </div>
 
       <div style={{ padding: '8px 16px 20px' }}>

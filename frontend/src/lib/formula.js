@@ -40,16 +40,44 @@ export function calcInstantRoundLength(tempLAR, targetLeaves) {
   return targetLeaves / tempLAR;
 }
 
+export const SOIL_PARAMS = {
+  sand:      { name: 'Sand',        SWmax: 18, drainageRate: 0.90 },
+  sandyLoam: { name: 'Sandy loam',  SWmax: 30, drainageRate: 0.60 },
+  sandyClay: { name: 'Sandy clay',  SWmax: 35, drainageRate: 0.40 },
+  clay:      { name: 'Clay',        SWmax: 45, drainageRate: 0.20 },
+  peat:      { name: 'Peat',        SWmax: 75, drainageRate: 0.50 },
+};
+
+const WATERLOGGING_THRESHOLDS = {
+  sand:      { severe: 0.99, severeF: 0.70, moderate: 0.95, moderateF: 0.85 },
+  sandyLoam: { severe: 0.95, severeF: 0.50, moderate: 0.90, moderateF: 0.75 },
+  sandyClay: { severe: 0.92, severeF: 0.40, moderate: 0.85, moderateF: 0.65 },
+  clay:      { severe: 0.88, severeF: 0.30, moderate: 0.80, moderateF: 0.55 },
+  peat:      { severe: 0.92, severeF: 0.55, moderate: 0.85, moderateF: 0.70 },
+};
+
 export function calcSolarFactor(radiation, month) {
   if (radiation == null || radiation < 0) return null;
   return Math.min(1, radiation / MAX_SOLAR_BY_MONTH[month]);
 }
 
-export function calcActualLAR(tMean, radiation, month, pastureKey) {
-  const tempLAR = calcTempLAR(tMean, pastureKey);
+export function calcWaterloggingFactor(SW, SWmax, soilType) {
+  const t = WATERLOGGING_THRESHOLDS[soilType] || WATERLOGGING_THRESHOLDS.sandyLoam;
+  if (SW >= SWmax * t.severe)   return t.severeF;
+  if (SW >= SWmax * t.moderate) return t.moderateF;
+  return 1.0;
+}
+
+export function calcMoistureFactor(SW, SWmax, soilType) {
+  const waterlogging = calcWaterloggingFactor(SW, SWmax, soilType);
+  return Math.min(1, SW / (SWmax * 0.5)) * waterlogging;
+}
+
+export function calcActualLAR(tMean, radiation, month, pastureKey, moistureFactor = 1.0) {
+  const tempLAR    = calcTempLAR(tMean, pastureKey);
   const solarFactor = calcSolarFactor(radiation, month);
-  if (solarFactor == null) return { tempLAR, solarFactor: null, actualLAR: tempLAR };
-  return { tempLAR, solarFactor, actualLAR: tempLAR * solarFactor };
+  if (solarFactor == null) return { tempLAR, solarFactor: null, actualLAR: tempLAR * moistureFactor };
+  return { tempLAR, solarFactor, actualLAR: tempLAR * solarFactor * moistureFactor };
 }
 
 export function dateToDayOfYear(date) {
