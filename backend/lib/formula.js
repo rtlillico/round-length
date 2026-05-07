@@ -229,7 +229,9 @@ function processHistoricalData(siloData, pastureKey, targetLeaves, soilType = 's
   // Step 1: forward pass — soil water balance, moisture factor, LAR
   let SW = SWmax; // start at field capacity
   const dailySeries = siloData.map((row) => {
-    const tMean     = calcTMean(Number(row.max_temp), Number(row.min_temp));
+    const tMin      = Number(row.min_temp);
+    const tMax      = Number(row.max_temp);
+    const tMean     = calcTMean(tMax, tMin);
     const month     = new Date(row.date).getUTCMonth(); // 0-based, UTC-safe
     const radiation = row.radiation  != null ? Number(row.radiation)  : null;
     const rainfall  = row.daily_rain != null ? Number(row.daily_rain) : 0;
@@ -241,7 +243,7 @@ function processHistoricalData(siloData, pastureKey, targetLeaves, soilType = 's
     const actualLAR = baseActual * moistureFactor;
 
     return {
-      date: row.date, tMean, tempLAR, solarFactor, actualLAR,
+      date: row.date, tMean, tMin, tMax, tempLAR, solarFactor, actualLAR,
       radiation, moistureFactor, soilWater: SW, trueRound: null,
     };
   });

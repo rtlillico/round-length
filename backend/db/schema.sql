@@ -151,6 +151,10 @@ ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS soil_type VARCHAR(20) DEFAULT 'sa
 ALTER TABLE scenario_daily_state ADD COLUMN IF NOT EXISTS moisture_factor DECIMAL(5,4);
 ALTER TABLE scenario_daily_state ADD COLUMN IF NOT EXISTS soil_water      DECIMAL(6,2);
 
+-- Min/max daily temperature in daily state
+ALTER TABLE scenario_daily_state ADD COLUMN IF NOT EXISTS t_min DECIMAL(5,1);
+ALTER TABLE scenario_daily_state ADD COLUMN IF NOT EXISTS t_max DECIMAL(5,1);
+
 -- Moisture factor percentiles
 ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS moisture_p10 DECIMAL(5,4);
 ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS moisture_p25 DECIMAL(5,4);

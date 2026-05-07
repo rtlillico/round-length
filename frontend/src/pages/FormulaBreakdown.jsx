@@ -92,6 +92,8 @@ export default function FormulaBreakdown({ scenario, actualSeries, onBack }) {
   const maxSolar    = MAX_SOLAR_BY_MONTH[monthIdx];
 
   // Pull today's values from state
+  const tMin           = state?.t_min         != null ? Number(state.t_min)            : null;
+  const tMax           = state?.t_max         != null ? Number(state.t_max)            : null;
   const tMean          = state?.t_mean        != null ? Number(state.t_mean)          : null;
   const tempLAR        = state?.temp_lar      != null ? Number(state.temp_lar)         : null;
   const solarFactor    = state?.solar_factor  != null ? Number(state.solar_factor)     : null;
@@ -192,7 +194,9 @@ export default function FormulaBreakdown({ scenario, actualSeries, onBack }) {
           '  temp_LAR',
           '  until target leaf stage is reached',
         ]} />
-        <Row label="T_mean" value={tMean != null ? `${tMean.toFixed(1)}°C` : '—'} />
+        <Row label="T_min" value={tMin != null ? `${tMin.toFixed(1)}°C` : '—'} />
+        <Row label="T_max" value={tMax != null ? `${tMax.toFixed(1)}°C` : '—'} />
+        <Row label="T_mean" value={tMean != null ? `${tMean.toFixed(1)}°C` : '—'} subValue={tMin != null && tMax != null ? `(${tMin.toFixed(1)} + ${tMax.toFixed(1)}) / 2` : undefined} />
         <Row
           label={`Base temp (${pasture?.name ?? scenario.pasture_key})`}
           value={pasture ? `${pasture.baseTemp}°C` : '—'}

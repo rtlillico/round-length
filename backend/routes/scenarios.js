@@ -80,6 +80,8 @@ router.post('/', async (req, res) => {
         const last365 = dailySeries.slice(-365).map(row => ({
           date:           row.date,
           tMean:          row.tMean,
+          tMin:           row.tMin,
+          tMax:           row.tMax,
           tempLAR:        row.tempLAR,
           actualLAR:      row.actualLAR,
           solarFactor:    row.solarFactor,

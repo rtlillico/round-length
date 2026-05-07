@@ -258,30 +258,32 @@ async function upsertDailyState(scenarioId, { date, tMean, tempLAR, actualLAR, s
 
 async function upsertDailyStateBulk(scenarioId, rows) {
   if (rows.length === 0) return;
-  // 365 rows * 11 cols = 4015 params, well within pg limit
-  const COLS = 11;
+  // 365 rows * 13 cols = 4745 params, well within pg limit
+  const COLS = 13;
   const values = [];
   const params = [];
   rows.forEach((row, i) => {
     const b = i * COLS;
-    values.push(`($${b+1},$${b+2},$${b+3},$${b+4},$${b+5},$${b+6},$${b+7},$${b+8},$${b+9},$${b+10},$${b+11})`);
+    values.push(`($${b+1},$${b+2},$${b+3},$${b+4},$${b+5},$${b+6},$${b+7},$${b+8},$${b+9},$${b+10},$${b+11},$${b+12},$${b+13})`);
     params.push(
       scenarioId, row.date, row.tMean, row.tempLAR,
       row.actualLAR ?? null, row.solarFactor ?? null, row.radiation ?? null,
       row.trueRound, row.dataSource || 'silo',
-      row.moistureFactor ?? null, row.soilWater ?? null
+      row.moistureFactor ?? null, row.soilWater ?? null,
+      row.tMin ?? null, row.tMax ?? null
     );
   });
   await pool.query(
     `INSERT INTO scenario_daily_state
-       (scenario_id, date, t_mean, temp_lar, actual_lar, solar_factor, radiation, true_round, data_source, moisture_factor, soil_water)
+       (scenario_id, date, t_mean, temp_lar, actual_lar, solar_factor, radiation, true_round, data_source, moisture_factor, soil_water, t_min, t_max)
      VALUES ${values.join(',')}
      ON CONFLICT (scenario_id, date) DO UPDATE SET
        t_mean=EXCLUDED.t_mean, temp_lar=EXCLUDED.temp_lar,
        actual_lar=EXCLUDED.actual_lar, solar_factor=EXCLUDED.solar_factor,
        radiation=EXCLUDED.radiation, true_round=EXCLUDED.true_round,
        data_source=EXCLUDED.data_source,
-       moisture_factor=EXCLUDED.moisture_factor, soil_water=EXCLUDED.soil_water`,
+       moisture_factor=EXCLUDED.moisture_factor, soil_water=EXCLUDED.soil_water,
+       t_min=EXCLUDED.t_min, t_max=EXCLUDED.t_max`,
     params
   );
 }
