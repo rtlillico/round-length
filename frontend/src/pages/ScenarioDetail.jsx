@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { api } from '../lib/api';
 import { PASTURE_PARAMS } from '../lib/formula';
 import { C, styles } from '../App';
+import FormulaBreakdown from './FormulaBreakdown';
 import {
   ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid,
   ReferenceLine, ReferenceDot, ResponsiveContainer, Brush
@@ -26,6 +27,7 @@ function fmtDate(dateStr) {
 
 
 export default function ScenarioDetail({ scenario, farmId, onBack }) {
+  const [showBreakdown, setShowBreakdown] = useState(false);
   const [chartData, setChartData]   = useState(null);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState(null);
@@ -71,6 +73,10 @@ export default function ScenarioDetail({ scenario, farmId, onBack }) {
       document.removeEventListener('touchend', onDragEnd);
     };
   }, []);
+
+  if (showBreakdown) {
+    return <FormulaBreakdown scenario={scenario} onBack={() => setShowBreakdown(false)} />;
+  }
 
   function dateToDayOfYear(dateStr) {
     const d = new Date(dateStr);
@@ -199,8 +205,8 @@ export default function ScenarioDetail({ scenario, farmId, onBack }) {
         )}
       </div>
 
-      {/* Growth factors card */}
-      <div style={styles.card}>
+      {/* Growth factors card — tappable to open formula breakdown */}
+      <div style={{ ...styles.card, cursor: 'pointer' }} onClick={() => setShowBreakdown(true)}>
         <p style={{ ...styles.h3, marginTop: 0, marginBottom: 10 }}>Growth factors today</p>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 2 }}>
           <span style={{ fontSize: 13, color: C.muted }}>🌡️ Temperature</span>
@@ -232,6 +238,9 @@ export default function ScenarioDetail({ scenario, farmId, onBack }) {
         <p style={{ ...styles.muted, fontSize: 12, marginTop: 8 }}>
           Temperature: below {pasture?.baseTemp ?? 5}°C grass stops growing, best at {pasture?.optimumTemp ?? 22}°C.
           {solarPct == null && ' Sunlight data not yet available — recompute after running nightly update.'}
+        </p>
+        <p style={{ fontSize: 12, color: C.green2, textAlign: 'right', margin: '6px 0 0', fontWeight: 500 }}>
+          Tap to see formula breakdown →
         </p>
       </div>
 
