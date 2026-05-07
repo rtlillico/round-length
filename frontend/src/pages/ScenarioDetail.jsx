@@ -75,7 +75,7 @@ export default function ScenarioDetail({ scenario, farmId, onBack }) {
   }, []);
 
   if (showBreakdown) {
-    return <FormulaBreakdown scenario={scenario} onBack={() => setShowBreakdown(false)} />;
+    return <FormulaBreakdown scenario={scenario} actualSeries={chartData?.actual} onBack={() => setShowBreakdown(false)} />;
   }
 
   function dateToDayOfYear(dateStr) {

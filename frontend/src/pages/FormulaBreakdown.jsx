@@ -65,7 +65,19 @@ function Row({ label, value, highlight, subValue }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function FormulaBreakdown({ scenario, onBack }) {
+function calcCumulativeRound(actualSeries, targetLeaves, getLAR) {
+  if (!actualSeries?.length) return null;
+  let sum = 0;
+  let days = 0;
+  for (let i = actualSeries.length - 1; i >= 0; i--) {
+    sum += getLAR(actualSeries[i]);
+    days++;
+    if (sum >= targetLeaves) return days;
+  }
+  return null; // not enough history
+}
+
+export default function FormulaBreakdown({ scenario, actualSeries, onBack }) {
   const [open, setOpen] = useState({ temp: true, solar: true, moisture: true, nitrogen: false });
 
   const state       = scenario.todayState;
@@ -108,18 +120,18 @@ export default function FormulaBreakdown({ scenario, onBack }) {
       tempFormula = '0';
     }
   }
-  const roundAtTemp = tempLAR && tempLAR > 0 ? target / tempLAR : null;
+  const roundAtTemp  = calcCumulativeRound(actualSeries, target, r => Number(r.temp_lar ?? 0));
 
   // ── Solar ────────────────────────────────────────────────────────────────────
   const larAfterSolar   = tempLAR != null && solarFactor != null ? tempLAR * solarFactor : null;
-  const roundAfterSolar = larAfterSolar && larAfterSolar > 0 ? target / larAfterSolar : null;
+  const roundAfterSolar = calcCumulativeRound(actualSeries, target, r => Number(r.temp_lar ?? 0) * Number(r.solar_factor ?? 1));
 
   // ── Moisture ─────────────────────────────────────────────────────────────────
   const swThreshold        = soilParams.SWmax * 0.5;
   const wlFactor           = soilWater != null ? calcWaterloggingFactor(soilWater, soilParams.SWmax, soilType) : 1.0;
   const droughtFactor      = soilWater != null ? Math.min(1, soilWater / swThreshold) : null;
   const larAfterMoisture   = larAfterSolar != null && moistureFactor != null ? larAfterSolar * moistureFactor : null;
-  const roundAfterMoisture = larAfterMoisture && larAfterMoisture > 0 ? target / larAfterMoisture : null;
+  const roundAfterMoisture = calcCumulativeRound(actualSeries, target, r => Number(r.temp_lar ?? 0) * Number(r.solar_factor ?? 1) * Number(r.moisture_factor ?? 1));
 
   let wlStatus = '—';
   if (soilWater != null) {
@@ -175,6 +187,10 @@ export default function FormulaBreakdown({ scenario, onBack }) {
           `Falling (optimum → ceiling): LAR = maxLAR × (ceiling − T_mean)`,
           `                                  / (ceiling − optimum)`,
           `Above ceiling (>${pasture?.ceilingTemp ?? 35}°C): LAR = 0`,
+          '',
+          'Round at temperature only = cumulative backward sum of',
+          '  temp_LAR',
+          '  until target leaf stage is reached',
         ]} />
         <Row label="T_mean" value={tMean != null ? `${tMean.toFixed(1)}°C` : '—'} />
         <Row
@@ -202,7 +218,8 @@ export default function FormulaBreakdown({ scenario, onBack }) {
         />
         <Row
           label="Round at temperature only"
-          value={roundAtTemp != null ? `${target} / ${f(tempLAR)} = ${fd(roundAtTemp)}` : '—'}
+          value={fd(roundAtTemp)}
+          subValue="backward cumulative sum of daily temp LAR until target reached"
         />
       </Section>
 
@@ -210,6 +227,10 @@ export default function FormulaBreakdown({ scenario, onBack }) {
       <Section title="2. Solar" open={open.solar} onToggle={() => toggle('solar')}>
         <FormulaBox lines={[
           'Solar factor = MIN(1, daily_solar / max_solar_for_month)',
+          '',
+          'Round after solar = cumulative backward sum of',
+          '  temp_LAR × solar_factor',
+          '  until target leaf stage is reached',
         ]} />
         <Row label="Daily solar" value={radiation != null ? `${radiation.toFixed(1)} MJ/m²` : '—'} />
         <Row
@@ -229,7 +250,8 @@ export default function FormulaBreakdown({ scenario, onBack }) {
         />
         <Row
           label="Round after solar"
-          value={roundAfterSolar != null ? `${target} / ${f(larAfterSolar)} = ${fd(roundAfterSolar)}` : '—'}
+          value={fd(roundAfterSolar)}
+          subValue="backward cumulative sum of daily temp LAR × solar factor"
         />
       </Section>
 
@@ -238,6 +260,10 @@ export default function FormulaBreakdown({ scenario, onBack }) {
         <FormulaBox lines={[
           'Moisture factor = MIN(1, SW / (SWmax × 0.5)) × waterlogging_factor',
           'SW = MIN(SWmax, MAX(0, SW_prev + Rain − ET₀ − Drainage))',
+          '',
+          'Round after moisture = cumulative backward sum of',
+          '  temp_LAR × solar_factor × moisture_factor',
+          '  until target leaf stage is reached',
         ]} />
         <Row label="Current soil water (SW)" value={soilWater != null ? `${soilWater.toFixed(1)} mm` : '—'} />
         <Row label={`Field capacity — ${soilParams.name}`} value={`${soilParams.SWmax} mm`} />
@@ -269,7 +295,8 @@ export default function FormulaBreakdown({ scenario, onBack }) {
         />
         <Row
           label="Round after moisture"
-          value={roundAfterMoisture != null ? `${target} / ${f(larAfterMoisture)} = ${fd(roundAfterMoisture)}` : '—'}
+          value={fd(roundAfterMoisture)}
+          subValue="backward cumulative sum of daily temp LAR × solar × moisture factor"
         />
       </Section>
 
