@@ -8,9 +8,7 @@ const { createFarm, getFarm, getAllFarms, updateFarm } = require('../db/queries'
 const { fetchSILO, yesterday, SILO_START } = require('../silo');
 const { insertSILORows, getAllSILORows, getScenariosForFarm } = require('../db/queries');
 const { updateScenario } = require('../cron/nightly');
-
-// In-memory download progress per farm — lost on restart, that's fine
-const farmProgress = new Map(); // farmId → { phase, pct }
+const { farmProgress } = require('../lib/progress');
 
 // GET /api/farms — list all farms
 router.get('/', async (req, res) => {
@@ -71,7 +69,7 @@ router.post('/', async (req, res) => {
       }
       farmProgress.delete(farm.id);
     } catch (err) {
-      farmProgress.delete(farm.id);
+      farmProgress.set(farm.id, { phase: 'error', error: err.message });
       console.error(`[farms] SILO download failed for farm ${farm.id}:`, err.message);
     }
   } catch (err) {

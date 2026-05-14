@@ -13,6 +13,36 @@ function ProgressBar({ pct }) {
   );
 }
 
+function StatusBanner({ progress }) {
+  if (progress.phase === 'error') {
+    return (
+      <div style={{ ...styles.card, ...styles.warning }}>
+        <div style={{ fontSize: 14, fontWeight: 'bold', marginBottom: 4 }}>Something went wrong</div>
+        <div style={{ fontSize: 13 }}>{progress.error || 'Unknown error.'}</div>
+        <div style={{ fontSize: 12, color: C.muted, marginTop: 6 }}>
+          Check the backend logs. Once fixed, recreate the affected scenario or wait for the nightly update.
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div style={styles.card}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+        <div style={{ fontSize: 14, fontWeight: 'bold', color: C.green1 }}>
+          {progress.phase === 'downloading' && 'Fetching climate data from SILO...'}
+          {progress.phase === 'inserting'   && 'Saving data...'}
+          {progress.phase === 'computing'   && 'Computing historical averages...'}
+        </div>
+        <div style={{ fontSize: 13, color: C.muted }}>{progress.pct}%</div>
+      </div>
+      <ProgressBar pct={progress.pct} />
+      <div style={{ fontSize: 12, color: C.muted, marginTop: 6 }}>
+        The page will update automatically when ready.
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard({ farmId, onSelectScenario, onAdd }) {
   const [farm, setFarm]           = useState(null);
   const [scenarios, setScenarios] = useState([]);
@@ -42,7 +72,7 @@ export default function Dashboard({ farmId, onSelectScenario, onAdd }) {
           return ra - rb;
         }));
         setDownloadProgress(statusData.downloadProgress);
-        if (statusData.downloadProgress) timer = setTimeout(poll, 3000);
+        if (statusData.downloadProgress && statusData.downloadProgress.phase !== 'error') timer = setTimeout(poll, 3000);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -62,7 +92,7 @@ export default function Dashboard({ farmId, onSelectScenario, onAdd }) {
           return ra - rb;
         }));
         setDownloadProgress(statusData.downloadProgress);
-        if (statusData.downloadProgress) timer = setTimeout(poll, 3000);
+        if (statusData.downloadProgress && statusData.downloadProgress.phase !== 'error') timer = setTimeout(poll, 3000);
       } catch {
         // ignore poll errors
       }
@@ -108,22 +138,7 @@ export default function Dashboard({ farmId, onSelectScenario, onAdd }) {
             <div style={styles.headerSub}>{today}</div>
           </div>
         </div>
-        {downloadProgress && (
-          <div style={styles.card}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-              <div style={{ fontSize: 14, fontWeight: 'bold', color: C.green1 }}>
-                {downloadProgress.phase === 'downloading' && 'Fetching climate data from SILO...'}
-                {downloadProgress.phase === 'inserting'   && 'Saving data...'}
-                {downloadProgress.phase === 'computing'   && 'Computing historical averages...'}
-              </div>
-              <div style={{ fontSize: 13, color: C.muted }}>{downloadProgress.pct}%</div>
-            </div>
-            <ProgressBar pct={downloadProgress.pct} />
-            <div style={{ fontSize: 12, color: C.muted, marginTop: 6 }}>
-              The page will update automatically when ready.
-            </div>
-          </div>
-        )}
+        {downloadProgress && <StatusBanner progress={downloadProgress} />}
         <div style={{ ...styles.card, textAlign: 'center', padding: '32px 20px' }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>🌱</div>
           <p style={styles.h2}>No scenarios yet</p>
@@ -164,22 +179,7 @@ export default function Dashboard({ farmId, onSelectScenario, onAdd }) {
         </button>
       </div>
 
-      {downloadProgress && (
-        <div style={styles.card}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-            <div style={{ fontSize: 14, fontWeight: 'bold', color: C.green1 }}>
-              {downloadProgress.phase === 'downloading' && 'Fetching climate data from SILO...'}
-              {downloadProgress.phase === 'inserting'   && 'Saving data...'}
-              {downloadProgress.phase === 'computing'   && 'Computing historical averages...'}
-            </div>
-            <div style={{ fontSize: 13, color: C.muted }}>{downloadProgress.pct}%</div>
-          </div>
-          <ProgressBar pct={downloadProgress.pct} />
-          <div style={{ fontSize: 12, color: C.muted, marginTop: 6 }}>
-            The page will update automatically when ready.
-          </div>
-        </div>
-      )}
+      {downloadProgress && <StatusBanner progress={downloadProgress} />}
 
       <ComparisonTable
         scenarios={scenarios}

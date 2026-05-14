@@ -22,6 +22,7 @@ const {
   dateToDayOfYear,
   processHistoricalData,
 } = require('../lib/formula');
+const { farmProgress } = require('../lib/progress');
 
 /**
  * Run the full nightly update for all farms.
@@ -36,7 +37,10 @@ async function runNightlyUpdate() {
   for (const farm of farms) {
     try {
       await updateFarm(farm);
+      const prev = farmProgress.get(farm.id);
+      if (prev?.phase === 'error') farmProgress.delete(farm.id);
     } catch (err) {
+      farmProgress.set(farm.id, { phase: 'error', error: err.message });
       console.error(`[cron] Error updating farm ${farm.id} (${farm.name}):`, err.message);
     }
   }
@@ -105,6 +109,8 @@ async function updateScenario(scenario, allSILO) {
     const last365 = dailySeries.slice(-365).map(row => ({
       date:           row.date,
       tMean:          row.tMean,
+      tMin:           row.tMin,
+      tMax:           row.tMax,
       tempLAR:        row.tempLAR,
       actualLAR:      row.actualLAR,
       solarFactor:    row.solarFactor,

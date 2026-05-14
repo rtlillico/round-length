@@ -18,6 +18,7 @@ const {
   upsertDailyStateBulk,
 } = require('../db/queries');
 const { processHistoricalData, calcProjectedRoundLength, dateToDayOfYear } = require('../lib/formula');
+const { farmProgress } = require('../lib/progress');
 
 // GET /api/scenarios?farmId=1 — list all scenarios for a farm
 router.get('/', async (req, res) => {
@@ -94,7 +95,10 @@ router.post('/', async (req, res) => {
         await upsertDailyStateBulk(scenario.id, last365);
       }
       console.log(`[scenarios] Percentiles computed for scenario ${scenario.id}`);
+      const prev = farmProgress.get(Number(farmId));
+      if (prev?.phase === 'error') farmProgress.delete(Number(farmId));
     } catch (err) {
+      farmProgress.set(Number(farmId), { phase: 'error', error: err.message, scenarioId: scenario.id });
       console.error(`[scenarios] Percentile computation failed for scenario ${scenario.id}:`, err.message);
     }
   } catch (err) {
