@@ -157,7 +157,7 @@ export default function MoistureScreen({ scenario, chartData, loading, onNavigat
           <FormulaBtn open={fSoil} onToggle={() => setFSoil(v => !v)} />
           {fSoil && (
             <FormulaBox
-              lines={`SW_today = SW_yesterday + Rainfall − ET₀ − Drainage\nET₀ = 0.0135 × radiation × (T_mean + 17.8)\nDrainage = max(0, SW − SWmax) × drainageRate`}
+              lines={`SW_today = SW_yesterday + Rainfall − ET₀ − Drainage\nET₀ = Morton wet-environment ET (from SILO)\nDrainage = max(0, SW − SWmax) × drainageRate`}
               vars={[
                 { label: 'Soil type',        value: soilParams.name },
                 { label: 'Field capacity',   value: `${swMax} mm` },

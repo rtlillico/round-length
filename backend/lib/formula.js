@@ -142,11 +142,14 @@ function calcMoistureFactor(SW, SWmax, soilType) {
 
 /**
  * Update soil water balance for one day.
- * Uses simplified ET₀ = 0.0135 × radiation × (tMean + 17.8).
+ * Uses Morton wet-environment ET from SILO when available; falls back to a
+ * radiation × temp approximation for older rows where SILO is missing it.
  * Drainage removes excess water above field capacity.
  */
-function calcSoilWater(SW_prev, rainfall, radiation, tMean, soilParams) {
-  const ET0 = Math.max(0, 0.0135 * (radiation ?? 10) * (tMean + 17.8));
+function calcSoilWater(SW_prev, rainfall, etMorton, radiation, tMean, soilParams) {
+  const ET0 = etMorton != null
+    ? Math.max(0, Number(etMorton))
+    : Math.max(0, 0.0135 * (radiation ?? 10) * (tMean + 17.8));
   const potential = SW_prev + rainfall - ET0;
   const drainage  = Math.max(0, potential - soilParams.SWmax) * soilParams.drainageRate;
   return Math.min(soilParams.SWmax, Math.max(0, potential - drainage));
@@ -233,10 +236,11 @@ function processHistoricalData(siloData, pastureKey, targetLeaves, soilType = 's
     const tMax      = Number(row.max_temp);
     const tMean     = calcTMean(tMax, tMin);
     const month     = new Date(row.date).getUTCMonth(); // 0-based, UTC-safe
-    const radiation = row.radiation  != null ? Number(row.radiation)  : null;
-    const rainfall  = row.daily_rain != null ? Number(row.daily_rain) : 0;
+    const radiation = row.radiation     != null ? Number(row.radiation)     : null;
+    const rainfall  = row.daily_rain    != null ? Number(row.daily_rain)    : 0;
+    const etMorton  = row.et_morton_wet != null ? Number(row.et_morton_wet) : null;
 
-    SW = calcSoilWater(SW, rainfall, radiation, tMean, soilParams);
+    SW = calcSoilWater(SW, rainfall, etMorton, radiation, tMean, soilParams);
     const moistureFactor = calcMoistureFactor(SW, SWmax, soilType);
 
     const { tempLAR, solarFactor, actualLAR: baseActual } = calcActualLAR(tMean, radiation, month, pastureKey);
