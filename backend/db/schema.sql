@@ -155,6 +155,12 @@ ALTER TABLE scenario_daily_state ADD COLUMN IF NOT EXISTS soil_water      DECIMA
 ALTER TABLE scenario_daily_state ADD COLUMN IF NOT EXISTS t_min DECIMAL(5,1);
 ALTER TABLE scenario_daily_state ADD COLUMN IF NOT EXISTS t_max DECIMAL(5,1);
 
+-- Daily rainfall in daily state — needed for IFD runoff display
+ALTER TABLE scenario_daily_state ADD COLUMN IF NOT EXISTS daily_rain DECIMAL(6,1);
+
+-- IFD data for farm — stores extracted BOM IFD point values for runoff calculation
+ALTER TABLE farms ADD COLUMN IF NOT EXISTS ifd_data JSONB;
+
 -- Moisture factor percentiles
 ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS moisture_p10 DECIMAL(5,4);
 ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS moisture_p25 DECIMAL(5,4);

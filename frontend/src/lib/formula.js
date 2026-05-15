@@ -41,11 +41,11 @@ export function calcInstantRoundLength(tempLAR, targetLeaves) {
 }
 
 export const SOIL_PARAMS = {
-  sand:      { name: 'Sand',        SWmax: 18, drainageRate: 0.90 },
-  sandyLoam: { name: 'Sandy loam',  SWmax: 30, drainageRate: 0.60 },
-  sandyClay: { name: 'Sandy clay',  SWmax: 35, drainageRate: 0.40 },
-  clay:      { name: 'Clay',        SWmax: 45, drainageRate: 0.20 },
-  peat:      { name: 'Peat',        SWmax: 75, drainageRate: 0.50 },
+  sand:      { name: 'Sand',        SWmax: 18, drainageRate: 0.90, infiltrationRate: 25 },
+  sandyLoam: { name: 'Sandy loam',  SWmax: 30, drainageRate: 0.60, infiltrationRate: 15 },
+  sandyClay: { name: 'Sandy clay',  SWmax: 35, drainageRate: 0.40, infiltrationRate: 10 },
+  clay:      { name: 'Clay',        SWmax: 45, drainageRate: 0.20, infiltrationRate:  5 },
+  peat:      { name: 'Peat',        SWmax: 75, drainageRate: 0.50, infiltrationRate: 20 },
 };
 
 const WATERLOGGING_THRESHOLDS = {

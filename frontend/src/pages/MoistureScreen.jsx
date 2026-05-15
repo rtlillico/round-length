@@ -10,6 +10,192 @@ import {
   buildMonthTicks, xAxisTick, yAxisProps,
 } from '../components/SeasonUI';
 
+// ── IFD helpers ──────────────────────────────────────────────────────────────
+
+function findAEPForRainfall(rainfall, depths1440) {
+  if (!depths1440 || rainfall == null || rainfall <= 0) return null;
+  const pairs = Object.entries(depths1440)
+    .map(([k, v]) => [parseFloat(k), parseFloat(v)])
+    .filter(([a, d]) => !isNaN(a) && !isNaN(d))
+    .sort((a, b) => a[0] - b[0]); // ascending AEP → descending depth
+  if (pairs.length < 2) return null;
+  if (rainfall >= pairs[0][1]) return pairs[0][0];
+  if (rainfall <= pairs[pairs.length - 1][1]) return pairs[pairs.length - 1][0];
+  for (let i = 0; i < pairs.length - 1; i++) {
+    const [a1, d1] = pairs[i];
+    const [a2, d2] = pairs[i + 1];
+    if (rainfall <= d1 && rainfall >= d2) {
+      const t = (d1 - rainfall) / (d1 - d2);
+      return a1 + t * (a2 - a1);
+    }
+  }
+  return null;
+}
+
+function getDepthAtAEP(durDepths, targetAEP) {
+  if (!durDepths || targetAEP == null) return null;
+  const pairs = Object.entries(durDepths)
+    .map(([k, v]) => [parseFloat(k), parseFloat(v)])
+    .filter(([a, d]) => !isNaN(a) && !isNaN(d))
+    .sort((a, b) => a[0] - b[0]);
+  if (pairs.length === 0) return null;
+  if (targetAEP <= pairs[0][0]) return pairs[0][1];
+  if (targetAEP >= pairs[pairs.length - 1][0]) return pairs[pairs.length - 1][1];
+  for (let i = 0; i < pairs.length - 1; i++) {
+    const [a1, d1] = pairs[i];
+    const [a2, d2] = pairs[i + 1];
+    if (targetAEP >= a1 && targetAEP <= a2) {
+      const t = (targetAEP - a1) / (a2 - a1);
+      return d1 + t * (d2 - d1);
+    }
+  }
+  return null;
+}
+
+function fmtReturnPeriod(aep) {
+  const yr = 100 / aep;
+  return yr >= 10 ? `${Math.round(yr)} yr` : `${yr.toFixed(1)} yr`;
+}
+
+const IFD_DURATIONS = [30, 60, 120, 360, 720, 1440];
+
+function IFDSection({ ifdData, todayRain, infiltrationRate, soilName }) {
+  const depths1440 = ifdData?.depths?.['1440'];
+
+  const aepRows = depths1440
+    ? Object.entries(depths1440)
+        .map(([k, v]) => ({ aep: parseFloat(k), depth: parseFloat(v) }))
+        .filter(r => !isNaN(r.aep) && !isNaN(r.depth))
+        .sort((a, b) => a.aep - b.aep)
+    : [];
+
+  const todayAEP = (todayRain != null && depths1440)
+    ? findAEPForRainfall(todayRain, depths1440)
+    : null;
+
+  // First (rarest) row where depth ≤ todayRain
+  let highlightIdx = -1;
+  if (todayRain != null && todayRain > 0) {
+    for (let i = 0; i < aepRows.length; i++) {
+      if (aepRows[i].depth <= todayRain) { highlightIdx = i; break; }
+    }
+  }
+
+  // 1-hr depth and intensity at today's AEP
+  const depth1hr     = (todayAEP != null && ifdData?.depths?.['60'])
+    ? getDepthAtAEP(ifdData.depths['60'], todayAEP) : null;
+  const intensity1hr = depth1hr; // 60-min depth (mm) == intensity (mm/hr)
+
+  let runoffFraction = 0, runoff = 0, effectiveRain = todayRain ?? 0;
+  if (intensity1hr != null && infiltrationRate != null && todayRain != null) {
+    runoffFraction = Math.max(0, (intensity1hr - infiltrationRate) / intensity1hr);
+    runoff        = todayRain * runoffFraction;
+    effectiveRain = todayRain - runoff;
+  }
+
+  const tblStyle = { width: '100%', borderCollapse: 'collapse', fontSize: 11, marginTop: 4 };
+  const thR = { padding: '3px 6px', background: '#e8f0e0', color: '#2d4a1e', fontWeight: 600, textAlign: 'right', borderBottom: '1px solid #c8d8b0' };
+  const thL = { ...thR, textAlign: 'left' };
+  const row  = (hl) => ({ borderBottom: '1px solid #eef3e8', background: hl ? '#fffde7' : 'transparent' });
+  const tdR  = (hl) => ({ padding: '2px 6px', textAlign: 'right',  fontWeight: hl ? 600 : 400 });
+  const tdL  = (hl) => ({ padding: '2px 6px', textAlign: 'left',   fontWeight: hl ? 600 : 400 });
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      {/* 24-hr frequency table */}
+      <div style={{ fontSize: 11, fontWeight: 600, color: '#2d4a1e', marginBottom: 3 }}>
+        24-hr rainfall frequency (BOM IFD · {ifdData.lat}°, {ifdData.lon}°)
+      </div>
+      {todayRain != null && (
+        <div style={{ fontSize: 11, color: '#555', marginBottom: 4 }}>
+          Today's rainfall: <strong>{todayRain.toFixed(1)} mm</strong>
+          {todayAEP != null && ` · ~${todayAEP.toFixed(1)}% AEP (1-in-${(100 / todayAEP).toFixed(0)} yr event)`}
+        </div>
+      )}
+      <table style={tblStyle}>
+        <thead>
+          <tr>
+            <th style={thL}>AEP</th>
+            <th style={thR}>Return period</th>
+            <th style={thR}>24-hr depth</th>
+          </tr>
+        </thead>
+        <tbody>
+          {aepRows.map((r, i) => {
+            const hl = i === highlightIdx;
+            const exceeded = todayRain != null && todayRain >= r.depth;
+            return (
+              <tr key={r.aep} style={row(hl)}>
+                <td style={tdL(hl)}>{r.aep < 10 ? r.aep.toFixed(1) : r.aep.toFixed(0)}%</td>
+                <td style={tdR(hl)}>{fmtReturnPeriod(r.aep)}</td>
+                <td style={tdR(hl)}>{r.depth.toFixed(1)} mm{exceeded ? ' ✓' : ''}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+
+      {/* Peak intensity table at today's AEP */}
+      {todayAEP != null && (
+        <>
+          <div style={{ fontSize: 11, fontWeight: 600, color: '#2d4a1e', marginTop: 10, marginBottom: 3 }}>
+            Intensity at {todayAEP.toFixed(1)}% AEP
+          </div>
+          <table style={tblStyle}>
+            <thead>
+              <tr>
+                <th style={thL}>Duration</th>
+                <th style={thR}>Depth (mm)</th>
+                <th style={thR}>Intensity (mm/hr)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {IFD_DURATIONS.map(dur => {
+                const key = String(dur);
+                if (!ifdData?.depths?.[key]) return null;
+                const depth = getDepthAtAEP(ifdData.depths[key], todayAEP);
+                if (depth == null) return null;
+                const intensity = depth / (dur / 60);
+                const is1hr = dur === 60;
+                return (
+                  <tr key={dur} style={row(is1hr)}>
+                    <td style={tdL(is1hr)}>{dur >= 60 ? `${dur / 60} hr` : `${dur} min`}</td>
+                    <td style={tdR(is1hr)}>{depth.toFixed(1)}</td>
+                    <td style={tdR(is1hr)}>{intensity.toFixed(1)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </>
+      )}
+
+      {/* Runoff calculation */}
+      {todayAEP != null && intensity1hr != null && (
+        <div style={{ marginTop: 10, background: '#f0f8e8', borderRadius: 6, padding: '8px 10px', fontSize: 11 }}>
+          <div style={{ fontWeight: 600, color: '#2d4a1e', marginBottom: 4 }}>Runoff ({soilName})</div>
+          <div>1-hr peak intensity: <strong>{intensity1hr.toFixed(1)} mm/hr</strong></div>
+          <div>Infiltration rate: <strong>{infiltrationRate} mm/hr</strong></div>
+          {runoffFraction > 0 ? (
+            <>
+              <div>Runoff fraction = ({intensity1hr.toFixed(1)} − {infiltrationRate}) ÷ {intensity1hr.toFixed(1)} = <strong>{(runoffFraction * 100).toFixed(0)}%</strong></div>
+              <div>Runoff = {todayRain.toFixed(1)} × {(runoffFraction * 100).toFixed(0)}% = <strong>{runoff.toFixed(1)} mm</strong></div>
+              <div>Effective rainfall = {todayRain.toFixed(1)} − {runoff.toFixed(1)} = <strong>{effectiveRain.toFixed(1)} mm</strong></div>
+            </>
+          ) : (
+            <div style={{ color: '#4a7a1a' }}>
+              Intensity below infiltration rate — no surface runoff<br />
+              Effective rainfall = <strong>{(todayRain ?? 0).toFixed(1)} mm</strong>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 function buildSeries(chartData, targetLeaves) {
   if (!chartData) return [];
   const n = v => v != null ? Number(v) : null;
@@ -75,6 +261,8 @@ export default function MoistureScreen({ scenario, chartData, loading, onNavigat
 
   const moistureF   = state?.moisture_factor != null ? Number(state.moisture_factor) : null;
   const soilWater   = state?.soil_water      != null ? Number(state.soil_water)      : null;
+  const todayRain   = state?.daily_rain      != null ? Number(state.daily_rain)      : null;
+  const ifdData     = chartData?.ifdData || null;
   const swMax       = soilParams.SWmax;
 
   const chartProps = { data: series, margin: { top: 5, right: 38, left: -20, bottom: 0 } };
@@ -156,15 +344,27 @@ export default function MoistureScreen({ scenario, chartData, loading, onNavigat
         <div style={styles.card}>
           <FormulaBtn open={fSoil} onToggle={() => setFSoil(v => !v)} />
           {fSoil && (
-            <FormulaBox
-              lines={`SW_today = SW_yesterday + Rainfall − ET₀ − Drainage\nET₀ = Morton wet-environment ET (from SILO)\nDrainage = max(0, SW − SWmax) × drainageRate`}
-              vars={[
-                { label: 'Soil type',        value: soilParams.name },
-                { label: 'Field capacity',   value: `${swMax} mm` },
-                { label: 'Drainage rate',    value: `${(soilParams.drainageRate * 100).toFixed(0)}%/day` },
-                { label: 'Soil water today', value: soilWater != null ? `${soilWater.toFixed(1)} mm` : '—' },
-              ]}
-            />
+            <div>
+              <FormulaBox
+                lines={`SW = SW_prev + Effective rain − ET₀ − Drainage\nEffective rain = Rainfall − Runoff (IFD-based)\nET₀ = Morton wet-environment ET (from SILO)\nDrainage = max(0, SW − SWmax) × drainageRate`}
+                vars={[
+                  { label: 'Soil type',         value: soilParams.name },
+                  { label: 'Field capacity',    value: `${swMax} mm` },
+                  { label: 'Drainage rate',     value: `${(soilParams.drainageRate * 100).toFixed(0)}%/day` },
+                  { label: 'Infiltration rate', value: soilParams.infiltrationRate != null ? `${soilParams.infiltrationRate} mm/hr` : '—' },
+                  { label: 'Soil water today',  value: soilWater != null ? `${soilWater.toFixed(1)} mm` : '—' },
+                  { label: 'Rainfall today',    value: todayRain != null ? `${todayRain.toFixed(1)} mm` : '—' },
+                ]}
+              />
+              {ifdData && (
+                <IFDSection
+                  ifdData={ifdData}
+                  todayRain={todayRain}
+                  infiltrationRate={soilParams.infiltrationRate}
+                  soilName={soilParams.name}
+                />
+              )}
+            </div>
           )}
           <div style={{ fontSize: 12, fontWeight: 600, color: '#2d4a1e', marginBottom: 2 }}>Soil water (mm)</div>
           <div style={{ fontSize: 10, color: C.muted, marginBottom: 8 }}>Modelled soil water balance · Actual data only (no forecast)</div>

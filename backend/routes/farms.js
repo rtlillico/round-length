@@ -4,7 +4,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { createFarm, getFarm, getAllFarms, updateFarm } = require('../db/queries');
+const { createFarm, getFarm, getAllFarms, updateFarm, setFarmIFD } = require('../db/queries');
 const { fetchSILO, yesterday, SILO_START } = require('../silo');
 const { insertSILORows, getAllSILORows, getScenariosForFarm } = require('../db/queries');
 const { updateScenario } = require('../cron/nightly');
@@ -84,6 +84,25 @@ router.patch('/:id', async (req, res) => {
     const farm = await updateFarm(req.params.id, req.body);
     if (!farm) return res.status(404).json({ error: 'Farm not found' });
     res.json(farm);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/farms/:id/ifd — upload IFD point data for a farm
+router.post('/:id/ifd', async (req, res) => {
+  try {
+    const farm = await getFarm(req.params.id);
+    if (!farm) return res.status(404).json({ error: 'Farm not found' });
+
+    const { lat, lon, depths } = req.body;
+    if (!depths || typeof depths !== 'object') {
+      return res.status(400).json({ error: 'Request body must include a depths object' });
+    }
+
+    const updated = await setFarmIFD(req.params.id, req.body);
+    console.log(`[farms] IFD data saved for farm ${req.params.id} (lat=${lat}, lon=${lon})`);
+    res.json({ farm: updated, message: 'IFD data saved' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

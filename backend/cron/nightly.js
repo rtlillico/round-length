@@ -81,24 +81,26 @@ async function updateFarm(farm) {
 
   // Recompute all scenarios for this farm
   const scenarios = await getScenariosForFarm(farm.id);
-  const allSILO = await getAllSILORows(farm.id);
+  const allSILO   = await getAllSILORows(farm.id);
+  const ifdData   = farm.ifd_data || null;
 
   for (const scenario of scenarios) {
-    await updateScenario(scenario, allSILO);
+    await updateScenario(scenario, allSILO, ifdData);
   }
 }
 
 /**
  * Recompute percentiles and today's state for a single scenario.
  */
-async function updateScenario(scenario, allSILO) {
+async function updateScenario(scenario, allSILO, ifdData = null) {
   console.log(`[cron] Computing scenario ${scenario.id}: ${scenario.name}`);
 
   const { dailySeries, percentiles } = processHistoricalData(
     allSILO,
     scenario.pasture_key,
     Number(scenario.target_leaves),
-    scenario.soil_type || 'sandyLoam'
+    scenario.soil_type || 'sandyLoam',
+    ifdData
   );
 
   // Save percentiles
@@ -118,6 +120,7 @@ async function updateScenario(scenario, allSILO) {
       trueRound:      row.trueRound,
       moistureFactor: row.moistureFactor,
       soilWater:      row.soilWater,
+      rainfall:       row.rainfall,
       dataSource:     'silo',
     }));
     await upsertDailyStateBulk(scenario.id, last365);

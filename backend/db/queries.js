@@ -47,6 +47,14 @@ async function updateFarm(id, { name, lat, lon, siloEmail }) {
   return rows[0] || null;
 }
 
+async function setFarmIFD(id, ifdData) {
+  const { rows } = await pool.query(
+    `UPDATE farms SET ifd_data=$1, updated_at=NOW() WHERE id=$2 RETURNING *`,
+    [JSON.stringify(ifdData), id]
+  );
+  return rows[0] || null;
+}
+
 // ─── SILO DAILY ───────────────────────────────────────────────────────────────
 
 /**
@@ -258,24 +266,25 @@ async function upsertDailyState(scenarioId, { date, tMean, tempLAR, actualLAR, s
 
 async function upsertDailyStateBulk(scenarioId, rows) {
   if (rows.length === 0) return;
-  // 365 rows * 13 cols = 4745 params, well within pg limit
-  const COLS = 13;
+  // 365 rows * 14 cols = 5110 params, well within pg limit
+  const COLS = 14;
   const values = [];
   const params = [];
   rows.forEach((row, i) => {
     const b = i * COLS;
-    values.push(`($${b+1},$${b+2},$${b+3},$${b+4},$${b+5},$${b+6},$${b+7},$${b+8},$${b+9},$${b+10},$${b+11},$${b+12},$${b+13})`);
+    values.push(`($${b+1},$${b+2},$${b+3},$${b+4},$${b+5},$${b+6},$${b+7},$${b+8},$${b+9},$${b+10},$${b+11},$${b+12},$${b+13},$${b+14})`);
     params.push(
       scenarioId, row.date, row.tMean, row.tempLAR,
       row.actualLAR ?? null, row.solarFactor ?? null, row.radiation ?? null,
       row.trueRound, row.dataSource || 'silo',
       row.moistureFactor ?? null, row.soilWater ?? null,
-      row.tMin ?? null, row.tMax ?? null
+      row.tMin ?? null, row.tMax ?? null,
+      row.rainfall ?? null
     );
   });
   await pool.query(
     `INSERT INTO scenario_daily_state
-       (scenario_id, date, t_mean, temp_lar, actual_lar, solar_factor, radiation, true_round, data_source, moisture_factor, soil_water, t_min, t_max)
+       (scenario_id, date, t_mean, temp_lar, actual_lar, solar_factor, radiation, true_round, data_source, moisture_factor, soil_water, t_min, t_max, daily_rain)
      VALUES ${values.join(',')}
      ON CONFLICT (scenario_id, date) DO UPDATE SET
        t_mean=EXCLUDED.t_mean, temp_lar=EXCLUDED.temp_lar,
@@ -283,7 +292,8 @@ async function upsertDailyStateBulk(scenarioId, rows) {
        radiation=EXCLUDED.radiation, true_round=EXCLUDED.true_round,
        data_source=EXCLUDED.data_source,
        moisture_factor=EXCLUDED.moisture_factor, soil_water=EXCLUDED.soil_water,
-       t_min=EXCLUDED.t_min, t_max=EXCLUDED.t_max`,
+       t_min=EXCLUDED.t_min, t_max=EXCLUDED.t_max,
+       daily_rain=EXCLUDED.daily_rain`,
     params
   );
 }
@@ -315,7 +325,7 @@ async function getDailyStateRange(scenarioId, startDate, endDate) {
 
 module.exports = {
   pool,
-  createFarm, getFarm, getAllFarms, updateFarm,
+  createFarm, getFarm, getAllFarms, updateFarm, setFarmIFD,
   insertSILORows, getAllSILORows, getSILORange, getLatestSILODate,
   getNextShortCode, createScenario, getScenario, getScenariosForFarm, deleteScenario,
   upsertPercentiles, getPercentiles,

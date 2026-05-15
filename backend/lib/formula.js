@@ -73,13 +73,14 @@ const PASTURE_PARAMS = {
 
 // ─── SOIL PARAMETERS ──────────────────────────────────────────────────────────
 // SWmax: field capacity (mm). drainageRate: fraction of excess drained per day.
+// infiltrationRate: max soil absorption rate (mm/hr) — used in IFD runoff model.
 
 const SOIL_PARAMS = {
-  sand:      { name: 'Sand',        SWmax: 18, drainageRate: 0.90 },
-  sandyLoam: { name: 'Sandy loam',  SWmax: 30, drainageRate: 0.60 },
-  sandyClay: { name: 'Sandy clay',  SWmax: 35, drainageRate: 0.40 },
-  clay:      { name: 'Clay',        SWmax: 45, drainageRate: 0.20 },
-  peat:      { name: 'Peat',        SWmax: 75, drainageRate: 0.50 },
+  sand:      { name: 'Sand',        SWmax: 18, drainageRate: 0.90, infiltrationRate: 25 },
+  sandyLoam: { name: 'Sandy loam',  SWmax: 30, drainageRate: 0.60, infiltrationRate: 15 },
+  sandyClay: { name: 'Sandy clay',  SWmax: 35, drainageRate: 0.40, infiltrationRate: 10 },
+  clay:      { name: 'Clay',        SWmax: 45, drainageRate: 0.20, infiltrationRate:  5 },
+  peat:      { name: 'Peat',        SWmax: 75, drainageRate: 0.50, infiltrationRate: 20 },
 };
 
 // Waterlogging thresholds per soil type.
@@ -141,18 +142,125 @@ function calcMoistureFactor(SW, SWmax, soilType) {
 }
 
 /**
+ * Estimate runoff from daily rainfall using BOM IFD data.
+ *
+ * Method:
+ *  1. Find the AEP of today's rainfall from the 24-hour IFD curve (interpolated).
+ *  2. At that AEP, read the 1-hour depth → peak hourly intensity (mm/hr).
+ *  3. Runoff fraction = max(0, (intensity − infiltrationRate) / intensity).
+ *  4. Runoff = rainfall × runoff fraction.
+ *
+ * Returns { runoff, effectiveRainfall, aep, peakIntensity1hr, runoffFraction }
+ * Returns null for all if ifdData is missing or rainfall is 0.
+ *
+ * @param {number} rainfall - Daily rainfall (mm)
+ * @param {object|null} ifdData - Parsed IFD JSON { depths: { "60": { "1.0": mm, ... }, "1440": {...} } }
+ * @param {number} infiltrationRate - Soil infiltration capacity (mm/hr)
+ */
+function calcIFDRunoff(rainfall, ifdData, infiltrationRate) {
+  if (!ifdData || !ifdData.depths || rainfall <= 0) {
+    return { runoff: 0, effectiveRainfall: rainfall, aep: null, peakIntensity1hr: null, runoffFraction: 0 };
+  }
+
+  const depths24h = ifdData.depths['1440'];
+  const depths1h  = ifdData.depths['60'];
+  if (!depths24h || !depths1h) {
+    return { runoff: 0, effectiveRainfall: rainfall, aep: null, peakIntensity1hr: null, runoffFraction: 0 };
+  }
+
+  // Build sorted array of [aep, depth24h] pairs — AEP ascending, depth descending
+  const curve = Object.entries(depths24h)
+    .map(([aep, depth]) => [parseFloat(aep), depth])
+    .filter(([, d]) => d != null)
+    .sort((a, b) => a[0] - b[0]);
+
+  if (curve.length === 0) {
+    return { runoff: 0, effectiveRainfall: rainfall, aep: null, peakIntensity1hr: null, runoffFraction: 0 };
+  }
+
+  // Find AEP by interpolating the 24-hour depth curve
+  let aep;
+  if (rainfall >= curve[0][1]) {
+    aep = curve[0][0]; // at or above rarest event — cap at lowest AEP
+  } else if (rainfall <= curve[curve.length - 1][1]) {
+    aep = curve[curve.length - 1][0]; // below most common — use highest AEP
+  } else {
+    // Linear interpolation between bracketing pairs
+    for (let i = 0; i < curve.length - 1; i++) {
+      const [aep1, d1] = curve[i];
+      const [aep2, d2] = curve[i + 1];
+      if (rainfall <= d1 && rainfall >= d2) {
+        const t = (d1 - rainfall) / (d1 - d2);
+        aep = aep1 + t * (aep2 - aep1);
+        break;
+      }
+    }
+  }
+
+  // Read 1-hour depth at the interpolated AEP
+  const aepKey = String(aep);
+  let peakIntensity1hr = null;
+
+  // Find bracketing AEP keys in 1-hour table and interpolate
+  const aepKeys = Object.keys(depths1h).map(Number).sort((a, b) => a - b);
+  if (aepKeys.length > 0) {
+    if (aep <= aepKeys[0]) {
+      peakIntensity1hr = depths1h[String(aepKeys[0])];
+    } else if (aep >= aepKeys[aepKeys.length - 1]) {
+      peakIntensity1hr = depths1h[String(aepKeys[aepKeys.length - 1])];
+    } else {
+      for (let i = 0; i < aepKeys.length - 1; i++) {
+        if (aep >= aepKeys[i] && aep <= aepKeys[i + 1]) {
+          const t = (aep - aepKeys[i]) / (aepKeys[i + 1] - aepKeys[i]);
+          const d1 = depths1h[String(aepKeys[i])];
+          const d2 = depths1h[String(aepKeys[i + 1])];
+          peakIntensity1hr = d1 + t * (d2 - d1);
+          break;
+        }
+      }
+    }
+  }
+
+  if (peakIntensity1hr == null) {
+    return { runoff: 0, effectiveRainfall: rainfall, aep, peakIntensity1hr: null, runoffFraction: 0 };
+  }
+
+  // Runoff fraction: proportion of rain that exceeds soil infiltration capacity
+  const runoffFraction = Math.max(0, (peakIntensity1hr - infiltrationRate) / peakIntensity1hr);
+  const runoff         = Math.round(rainfall * runoffFraction * 10) / 10;
+  const effectiveRainfall = rainfall - runoff;
+
+  return {
+    runoff,
+    effectiveRainfall,
+    aep:              Math.round(aep * 1000) / 1000,
+    peakIntensity1hr: Math.round(peakIntensity1hr * 10) / 10,
+    runoffFraction:   Math.round(runoffFraction * 1000) / 1000,
+  };
+}
+
+/**
  * Update soil water balance for one day.
  * Uses Morton wet-environment ET from SILO when available; falls back to a
  * radiation × temp approximation for older rows where SILO is missing it.
+ * If ifdData is provided, subtracts estimated runoff before adding rainfall.
  * Drainage removes excess water above field capacity.
+ *
+ * Returns { SW, runoff, effectiveRainfall, aep, peakIntensity1hr, runoffFraction }
  */
-function calcSoilWater(SW_prev, rainfall, etMorton, radiation, tMean, soilParams) {
+function calcSoilWater(SW_prev, rainfall, etMorton, radiation, tMean, soilParams, ifdData = null) {
   const ET0 = etMorton != null
     ? Math.max(0, Number(etMorton))
     : Math.max(0, 0.0135 * (radiation ?? 10) * (tMean + 17.8));
-  const potential = SW_prev + rainfall - ET0;
+
+  const runoffResult    = calcIFDRunoff(rainfall, ifdData, soilParams.infiltrationRate ?? 15);
+  const effectiveRain   = runoffResult.effectiveRainfall;
+
+  const potential = SW_prev + effectiveRain - ET0;
   const drainage  = Math.max(0, potential - soilParams.SWmax) * soilParams.drainageRate;
-  return Math.min(soilParams.SWmax, Math.max(0, potential - drainage));
+  const SW        = Math.min(soilParams.SWmax, Math.max(0, potential - drainage));
+
+  return { SW, ...runoffResult };
 }
 
 /**
@@ -224,8 +332,9 @@ function percentile(sorted, p) {
  * @param {string} pastureKey
  * @param {number} targetLeaves
  * @param {string} soilType - Key into SOIL_PARAMS (default: 'sandyLoam')
+ * @param {object|null} ifdData - BOM IFD point data for runoff calculation (optional)
  */
-function processHistoricalData(siloData, pastureKey, targetLeaves, soilType = 'sandyLoam') {
+function processHistoricalData(siloData, pastureKey, targetLeaves, soilType = 'sandyLoam', ifdData = null) {
   const soilParams = SOIL_PARAMS[soilType] || SOIL_PARAMS.sandyLoam;
   const { SWmax } = soilParams;
 
@@ -240,7 +349,8 @@ function processHistoricalData(siloData, pastureKey, targetLeaves, soilType = 's
     const rainfall  = row.daily_rain    != null ? Number(row.daily_rain)    : 0;
     const etMorton  = row.et_morton_wet != null ? Number(row.et_morton_wet) : null;
 
-    SW = calcSoilWater(SW, rainfall, etMorton, radiation, tMean, soilParams);
+    const swResult   = calcSoilWater(SW, rainfall, etMorton, radiation, tMean, soilParams, ifdData);
+    SW = swResult.SW;
     const moistureFactor = calcMoistureFactor(SW, SWmax, soilType);
 
     const { tempLAR, solarFactor, actualLAR: baseActual } = calcActualLAR(tMean, radiation, month, pastureKey);
@@ -248,7 +358,12 @@ function processHistoricalData(siloData, pastureKey, targetLeaves, soilType = 's
 
     return {
       date: row.date, tMean, tMin, tMax, tempLAR, solarFactor, actualLAR,
-      radiation, moistureFactor, soilWater: SW, trueRound: null,
+      radiation, rainfall, moistureFactor, soilWater: SW, trueRound: null,
+      runoff:           swResult.runoff,
+      effectiveRain:    swResult.effectiveRainfall,
+      runoffAEP:        swResult.aep,
+      peakIntensity1hr: swResult.peakIntensity1hr,
+      runoffFraction:   swResult.runoffFraction,
     };
   });
 

@@ -16,6 +16,7 @@ const {
   getLatestDailyState,
   upsertPercentiles,
   upsertDailyStateBulk,
+  getFarm,
 } = require('../db/queries');
 const { processHistoricalData, calcProjectedRoundLength, dateToDayOfYear } = require('../lib/formula');
 const { farmProgress } = require('../lib/progress');
@@ -67,12 +68,15 @@ router.post('/', async (req, res) => {
     // Compute percentiles in background
     console.log(`[scenarios] Computing percentiles for scenario ${scenario.id}`);
     try {
+      const farm    = await getFarm(farmId);
+      const ifdData = farm?.ifd_data || null;
       const allSILO = await getAllSILORows(farmId);
       const { dailySeries, percentiles } = processHistoricalData(
         allSILO,
         pastureKey,
         Number(targetLeaves),
-        soilType || 'sandyLoam'
+        soilType || 'sandyLoam',
+        ifdData
       );
       await upsertPercentiles(scenario.id, percentiles);
 
@@ -90,6 +94,7 @@ router.post('/', async (req, res) => {
           trueRound:      row.trueRound,
           moistureFactor: row.moistureFactor,
           soilWater:      row.soilWater,
+          rainfall:       row.rainfall,
           dataSource:     'silo',
         }));
         await upsertDailyStateBulk(scenario.id, last365);
@@ -181,6 +186,9 @@ router.get('/:id/chart', async (req, res) => {
       });
     }
 
+    // Include farm's IFD data for runoff display in MoistureScreen
+    const farm = await getFarm(scenario.farm_id);
+
     res.json({
       scenario,
       actual,          // past 12 months
@@ -189,6 +197,7 @@ router.get('/:id/chart', async (req, res) => {
         series: projectedSeries,
         roundLength: projectedRound,
       },
+      ifdData: farm?.ifd_data || null,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
