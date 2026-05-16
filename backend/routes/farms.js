@@ -9,6 +9,7 @@ const { fetchSILO, yesterday, SILO_START } = require('../silo');
 const { insertSILORows, getAllSILORows, getScenariosForFarm } = require('../db/queries');
 const { updateScenario } = require('../cron/nightly');
 const { farmProgress } = require('../lib/progress');
+const { extractIFDPoint } = require('../lib/ifd');
 
 // GET /api/farms — list all farms
 router.get('/', async (req, res) => {
@@ -68,6 +69,17 @@ router.post('/', async (req, res) => {
         await updateScenario(scenarios[i], allSILO);
       }
       farmProgress.delete(farm.id);
+
+      // Auto-extract IFD data for this farm's location
+      try {
+        const ifd = await extractIFDPoint(lat, lon);
+        if (ifd) {
+          await setFarmIFD(farm.id, ifd);
+          console.log(`[farms] IFD data extracted for farm ${farm.id} (lat=${lat}, lon=${lon})`);
+        }
+      } catch (err) {
+        console.error(`[farms] IFD extraction failed for farm ${farm.id}:`, err.message);
+      }
     } catch (err) {
       farmProgress.set(farm.id, { phase: 'error', error: err.message });
       console.error(`[farms] SILO download failed for farm ${farm.id}:`, err.message);
@@ -81,9 +93,24 @@ router.post('/', async (req, res) => {
 // PATCH /api/farms/:id — update farm details
 router.patch('/:id', async (req, res) => {
   try {
+    const current = await getFarm(req.params.id);
+    if (!current) return res.status(404).json({ error: 'Farm not found' });
+
     const farm = await updateFarm(req.params.id, req.body);
-    if (!farm) return res.status(404).json({ error: 'Farm not found' });
     res.json(farm);
+
+    // Re-extract IFD in background if lat/lon changed
+    const newLat = Number(req.body.lat);
+    const newLon = Number(req.body.lon);
+    const latChanged = newLat !== Number(current.lat);
+    const lonChanged = newLon !== Number(current.lon);
+    if ((latChanged || lonChanged) && newLat && newLon) {
+      console.log(`[farms] Lat/lon changed for farm ${farm.id} — re-extracting IFD`);
+      extractIFDPoint(newLat, newLon)
+        .then(ifd => ifd && setFarmIFD(farm.id, ifd))
+        .then(() => console.log(`[farms] IFD re-extracted for farm ${farm.id}`))
+        .catch(err => console.error(`[farms] IFD re-extraction failed for farm ${farm.id}:`, err.message));
+    }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
