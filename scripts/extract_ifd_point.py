@@ -90,7 +90,9 @@ def parse_filename(fname):
     return dur, aep
 
 
-def extract(lat, lon):
+def extract(lat, lon, log=None):
+    if log is None:
+        log = lambda *a: print(*a, file=sys.stderr)
     zip_path, tile_name = get_tile_path(lat, lon)
     if not os.path.exists(zip_path):
         raise FileNotFoundError(
@@ -98,17 +100,17 @@ def extract(lat, lon):
             f"Check that IFD_GRIDS_DIR is correct and the tile exists."
         )
 
-    print(f"Tile: {tile_name}")
+    log(f"Tile: {tile_name}")
     result = {"lat": lat, "lon": lon, "tile": tile_name, "depths": {}}
 
     with zipfile.ZipFile(zip_path, 'r') as zf:
         asc_files = sorted(f for f in zf.namelist() if f.lower().endswith('.asc'))
-        print(f"Grid files found: {len(asc_files)}")
+        log(f"Grid files found: {len(asc_files)}")
 
         for fname in asc_files:
             dur, aep = parse_filename(fname)
             if dur is None:
-                print(f"  [skip] unrecognised filename: {fname}")
+                log(f"  [skip] unrecognised filename: {fname}")
                 continue
 
             with zf.open(fname) as fh:
@@ -154,7 +156,7 @@ def main():
     log = lambda *a: print(*a, file=out_log)
 
     log(f"Extracting IFD point for lat={lat}, lon={lon} ...")
-    data = extract(lat, lon)
+    data = extract(lat, lon, log=log)
 
     durations = sorted(data["depths"].keys(), key=int)
     aeps      = sorted(next(iter(data["depths"].values())).keys(), key=float)
