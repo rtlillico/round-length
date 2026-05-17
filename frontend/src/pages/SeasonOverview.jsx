@@ -4,6 +4,7 @@ import { C, styles } from '../App';
 import { PASTURE_PARAMS, dateToDayOfYear } from '../lib/formula';
 import {
   ComposedChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine, ResponsiveContainer,
+  Tooltip, Brush,
 } from 'recharts';
 import {
   ScenarioBanner, FormulaBtn, FormulaBox, ToggleBar, PctBtn, TodayLabel, Legend,
@@ -52,6 +53,40 @@ function buildSeries(chartData, maxLAR) {
   return [...past, ...future];
 }
 
+// ── Chart helpers ──────────────────────────────────────────────────────────────
+
+function fmtDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00Z');
+  return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+}
+
+function ChartTooltip({ active, payload, label, fields }) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0]?.payload || {};
+  const visible = fields.filter(f => d[f.key] != null);
+  if (!visible.length) return null;
+  return (
+    <div style={{
+      background: 'rgba(255,255,255,0.97)',
+      border: '1px solid #d6e8c8',
+      borderRadius: 8,
+      padding: '7px 10px',
+      fontSize: 11,
+      lineHeight: 1.7,
+      pointerEvents: 'none',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+    }}>
+      <div style={{ fontWeight: 700, color: '#2d4a1e', marginBottom: 2 }}>{fmtDate(label)}</div>
+      {visible.map(({ key, label: lbl, color, fmt }) => (
+        <div key={key} style={{ color: color || '#444' }}>
+          {lbl}: <strong>{fmt(d[key])}</strong>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Progress bar ───────────────────────────────────────────────────────────────
 
 function ProgressBar({ pct, color }) {
@@ -73,6 +108,7 @@ export default function SeasonOverview({ scenario, chartData, loading, error, fa
   const [showPctFactors, setShowPctFactors] = useState(false);
   const [c1, setC1] = useState({ rl: true, lar: true, p50: true });
   const [c2, setC2] = useState({ actualLAR: true, tempLAR: true, solar: false, moisture: false, p50: false });
+  const [brushRange, setBrushRange] = useState({});
 
   const pasture = PASTURE_PARAMS[scenario.pasture_key];
   const maxLAR  = pasture ? (pasture.optimumTemp - pasture.baseTemp) / pasture.phyllochron : 0.17;
@@ -176,13 +212,25 @@ export default function SeasonOverview({ scenario, chartData, loading, error, fa
 
           {loading && <p style={{ ...styles.muted, textAlign: 'center' }}>Loading...</p>}
           {!loading && series.length > 0 && (
-            <ResponsiveContainer width="100%" height={160}>
+            <ResponsiveContainer width="100%" height={195}>
               <ComposedChart {...chartProps}>
                 <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
                 <XAxis dataKey="date" ticks={ticks} interval={0} height={24} tick={xAxisTick(todayStr)} />
                 <YAxis yAxisId="left"  orientation="left"  {...yAxisProps} domain={[0, 'auto']} />
                 <YAxis yAxisId="right" orientation="right" {...yAxisProps} domain={[0, 'auto']} />
                 <ReferenceLine yAxisId="left" x={todayStr} stroke="#2d5a1b" strokeWidth={2} strokeOpacity={0.7} />
+                <Tooltip
+                  cursor={{ stroke: '#2d4a1e', strokeWidth: 1.5, strokeDasharray: '4 2' }}
+                  content={<ChartTooltip fields={[
+                    { key: 'actualRound', label: 'Round',   color: '#3a6b1a', fmt: v => `${Math.round(v)} days` },
+                    { key: 'roundP50',    label: 'P50',     color: '#88a870', fmt: v => `${Math.round(v)} days` },
+                    { key: 'actualLAR',   label: 'LAR',     color: '#c47a12', fmt: v => Number(v).toFixed(4) },
+                    { key: 'larP50',      label: 'P50 LAR', color: '#c47a12', fmt: v => Number(v).toFixed(4) },
+                  ]} />}
+                />
+                <Brush dataKey="date" height={22} stroke="#7ab55c" fill="#e8f5d0" travellerWidth={8}
+                  startIndex={brushRange.startIndex} endIndex={brushRange.endIndex}
+                  onChange={setBrushRange} tickFormatter={() => ''} />
                 {c1.rl  && <Line yAxisId="left"  dataKey="actualRound" stroke="#3a6b1a" strokeWidth={2.5} dot={false} connectNulls />}
                 {c1.p50 && <Line yAxisId="left"  dataKey="roundP50"    stroke="#3a6b1a" strokeWidth={1}   dot={false} strokeDasharray="6 3" connectNulls />}
                 {c1.lar && <Line yAxisId="right" dataKey="actualLAR"   stroke="#c47a12" strokeWidth={2}   dot={false} connectNulls />}
@@ -246,13 +294,25 @@ export default function SeasonOverview({ scenario, chartData, loading, error, fa
 
           {loading && <p style={{ ...styles.muted, textAlign: 'center' }}>Loading...</p>}
           {!loading && series.length > 0 && (
-            <ResponsiveContainer width="100%" height={160}>
+            <ResponsiveContainer width="100%" height={195}>
               <ComposedChart {...chartProps}>
                 <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
                 <XAxis dataKey="date" ticks={ticks} interval={0} height={24} tick={xAxisTick(todayStr)} />
                 <YAxis yAxisId="left"  orientation="left"  {...yAxisProps} domain={[0, 'auto']} />
                 <YAxis yAxisId="right" orientation="right" {...yAxisProps} domain={[0, 1]} />
                 <ReferenceLine yAxisId="left" x={todayStr} stroke="#2d5a1b" strokeWidth={2} strokeOpacity={0.7} />
+                <Tooltip
+                  cursor={{ stroke: '#2d4a1e', strokeWidth: 1.5, strokeDasharray: '4 2' }}
+                  content={<ChartTooltip fields={[
+                    { key: 'actualLAR',      label: 'Actual LAR', color: '#3a6b1a', fmt: v => Number(v).toFixed(4) },
+                    { key: 'tempLAR',        label: 'Temp LAR',   color: '#1a5a0a', fmt: v => Number(v).toFixed(4) },
+                    { key: 'solarFactor',    label: 'Solar',      color: '#c47a12', fmt: v => Number(v).toFixed(2) },
+                    { key: 'moistureFactor', label: 'Moisture',   color: '#2a6a9e', fmt: v => Number(v).toFixed(2) },
+                  ]} />}
+                />
+                <Brush dataKey="date" height={22} stroke="#7ab55c" fill="#e8f5d0" travellerWidth={8}
+                  startIndex={brushRange.startIndex} endIndex={brushRange.endIndex}
+                  onChange={setBrushRange} tickFormatter={() => ''} />
                 {c2.actualLAR && <Line yAxisId="left"  dataKey="actualLAR"      stroke="#3a6b1a" strokeWidth={2.5} dot={false} connectNulls />}
                 {c2.tempLAR   && <Line yAxisId="left"  dataKey="tempLAR"        stroke="#1a5a0a" strokeWidth={1.5} dot={false} strokeDasharray="3 2" connectNulls />}
                 {c2.solar     && <Line yAxisId="right" dataKey="solarFactor"    stroke="#c47a12" strokeWidth={1.5} dot={false} connectNulls />}
