@@ -1,10 +1,9 @@
 // round-length/frontend/src/pages/Dashboard.jsx
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import { C, styles } from '../App';
+import { PASTURE_PARAMS, SOIL_PARAMS } from '../lib/formula';
 import ComparisonTable from '../components/ComparisonTable';
-
-const ScenarioDetail = lazy(() => import('./ScenarioDetail'));
 
 function ProgressBar({ pct }) {
   return (
@@ -39,6 +38,61 @@ function StatusBanner({ progress }) {
       <ProgressBar pct={progress.pct} />
       <div style={{ fontSize: 12, color: C.muted, marginTop: 6 }}>
         The page will update automatically when ready.
+      </div>
+    </div>
+  );
+}
+
+const LABEL_W = 96;
+const COL_W   = 112;
+
+function ScenarioSummaryTable({ scenarios, farm, onSelectScenario }) {
+  const ROWS = [
+    { label: 'Farm',          getValue: (s) => farm?.name || '—' },
+    { label: 'Description',   getValue: (s) => s.description || '—' },
+    { label: 'Grass type',    getValue: (s) => PASTURE_PARAMS[s.pasture_key]?.name?.replace(/ ryegrass| grass/, '') || s.pasture_key },
+    { label: 'Location',      getValue: (s) => farm ? `${Number(farm.lat).toFixed(2)}, ${Number(farm.lon).toFixed(2)}` : '—' },
+    { label: 'Soil type',     getValue: (s) => SOIL_PARAMS[s.soil_type]?.name || s.soil_type || '—' },
+    { label: 'Target leaves', getValue: (s) => s.target_leaves != null ? String(Number(s.target_leaves).toFixed(1)) : '—' },
+  ];
+
+  return (
+    <div style={{ overflowX: 'auto', margin: '12px 16px 0', borderRadius: 12, border: `1px solid ${C.border}`, background: C.card }}>
+      <div style={{ minWidth: LABEL_W + scenarios.length * COL_W }}>
+        {/* Header row */}
+        <div style={{ display: 'flex', borderBottom: `2px solid ${C.border}` }}>
+          <div style={{ width: LABEL_W, flexShrink: 0 }} />
+          {scenarios.map((s, i) => (
+            <div
+              key={s.id}
+              style={{ width: COL_W, flexShrink: 0, textAlign: 'center', padding: '12px 6px 10px', cursor: 'pointer', borderLeft: `1px solid ${C.border}` }}
+              onClick={() => onSelectScenario(s)}
+            >
+              <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'Lora', Georgia, serif", color: C.green1, lineHeight: 1 }}>
+                {s.short_code || `S${i + 1}`}
+              </div>
+            </div>
+          ))}
+        </div>
+        {/* Data rows */}
+        {ROWS.map((row, ri) => (
+          <div key={row.label} style={{ display: 'flex', alignItems: 'stretch', borderBottom: ri < ROWS.length - 1 ? `1px solid ${C.border}` : 'none' }}>
+            <div style={{ width: LABEL_W, flexShrink: 0, display: 'flex', alignItems: 'center', padding: '10px', fontSize: 12, fontWeight: 500, color: C.muted, lineHeight: 1.3 }}>
+              {row.label}
+            </div>
+            {scenarios.map((s, ci) => (
+              <div
+                key={s.id}
+                style={{ width: COL_W, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 6px', cursor: 'pointer', borderLeft: `1px solid ${C.border}` }}
+                onClick={() => onSelectScenario(s)}
+              >
+                <span style={{ fontSize: 13, fontWeight: 500, color: C.text, textAlign: 'center', lineHeight: 1.3, wordBreak: 'break-word' }}>
+                  {row.getValue(s)}
+                </span>
+              </div>
+            ))}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -153,20 +207,7 @@ export default function Dashboard({ farmId, onSelectScenario, onAdd }) {
     );
   }
 
-  // 1 scenario — render ScenarioDetail inline (no back button)
-  if (scenarios.length === 1) {
-    return (
-      <Suspense fallback={<div style={{ padding: 40, textAlign: 'center', color: C.muted, fontSize: 14 }}>Loading…</div>}>
-        <ScenarioDetail
-          scenario={scenarios[0]}
-          farmId={farmId}
-          onBack={null}
-        />
-      </Suspense>
-    );
-  }
-
-  // 2+ scenarios — comparison table
+  // 1+ scenarios — summary table, then comparison metrics for 2+
   return (
     <div style={styles.screen}>
       <div style={styles.header}>
@@ -184,10 +225,18 @@ export default function Dashboard({ farmId, onSelectScenario, onAdd }) {
 
       {downloadProgress && <StatusBanner progress={downloadProgress} />}
 
-      <ComparisonTable
+      <ScenarioSummaryTable
         scenarios={scenarios}
+        farm={farm}
         onSelectScenario={onSelectScenario}
       />
+
+      {scenarios.length >= 2 && (
+        <ComparisonTable
+          scenarios={scenarios}
+          onSelectScenario={onSelectScenario}
+        />
+      )}
     </div>
   );
 }

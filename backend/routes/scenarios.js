@@ -50,14 +50,14 @@ router.get('/:id', async (req, res) => {
 
 // POST /api/scenarios — create scenario and compute percentiles
 router.post('/', async (req, res) => {
-  const { farmId, name, pastureKey, targetLeaves, soilType } = req.body;
+  const { farmId, name, pastureKey, targetLeaves, soilType, description } = req.body;
   if (!farmId || !name || !pastureKey || !targetLeaves) {
     return res.status(400).json({ error: 'farmId, name, pastureKey and targetLeaves are required' });
   }
 
   try {
     const shortCode = await getNextShortCode(farmId);
-    const scenario = await createScenario({ farmId, name, pastureKey, targetLeaves, shortCode, soilType });
+    const scenario = await createScenario({ farmId, name, pastureKey, targetLeaves, shortCode, soilType, description });
 
     // Respond immediately
     res.status(201).json({ scenario, status: 'computing' });

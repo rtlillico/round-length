@@ -194,7 +194,7 @@ export default function Setup({ onComplete, onCancel, farmId, scenarioOnly }) {
   const [farmName, setFarmName]   = useState('My Farm');
   const [siloEmail, setSiloEmail] = useState('rtlillico@gmail.com');
   const [location, setLocation]   = useState(null);
-  const [scenarioName, setScenarioName] = useState('');
+  const [description, setDescription]   = useState('');
   const [pastureKey, setPastureKey]     = useState('perennialRyegrass');
   const [soilType, setSoilType]         = useState('sandyLoam');
   const [targetLeaves, setTargetLeaves] = useState(3.0);
@@ -222,10 +222,11 @@ export default function Setup({ onComplete, onCancel, farmId, scenarioOnly }) {
       // Create the scenario
       await api.scenarios.create({
         farmId: fId,
-        name: scenarioName || PASTURE_PARAMS_UI[pastureKey].name,
+        name: PASTURE_PARAMS_UI[pastureKey].name,
         pastureKey,
         targetLeaves,
         soilType,
+        description: description || null,
       });
 
       onComplete(fId);
@@ -296,7 +297,7 @@ export default function Setup({ onComplete, onCancel, farmId, scenarioOnly }) {
     <LocationStep onNext={(loc) => { setLocation(loc); setStep('name'); }} />
   );
 
-  // Scenario name
+  // Scenario description
   if (step === 'name') return (
     <div style={styles.screen}>
       <div style={styles.header}>
@@ -304,18 +305,24 @@ export default function Setup({ onComplete, onCancel, farmId, scenarioOnly }) {
         {onCancel && <button onClick={onCancel} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 13 }}>✕ Cancel</button>}
       </div>
       <div style={styles.card}>
-        <p style={styles.h3}>Give this scenario a name</p>
+        <p style={styles.h3}>Describe this scenario (optional)</p>
         <p style={{ ...styles.muted, fontSize: 13, marginBottom: 14 }}>
-          A scenario represents a specific part of your farm — a paddock type, soil, or management approach.
-          You can add more scenarios later to compare different areas.
+          A short label to identify this area — e.g. "Home block" or "Back paddock".
+          You can add more scenarios later to compare different parts of your farm.
         </p>
-        <label style={styles.label}>Scenario name</label>
+        <label style={styles.label}>Description <span style={{ color: C.muted, fontWeight: 400 }}>(max 20 characters)</span></label>
         <input
           style={styles.input}
-          placeholder='e.g. "Perennial ryegrass, sandy loam"'
-          value={scenarioName}
-          onChange={e => setScenarioName(e.target.value)}
+          placeholder='e.g. "Home block"'
+          maxLength={20}
+          value={description}
+          onChange={e => setDescription(e.target.value)}
         />
+        {description.length > 0 && (
+          <div style={{ fontSize: 12, color: C.muted, marginTop: 4, textAlign: 'right' }}>
+            {description.length}/20
+          </div>
+        )}
       </div>
       <div style={{ padding: '0 16px' }}>
         <button style={styles.btn} onClick={() => setStep('pasture')}>Next — Choose pasture →</button>

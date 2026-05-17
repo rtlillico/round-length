@@ -144,12 +144,12 @@ async function getNextShortCode(farmId) {
   return 'S999';
 }
 
-async function createScenario({ farmId, name, pastureKey, targetLeaves, shortCode, soilType }) {
+async function createScenario({ farmId, name, pastureKey, targetLeaves, shortCode, soilType, description }) {
   const { rows } = await pool.query(
-    `INSERT INTO scenarios (farm_id, name, pasture_key, target_leaves, short_code, soil_type)
-     VALUES ($1, $2, $3, $4, $5, $6)
+    `INSERT INTO scenarios (farm_id, name, pasture_key, target_leaves, short_code, soil_type, description)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING *`,
-    [farmId, name, pastureKey, targetLeaves, shortCode || null, soilType || 'sandyLoam']
+    [farmId, name, pastureKey, targetLeaves, shortCode || null, soilType || 'sandyLoam', description || null]
   );
   return rows[0];
 }

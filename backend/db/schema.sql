@@ -161,6 +161,9 @@ ALTER TABLE scenario_daily_state ADD COLUMN IF NOT EXISTS daily_rain DECIMAL(6,1
 -- IFD data for farm — stores extracted BOM IFD point values for runoff calculation
 ALTER TABLE farms ADD COLUMN IF NOT EXISTS ifd_data JSONB;
 
+-- Short description for scenario (max 20 chars)
+ALTER TABLE scenarios ADD COLUMN IF NOT EXISTS description VARCHAR(20);
+
 -- Moisture factor percentiles
 ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS moisture_p10 DECIMAL(5,4);
 ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS moisture_p25 DECIMAL(5,4);
