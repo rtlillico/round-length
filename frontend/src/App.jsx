@@ -1,11 +1,16 @@
 // round-length/frontend/src/App.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import Dashboard  from './pages/Dashboard';
-import Setup      from './pages/Setup';
-import ScenarioDetail from './pages/ScenarioDetail';
-import Planning   from './pages/Planning';
-import Settings   from './pages/Settings';
 import BottomNav  from './components/BottomNav';
+
+const Setup          = lazy(() => import('./pages/Setup'));
+const ScenarioDetail = lazy(() => import('./pages/ScenarioDetail'));
+const Planning       = lazy(() => import('./pages/Planning'));
+const Settings       = lazy(() => import('./pages/Settings'));
+
+function PageLoader() {
+  return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', color: '#6b7c5e', fontSize: 14 }}>Loading…</div>;
+}
 
 // Colour palette — earthy greens, cream backgrounds
 export const C = {
@@ -69,7 +74,9 @@ export default function App() {
   if (!farmId) {
     return (
       <div style={styles.app}>
-        <Setup onComplete={handleFarmCreated} />
+        <Suspense fallback={<PageLoader />}>
+          <Setup onComplete={handleFarmCreated} />
+        </Suspense>
       </div>
     );
   }
@@ -78,42 +85,46 @@ export default function App() {
   if (selectedScenario) {
     return (
       <div style={styles.app}>
-        <ScenarioDetail
-          scenario={selectedScenario}
-          farmId={farmId}
-          onBack={handleBackFromScenario}
-        />
+        <Suspense fallback={<PageLoader />}>
+          <ScenarioDetail
+            scenario={selectedScenario}
+            farmId={farmId}
+            onBack={handleBackFromScenario}
+          />
+        </Suspense>
       </div>
     );
   }
 
   return (
     <div style={styles.app}>
-      {tab === 'scenarios' && (
-        <Dashboard
-          farmId={farmId}
-          onSelectScenario={handleSelectScenario}
-          onAdd={() => setTab('add')}
-        />
-      )}
-      {tab === 'add' && (
-        <Setup
-          farmId={farmId}
-          scenarioOnly
-          onComplete={() => setTab('scenarios')}
-          onCancel={() => setTab('scenarios')}
-        />
-      )}
-      {tab === 'planning' && <Planning farmId={farmId} />}
-      {tab === 'settings' && (
-        <Settings
-          farmId={farmId}
-          onFarmDeleted={() => {
-            localStorage.removeItem(LS_FARM_ID);
-            setFarmId(null);
-          }}
-        />
-      )}
+      <Suspense fallback={<PageLoader />}>
+        {tab === 'scenarios' && (
+          <Dashboard
+            farmId={farmId}
+            onSelectScenario={handleSelectScenario}
+            onAdd={() => setTab('add')}
+          />
+        )}
+        {tab === 'add' && (
+          <Setup
+            farmId={farmId}
+            scenarioOnly
+            onComplete={() => setTab('scenarios')}
+            onCancel={() => setTab('scenarios')}
+          />
+        )}
+        {tab === 'planning' && <Planning farmId={farmId} />}
+        {tab === 'settings' && (
+          <Settings
+            farmId={farmId}
+            onFarmDeleted={() => {
+              localStorage.removeItem(LS_FARM_ID);
+              setFarmId(null);
+            }}
+          />
+        )}
+      </Suspense>
       <BottomNav active={tab} onChange={setTab} />
     </div>
   );

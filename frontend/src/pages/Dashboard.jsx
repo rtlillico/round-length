@@ -1,9 +1,10 @@
 // round-length/frontend/src/pages/Dashboard.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { api } from '../lib/api';
 import { C, styles } from '../App';
 import ComparisonTable from '../components/ComparisonTable';
-import ScenarioDetail  from './ScenarioDetail';
+
+const ScenarioDetail = lazy(() => import('./ScenarioDetail'));
 
 function ProgressBar({ pct }) {
   return (
@@ -155,11 +156,13 @@ export default function Dashboard({ farmId, onSelectScenario, onAdd }) {
   // 1 scenario — render ScenarioDetail inline (no back button)
   if (scenarios.length === 1) {
     return (
-      <ScenarioDetail
-        scenario={scenarios[0]}
-        farmId={farmId}
-        onBack={null}
-      />
+      <Suspense fallback={<div style={{ padding: 40, textAlign: 'center', color: C.muted, fontSize: 14 }}>Loading…</div>}>
+        <ScenarioDetail
+          scenario={scenarios[0]}
+          farmId={farmId}
+          onBack={null}
+        />
+      </Suspense>
     );
   }
 
