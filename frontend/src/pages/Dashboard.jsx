@@ -100,7 +100,7 @@ function ScenarioSummaryTable({ scenarios, farm, onSelectScenario }) {
   );
 }
 
-export default function Dashboard({ farmId, onSelectScenario, onAdd }) {
+export default function Dashboard({ farmId, onSelectScenario, onAdd, forceTable, onShowTable }) {
   const [farm, setFarm]           = useState(null);
   const [scenarios, setScenarios] = useState([]);
   const [loading, setLoading]     = useState(true);
@@ -209,20 +209,20 @@ export default function Dashboard({ farmId, onSelectScenario, onAdd }) {
     );
   }
 
-  // 1 scenario — render ScenarioDetail inline (no back button)
-  if (scenarios.length === 1) {
+  // 1 scenario and not forced to table — show season overview directly
+  if (!forceTable && scenarios.length === 1) {
     return (
       <Suspense fallback={<div style={{ padding: 40, textAlign: 'center', color: C.muted, fontSize: 14 }}>Loading…</div>}>
         <ScenarioDetail
           scenario={scenarios[0]}
           farmId={farmId}
-          onBack={null}
+          onBack={onShowTable}
         />
       </Suspense>
     );
   }
 
-  // 2+ scenarios — summary table + comparison metrics
+  // 1+ scenarios — summary table + comparison metrics for 2+
   return (
     <div style={styles.screen}>
       <div style={styles.header}>

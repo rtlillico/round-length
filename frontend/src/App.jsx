@@ -52,13 +52,20 @@ export const styles = {
 const LS_FARM_ID = 'roundlength_farm_id';
 
 export default function App() {
-  const [tab, setTab]           = useState('scenarios'); // scenarios | add | planning | settings
-  const [farmId, setFarmId]     = useState(() => localStorage.getItem(LS_FARM_ID));
+  const [tab, setTab]                 = useState('scenarios'); // scenarios | add | planning | settings
+  const [farmId, setFarmId]           = useState(() => localStorage.getItem(LS_FARM_ID));
   const [selectedScenario, setSelectedScenario] = useState(null); // scenario object or null
+  const [dashboardForceTable, setDashboardForceTable] = useState(false);
+
+  function handleTabChange(newTab) {
+    if (newTab === 'scenarios') setDashboardForceTable(true);
+    setTab(newTab);
+  }
 
   function handleFarmCreated(id) {
     localStorage.setItem(LS_FARM_ID, String(id));
     setFarmId(String(id));
+    setDashboardForceTable(false);
     setTab('scenarios');
   }
 
@@ -104,13 +111,15 @@ export default function App() {
             farmId={farmId}
             onSelectScenario={handleSelectScenario}
             onAdd={() => setTab('add')}
+            forceTable={dashboardForceTable}
+            onShowTable={() => setDashboardForceTable(true)}
           />
         )}
         {tab === 'add' && (
           <Setup
             farmId={farmId}
             scenarioOnly
-            onComplete={() => setTab('scenarios')}
+            onComplete={() => { setDashboardForceTable(false); setTab('scenarios'); }}
             onCancel={() => setTab('scenarios')}
           />
         )}
@@ -125,7 +134,7 @@ export default function App() {
           />
         )}
       </Suspense>
-      <BottomNav active={tab} onChange={setTab} />
+      <BottomNav active={tab} onChange={handleTabChange} />
     </div>
   );
 }
