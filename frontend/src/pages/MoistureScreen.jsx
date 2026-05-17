@@ -96,9 +96,10 @@ function IFDSection({ ifdData, todayRain, infiltrationRate, soilName }) {
   const tblStyle = { width: '100%', borderCollapse: 'collapse', fontSize: 11, marginTop: 4 };
   const thR = { padding: '3px 6px', background: '#e8f0e0', color: '#2d4a1e', fontWeight: 600, textAlign: 'right', borderBottom: '1px solid #c8d8b0' };
   const thL = { ...thR, textAlign: 'left' };
-  const row  = (hl) => ({ borderBottom: '1px solid #eef3e8', background: hl ? '#fffde7' : 'transparent' });
-  const tdR  = (hl) => ({ padding: '2px 6px', textAlign: 'right',  fontWeight: hl ? 600 : 400 });
-  const tdL  = (hl) => ({ padding: '2px 6px', textAlign: 'left',   fontWeight: hl ? 600 : 400 });
+  const row  = (hl) => ({ borderBottom: hl ? 'none' : '1px solid #eef3e8', background: hl ? '#e8f5e0' : 'transparent', borderTop: hl ? '2px solid #5a8c2a' : 'none', borderLeft: hl ? '2px solid #5a8c2a' : 'none', borderRight: hl ? '2px solid #5a8c2a' : 'none' });
+  const rowAfterHl = (hl) => ({ borderBottom: '1px solid #eef3e8', borderTop: hl ? '2px solid #5a8c2a' : 'none', borderLeft: hl ? '2px solid #5a8c2a' : 'none', borderRight: hl ? '2px solid #5a8c2a' : 'none' });
+  const tdR  = (hl) => ({ padding: '2px 6px', textAlign: 'right',  fontWeight: hl ? 700 : 400, color: hl ? '#2d4a1e' : 'inherit' });
+  const tdL  = (hl) => ({ padding: '2px 6px', textAlign: 'left',   fontWeight: hl ? 700 : 400, color: hl ? '#2d4a1e' : 'inherit' });
 
   return (
     <div style={{ marginTop: 12 }}>
@@ -122,10 +123,11 @@ function IFDSection({ ifdData, todayRain, infiltrationRate, soilName }) {
         </thead>
         <tbody>
           {aepRows.map((r, i) => {
-            const hl = i === highlightIdx;
+            const hl      = i === highlightIdx;
+            const closingBracket = i === highlightIdx + 1;
             const exceeded = todayRain != null && todayRain >= r.depth;
             return (
-              <tr key={r.aep} style={row(hl)}>
+              <tr key={r.aep} style={closingBracket ? rowAfterHl(true) : row(hl)}>
                 <td style={tdL(hl)}>{r.aep < 10 ? r.aep.toFixed(1) : r.aep.toFixed(0)}%</td>
                 <td style={tdR(hl)}>{fmtReturnPeriod(r.aep)}</td>
                 <td style={tdR(hl)}>{r.depth.toFixed(1)} mm{exceeded ? ' ✓' : ''}</td>
@@ -134,6 +136,11 @@ function IFDSection({ ifdData, todayRain, infiltrationRate, soilName }) {
           })}
         </tbody>
       </table>
+      {todayRain != null && todayAEP != null && (
+        <div style={{ fontSize: 11, color: '#4a7a1a', marginTop: 6, fontStyle: 'italic' }}>
+          Today's rain ({todayRain.toFixed(0)}mm) is a ~1-in-{(100 / todayAEP).toFixed(0)} yr event at this location
+        </div>
+      )}
 
       {/* Peak intensity table at today's AEP */}
       {todayAEP != null && (
