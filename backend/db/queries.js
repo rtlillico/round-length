@@ -309,6 +309,18 @@ async function getLatestDailyState(scenarioId) {
   return rows[0] || null;
 }
 
+async function getLatestDailyStateForScenarios(scenarioIds) {
+  if (scenarioIds.length === 0) return {};
+  const { rows } = await pool.query(
+    `SELECT DISTINCT ON (scenario_id) *
+     FROM scenario_daily_state
+     WHERE scenario_id = ANY($1)
+     ORDER BY scenario_id, date DESC`,
+    [scenarioIds]
+  );
+  return Object.fromEntries(rows.map(r => [r.scenario_id, r]));
+}
+
 /**
  * Get daily state rows for a scenario within a date range.
  * Used for the rolling 12-month actual chart.
@@ -329,5 +341,5 @@ module.exports = {
   insertSILORows, getAllSILORows, getSILORange, getLatestSILODate,
   getNextShortCode, createScenario, getScenario, getScenariosForFarm, deleteScenario,
   upsertPercentiles, getPercentiles,
-  upsertDailyState, upsertDailyStateBulk, getLatestDailyState, getDailyStateRange,
+  upsertDailyState, upsertDailyStateBulk, getLatestDailyState, getLatestDailyStateForScenarios, getDailyStateRange,
 };

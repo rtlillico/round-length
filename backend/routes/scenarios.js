@@ -14,6 +14,7 @@ const {
   getPercentiles,
   getDailyStateRange,
   getLatestDailyState,
+  getLatestDailyStateForScenarios,
   upsertPercentiles,
   upsertDailyStateBulk,
   getFarm,
@@ -27,11 +28,8 @@ router.get('/', async (req, res) => {
   if (!farmId) return res.status(400).json({ error: 'farmId is required' });
   try {
     const scenarios = await getScenariosForFarm(farmId);
-    // Attach today's state to each scenario
-    const withState = await Promise.all(scenarios.map(async (s) => {
-      const state = await getLatestDailyState(s.id);
-      return { ...s, todayState: state };
-    }));
+    const stateMap = await getLatestDailyStateForScenarios(scenarios.map(s => s.id));
+    const withState = scenarios.map(s => ({ ...s, todayState: stateMap[s.id] || null }));
     res.json(withState);
   } catch (err) {
     res.status(500).json({ error: err.message });
