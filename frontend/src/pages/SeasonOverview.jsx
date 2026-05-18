@@ -1,90 +1,302 @@
 // round-length/frontend/src/pages/SeasonOverview.jsx
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { C, styles } from '../App';
 import { PASTURE_PARAMS, dateToDayOfYear } from '../lib/formula';
 import {
   ComposedChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine, ResponsiveContainer,
-  Tooltip, Brush,
 } from 'recharts';
 import {
   ScenarioBanner, FormulaBtn, FormulaBox, ToggleBar, PctBtn, TodayLabel, Legend,
   buildMonthTicks, xAxisTick, yAxisProps,
 } from '../components/SeasonUI';
+import SeasonChartPane, {
+  CHART_N, CHART_TODAY, getBinDays, makeBins,
+} from '../components/SeasonChartPane';
 
-// ── Series builder ─────────────────────────────────────────────────────────────
+// ── Data preparation ───────────────────────────────────────────────────────────
 
-function buildSeries(chartData, maxLAR) {
-  if (!chartData) return [];
-  const n = v => v != null ? Number(v) : null;
+function prepareChartData(chartData) {
+  if (!chartData) return null;
+  const now = new Date();
+  const dates = [];
+  for (let i = 0; i < CHART_N; i++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() + (i - CHART_TODAY));
+    dates.push(d.toISOString().slice(0, 10));
+  }
 
-  const percByDoy = {};
-  for (const p of (chartData.percentiles || [])) percByDoy[p.day_of_year] = p;
+  const actualByDate = {};
+  const projByDate   = {};
+  const percByDoy    = {};
+  for (const row of (chartData.actual || []))             actualByDate[row.date.slice(0, 10)] = row;
+  for (const row of (chartData.projected?.series || []))  projByDate[row.date] = row;
+  for (const p   of (chartData.percentiles || []))        percByDoy[p.day_of_year] = p;
 
-  const past = (chartData.actual || []).map(row => {
-    const date = (row.date || '').slice(0, 10);
-    const doy  = dateToDayOfYear(new Date(date + 'T00:00:00Z'));
-    const perc = percByDoy[doy] || {};
-    const tLAR = n(row.temp_lar);
-    const sol  = n(row.solar_factor);
-    const mois = n(row.moisture_factor);
-    return {
-      date,
-      actualRound:    n(row.true_round),
-      roundP50:       n(perc.round_p50),
-      actualLAR:      n(row.actual_lar ?? row.temp_lar),
-      larP50:         n(perc.lar_p50),
-      tempLAR:        tLAR,
-      tempPct:        tLAR != null ? Math.min(100, (tLAR / maxLAR) * 100) : null,
-      solarFactor:    sol,
-      solarP50:       n(perc.solar_p50),
-      moistureFactor: mois,
-      moistureP50:    n(perc.moisture_p50),
-    };
-  });
+  const aRL    = new Array(CHART_N).fill(null);
+  const rlP50  = new Array(CHART_N).fill(null);
+  const aLAR   = new Array(CHART_N).fill(null);
+  const larP50 = new Array(CHART_N).fill(null);
+  const tLAR   = new Array(CHART_N).fill(null);
+  const solF   = new Array(CHART_N).fill(null);
+  const mf     = new Array(CHART_N).fill(null);
+  const solP50 = new Array(CHART_N).fill(null);
+  const mfP50  = new Array(CHART_N).fill(null);
 
-  const future = (chartData.projected?.series || []).slice(0, 90).map(row => ({
-    date:        row.date,
-    roundP50:    n(row.roundP50),
-    larP50:      n(row.larP50),
-    solarP50:    n(row.solarP50),
-    moistureP50: n(row.moistureP50),
-  }));
-
-  return [...past, ...future];
+  for (let i = 0; i < CHART_N; i++) {
+    const dateStr = dates[i];
+    const d = new Date(dateStr + 'T00:00:00Z');
+    const doy = dateToDayOfYear(d);
+    const perc = percByDoy[doy];
+    if (perc) {
+      rlP50[i]  = perc.round_p50  != null ? Number(perc.round_p50)  : null;
+      larP50[i] = perc.lar_p50    != null ? Number(perc.lar_p50)    : null;
+      solP50[i] = perc.solar_p50  != null ? Number(perc.solar_p50)  : null;
+      mfP50[i]  = perc.moisture_p50 != null ? Number(perc.moisture_p50) : null;
+    }
+    if (i <= CHART_TODAY) {
+      const row = actualByDate[dateStr];
+      if (row) {
+        aRL[i]  = row.true_round    != null ? Number(row.true_round)    : null;
+        aLAR[i] = row.actual_lar   != null ? Number(row.actual_lar)   : (row.temp_lar != null ? Number(row.temp_lar) : null);
+        tLAR[i] = row.temp_lar     != null ? Number(row.temp_lar)     : null;
+        solF[i] = row.solar_factor    != null ? Number(row.solar_factor)    : null;
+        mf[i]   = row.moisture_factor != null ? Number(row.moisture_factor) : null;
+      }
+    } else {
+      const row = projByDate[dateStr];
+      if (row) {
+        if (row.roundP50 != null) rlP50[i]  = Number(row.roundP50);
+        if (row.larP50   != null) larP50[i] = Number(row.larP50);
+        if (row.solarP50 != null) solP50[i] = Number(row.solarP50);
+        if (row.moistureP50 != null) mfP50[i] = Number(row.moistureP50);
+      }
+    }
+  }
+  return { dates, aRL, rlP50, aLAR, larP50, tLAR, solF, mf, solP50, mfP50 };
 }
 
-// ── Chart helpers ──────────────────────────────────────────────────────────────
+// ── Chart 1 builders (Round length + LAR) ─────────────────────────────────────
 
-function fmtDate(dateStr) {
+const RL_PILLS = {
+  rl:       { label: 'Round length',    color: '#3a6b1a', defaultOn: true  },
+  rlP50:    { label: 'RL median',       color: '#3a6b1a', dashed: true, defaultOn: true  },
+  lar:      { label: 'Actual LAR',      color: '#c47a12', defaultOn: true  },
+  larP50:   { label: 'LAR median',      color: '#c47a12', dashed: true, defaultOn: true  },
+};
+
+function buildRLDatasets(prepared, range, visible, containerW) {
+  if (!prepared) return [];
+  const { aRL, rlP50, aLAR, larP50 } = prepared;
+  const binDays = getBinDays(range);
+  const rangeW  = range === '1W' ? 14 : range === '1M' ? 60 : CHART_N;
+  const bt = Math.max(2, Math.floor((containerW / rangeW) * binDays * 0.82));
+
+  const larBins = makeBins(aLAR, binDays);
+
+  const ds = [];
+
+  // LAR bars — past only, y2
+  if (visible.lar) {
+    ds.push({
+      type: 'bar',
+      label: 'Actual LAR',
+      data: larBins.past,
+      backgroundColor: '#c47a1244',
+      borderColor: '#c47a12',
+      borderWidth: 1,
+      barThickness: bt,
+      yAxisID: 'y2',
+      order: 10,
+    });
+  }
+
+  // LAR median line — all days, y2
+  if (visible.larP50) {
+    ds.push({
+      type: 'line',
+      label: 'LAR P50',
+      data: larP50,
+      borderColor: '#c47a1288',
+      borderWidth: 1.5,
+      borderDash: [6, 3],
+      pointRadius: 0,
+      yAxisID: 'y2',
+      order: 5,
+    });
+  }
+
+  // Round length solid — past only, y
+  if (visible.rl) {
+    ds.push({
+      type: 'line',
+      label: 'Round length',
+      data: aRL,
+      borderColor: '#3a6b1a',
+      borderWidth: 2.5,
+      pointRadius: 0,
+      yAxisID: 'y',
+      order: 2,
+    });
+  }
+
+  // Round length median — all days, y
+  if (visible.rlP50) {
+    ds.push({
+      type: 'line',
+      label: 'RL P50',
+      data: rlP50,
+      borderColor: '#3a6b1a88',
+      borderWidth: 1.5,
+      borderDash: [6, 3],
+      pointRadius: 0,
+      yAxisID: 'y',
+      order: 3,
+    });
+  }
+
+  return ds;
+}
+
+function buildRLScales() {
+  return {
+    y: {
+      type: 'linear',
+      position: 'left',
+      beginAtZero: true,
+      ticks: { font: { size: 10 }, color: C.muted, maxTicksLimit: 6 },
+      grid: { color: C.border },
+    },
+    y2: {
+      type: 'linear',
+      position: 'right',
+      beginAtZero: true,
+      ticks: { font: { size: 10 }, color: '#c47a12', maxTicksLimit: 4 },
+      grid: { display: false },
+    },
+  };
+}
+
+function buildRLReadout(dayIdx, visible, dates, prepared) {
+  if (!prepared || !dates) return null;
+  const { aRL, rlP50, aLAR, larP50 } = prepared;
+  const lines = [];
+  if (visible.rl   && aRL[dayIdx]   != null) lines.push({ label: 'Round length', value: `${Math.round(aRL[dayIdx])} days`, color: '#3a6b1a' });
+  if (visible.rlP50 && rlP50[dayIdx] != null) lines.push({ label: 'RL median',    value: `${Math.round(rlP50[dayIdx])} days`, color: '#3a6b1a' });
+  if (visible.lar  && aLAR[dayIdx]  != null) lines.push({ label: 'Actual LAR',   value: Number(aLAR[dayIdx]).toFixed(4), color: '#c47a12' });
+  if (visible.larP50 && larP50[dayIdx] != null) lines.push({ label: 'LAR median', value: Number(larP50[dayIdx]).toFixed(4), color: '#c47a12' });
+  return { dateLabel: dates[dayIdx] ? fmtDay(dates[dayIdx]) : '', lines };
+}
+
+// ── Chart 2 builders (Growth factors) ─────────────────────────────────────────
+
+const GF_PILLS = {
+  lar:      { label: 'Actual LAR',      color: '#3a6b1a', defaultOn: true  },
+  tLAR:     { label: 'Temp LAR',        color: '#1a5a0a', dashed: true, defaultOn: true  },
+  solar:    { label: 'Solar factor',    color: '#c47a12', defaultOn: false },
+  moisture: { label: 'Moisture factor', color: '#2a6a9e', defaultOn: false },
+  larP50:   { label: 'LAR median',      color: '#88a870', dashed: true, defaultOn: false },
+};
+
+function buildGFDatasets(prepared, range, visible, containerW) {
+  if (!prepared) return [];
+  const { aLAR, larP50, tLAR, solF, mf, solP50, mfP50 } = prepared;
+  const binDays = getBinDays(range);
+  const rangeW  = range === '1W' ? 14 : range === '1M' ? 60 : CHART_N;
+  const bt = Math.max(2, Math.floor((containerW / rangeW) * binDays * 0.82));
+
+  const larBins  = makeBins(aLAR, binDays);
+  const tLARBins = makeBins(tLAR, binDays);
+  const solBins  = makeBins(solF, binDays);
+  const mfBins   = makeBins(mf,   binDays);
+
+  const ds = [];
+
+  if (visible.lar) {
+    ds.push({
+      type: 'bar', label: 'Actual LAR',
+      data: larBins.past,
+      backgroundColor: '#3a6b1a44', borderColor: '#3a6b1a', borderWidth: 1,
+      barThickness: bt, yAxisID: 'y', order: 10,
+    });
+  }
+  if (visible.tLAR) {
+    ds.push({
+      type: 'bar', label: 'Temp LAR',
+      data: tLARBins.past,
+      backgroundColor: '#1a5a0a22', borderColor: '#1a5a0a', borderWidth: 1,
+      barThickness: bt, yAxisID: 'y', order: 11,
+    });
+  }
+  if (visible.larP50) {
+    ds.push({
+      type: 'line', label: 'LAR P50',
+      data: larP50, borderColor: '#88a87088', borderWidth: 1.5,
+      borderDash: [5, 3], pointRadius: 0, yAxisID: 'y', order: 5,
+    });
+  }
+  if (visible.solar) {
+    ds.push({
+      type: 'line', label: 'Solar',
+      data: solF, borderColor: '#c47a12', borderWidth: 1.5,
+      pointRadius: 0, yAxisID: 'y2', order: 4,
+    });
+    ds.push({
+      type: 'line', label: 'Solar P50',
+      data: solP50, borderColor: '#c47a1266', borderWidth: 1,
+      borderDash: [5, 3], pointRadius: 0, yAxisID: 'y2', order: 6,
+    });
+  }
+  if (visible.moisture) {
+    ds.push({
+      type: 'line', label: 'Moisture',
+      data: mf, borderColor: '#2a6a9e', borderWidth: 1.5,
+      pointRadius: 0, yAxisID: 'y2', order: 4,
+    });
+    ds.push({
+      type: 'line', label: 'Moisture P50',
+      data: mfP50, borderColor: '#2a6a9e66', borderWidth: 1,
+      borderDash: [5, 3], pointRadius: 0, yAxisID: 'y2', order: 6,
+    });
+  }
+
+  return ds;
+}
+
+function buildGFScales(visible) {
+  const hasRight = visible?.solar || visible?.moisture;
+  return {
+    y: {
+      type: 'linear', position: 'left', beginAtZero: true,
+      ticks: { font: { size: 10 }, color: C.muted, maxTicksLimit: 5 },
+      grid: { color: C.border },
+    },
+    y2: {
+      type: 'linear', position: 'right', beginAtZero: true,
+      min: 0, max: 1,
+      ticks: { font: { size: 10 }, color: C.muted, maxTicksLimit: 3 },
+      grid: { display: false },
+      display: !!hasRight,
+    },
+  };
+}
+
+function buildGFReadout(dayIdx, visible, dates, prepared) {
+  if (!prepared || !dates) return null;
+  const { aLAR, larP50, tLAR, solF, mf } = prepared;
+  const lines = [];
+  if (visible.lar     && aLAR[dayIdx]  != null) lines.push({ label: 'Actual LAR', value: Number(aLAR[dayIdx]).toFixed(4),  color: '#3a6b1a' });
+  if (visible.tLAR    && tLAR[dayIdx]  != null) lines.push({ label: 'Temp LAR',   value: Number(tLAR[dayIdx]).toFixed(4),  color: '#1a5a0a' });
+  if (visible.solar   && solF[dayIdx]  != null) lines.push({ label: 'Solar',       value: Number(solF[dayIdx]).toFixed(3),  color: '#c47a12' });
+  if (visible.moisture && mf[dayIdx]   != null) lines.push({ label: 'Moisture',    value: Number(mf[dayIdx]).toFixed(3),    color: '#2a6a9e' });
+  if (visible.larP50  && larP50[dayIdx] != null) lines.push({ label: 'LAR median', value: Number(larP50[dayIdx]).toFixed(4), color: '#88a870' });
+  return { dateLabel: dates[dayIdx] ? fmtDay(dates[dayIdx]) : '', lines };
+}
+
+function fmtDay(dateStr) {
   if (!dateStr) return '';
   const d = new Date(dateStr + 'T00:00:00Z');
-  return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', timeZone: 'UTC' });
-}
-
-function ChartTooltip({ active, payload, label, fields }) {
-  if (!active || !payload?.length) return null;
-  const d = payload[0]?.payload || {};
-  const visible = fields.filter(f => d[f.key] != null);
-  if (!visible.length) return null;
-  return (
-    <div style={{
-      background: 'rgba(255,255,255,0.97)',
-      border: '1px solid #d6e8c8',
-      borderRadius: 8,
-      padding: '7px 10px',
-      fontSize: 11,
-      lineHeight: 1.7,
-      pointerEvents: 'none',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
-    }}>
-      <div style={{ fontWeight: 700, color: '#2d4a1e', marginBottom: 2 }}>{fmtDate(label)}</div>
-      {visible.map(({ key, label: lbl, color, fmt }) => (
-        <div key={key} style={{ color: color || '#444' }}>
-          {lbl}: <strong>{fmt(d[key])}</strong>
-        </div>
-      ))}
-    </div>
-  );
+  const MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${d.getUTCDate()} ${MO[d.getUTCMonth()]}`;
 }
 
 // ── Progress bar ───────────────────────────────────────────────────────────────
@@ -99,6 +311,34 @@ function ProgressBar({ pct, color }) {
   );
 }
 
+// ── Recharts series for percentile sub-charts (unchanged) ─────────────────────
+
+function buildLegacySeries(chartData, maxLAR) {
+  if (!chartData) return [];
+  const n = v => v != null ? Number(v) : null;
+  const percByDoy = {};
+  for (const p of (chartData.percentiles || [])) percByDoy[p.day_of_year] = p;
+
+  const past = (chartData.actual || []).map(row => {
+    const date = (row.date || '').slice(0, 10);
+    const doy  = dateToDayOfYear(new Date(date + 'T00:00:00Z'));
+    const perc = percByDoy[doy] || {};
+    return {
+      date,
+      actualRound: n(row.true_round),
+      roundP50:    n(perc.round_p50),
+      actualLAR:   n(row.actual_lar ?? row.temp_lar),
+      larP50:      n(perc.lar_p50),
+    };
+  });
+  const future = (chartData.projected?.series || []).slice(0, 90).map(row => ({
+    date:     row.date,
+    roundP50: n(row.roundP50),
+    larP50:   n(row.larP50),
+  }));
+  return [...past, ...future];
+}
+
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export default function SeasonOverview({ scenario, chartData, loading, error, farmId, onBack, onNavigate }) {
@@ -106,18 +346,13 @@ export default function SeasonOverview({ scenario, chartData, loading, error, fa
   const [fFactors, setFFactors] = useState(false);
   const [showPctRL, setShowPctRL]           = useState(false);
   const [showPctFactors, setShowPctFactors] = useState(false);
-  const [c1, setC1] = useState({ rl: true, lar: true, p50: true });
-  const [c2, setC2] = useState({ actualLAR: true, tempLAR: true, solar: false, moisture: false, p50: false });
-  const [brushRange, setBrushRange] = useState({});
 
   const pasture = PASTURE_PARAMS[scenario.pasture_key];
   const maxLAR  = pasture ? (pasture.optimumTemp - pasture.baseTemp) / pasture.phyllochron : 0.17;
   const state   = scenario.todayState;
-  const toggle1 = k => setC1(p => ({ ...p, [k]: !p[k] }));
-  const toggle2 = k => setC2(p => ({ ...p, [k]: !p[k] }));
 
-  const larPct      = state?.temp_lar      != null ? Math.min(100, (Number(state.temp_lar)       / maxLAR) * 100) : 0;
-  const solarPct    = state?.solar_factor   != null ? Math.min(100, Number(state.solar_factor)   * 100) : null;
+  const larPct      = state?.temp_lar       != null ? Math.min(100, (Number(state.temp_lar)        / maxLAR) * 100) : 0;
+  const solarPct    = state?.solar_factor    != null ? Math.min(100, Number(state.solar_factor)    * 100) : null;
   const moisturePct = state?.moisture_factor != null ? Math.min(100, Number(state.moisture_factor) * 100) : null;
   const combinedPct = solarPct != null && moisturePct != null ? larPct * solarPct / 100 * moisturePct / 100
                     : solarPct != null ? larPct * solarPct / 100 : null;
@@ -125,14 +360,37 @@ export default function SeasonOverview({ scenario, chartData, loading, error, fa
   const rlDisplay = rl == null ? '—' : rl >= 365 ? '365+' : Math.round(rl);
   const rlColor   = rl == null ? C.muted : rl <= 20 ? C.green2 : rl <= 50 ? C.amber : C.red;
 
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const series   = buildSeries(chartData, maxLAR);
-  const ticks    = buildMonthTicks(series, todayStr);
+  // Prepared arrays for Chart.js panes
+  const prepared = useMemo(() => prepareChartData(chartData), [chartData]);
 
-  const chartProps = {
-    data: series,
-    margin: { top: 5, right: 38, left: -20, bottom: 0 },
-  };
+  // Recharts legacy series for percentile sub-charts
+  const todayStr   = new Date().toISOString().slice(0, 10);
+  const legacySeries = useMemo(() => buildLegacySeries(chartData, maxLAR), [chartData, maxLAR]);
+  const ticks        = buildMonthTicks(legacySeries, todayStr);
+
+  // Stable callbacks for SeasonChartPane
+  const rlDatasets = useCallback(
+    (range, visible, containerW) => buildRLDatasets(prepared, range, visible, containerW),
+    [prepared]
+  );
+  const rlScales = useCallback(() => buildRLScales(), []);
+  const rlReadout = useCallback(
+    (dayIdx, visible) => buildRLReadout(dayIdx, visible, prepared?.dates, prepared),
+    [prepared]
+  );
+
+  const gfDatasets = useCallback(
+    (range, visible, containerW) => buildGFDatasets(prepared, range, visible, containerW),
+    [prepared]
+  );
+  const gfScales = useCallback(
+    (range, visible) => buildGFScales(visible),
+    []
+  );
+  const gfReadout = useCallback(
+    (dayIdx, visible) => buildGFReadout(dayIdx, visible, prepared?.dates, prepared),
+    [prepared]
+  );
 
   return (
     <div style={styles.screen}>
@@ -161,10 +419,9 @@ export default function SeasonOverview({ scenario, chartData, loading, error, fa
           )}
         </div>
 
-        {/* Growth factors — tappable */}
+        {/* Growth factors today */}
         <div style={{ ...styles.card, cursor: 'pointer' }} onClick={() => onNavigate('formula')}>
           <div style={{ fontSize: 12, fontWeight: 600, color: '#2d4a1e', marginBottom: 10 }}>Growth factors today</div>
-
           {[
             { label: '🌡️ Temperature', pct: larPct,       color: larPct >= 70 ? C.green2 : larPct >= 40 ? C.amber : C.red },
             { label: '☀️ Solar',        pct: solarPct,     color: C.green2 },
@@ -178,7 +435,6 @@ export default function SeasonOverview({ scenario, chartData, loading, error, fa
               <ProgressBar pct={pct ?? 0} color={color} />
             </div>
           ))}
-
           <div style={{ background: '#f0f8e8', borderRadius: 8, padding: '10px 12px', margin: '4px 0 8px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
               <span style={{ fontSize: 12, fontWeight: 600, color: '#2d4a1e' }}>Overall growth rate</span>
@@ -194,7 +450,7 @@ export default function SeasonOverview({ scenario, chartData, loading, error, fa
           </div>
         </div>
 
-        {/* Chart 1: Actual round length + LAR */}
+        {/* Chart 1: Round length + LAR */}
         <div style={styles.card}>
           <FormulaBtn open={fRL} onToggle={() => setFRL(v => !v)} />
           {fRL && (
@@ -202,56 +458,26 @@ export default function SeasonOverview({ scenario, chartData, loading, error, fa
               lines={`Actual round length = Target leaves / Actual LAR\nActual LAR = Temp LAR × Solar × Moisture`}
               vars={[
                 { label: 'Target leaves', value: `${scenario.target_leaves}` },
-                { label: 'Actual LAR', value: state?.actual_lar ? `${Number(state.actual_lar).toFixed(4)} leaves/day` : '—' },
-                { label: 'Round length', value: rl ? `${Math.round(rl)} days` : '—' },
+                { label: 'Actual LAR',    value: state?.actual_lar ? `${Number(state.actual_lar).toFixed(4)} leaves/day` : '—' },
+                { label: 'Round length',  value: rl ? `${Math.round(rl)} days` : '—' },
               ]}
             />
           )}
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#2d4a1e', marginBottom: 2 }}>Actual round length (days) & Actual LAR</div>
-          <div style={{ fontSize: 10, color: C.muted, marginBottom: 8 }}>Left: round length (days) · Right: LAR (leaves/day) · Dashed = P50 historical average</div>
 
           {loading && <p style={{ ...styles.muted, textAlign: 'center' }}>Loading...</p>}
-          {!loading && series.length > 0 && (
-            <ResponsiveContainer width="100%" height={195}>
-              <ComposedChart {...chartProps}>
-                <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
-                <XAxis dataKey="date" ticks={ticks} interval={0} height={24} tick={xAxisTick(todayStr)} />
-                <YAxis yAxisId="left"  orientation="left"  {...yAxisProps} domain={[0, 'auto']} />
-                <YAxis yAxisId="right" orientation="right" {...yAxisProps} domain={[0, 'auto']} />
-                <ReferenceLine yAxisId="left" x={todayStr} stroke="#2d5a1b" strokeWidth={2} strokeOpacity={0.7} />
-                <Tooltip
-                  cursor={{ stroke: '#2d4a1e', strokeWidth: 1.5, strokeDasharray: '4 2' }}
-                  content={<ChartTooltip fields={[
-                    { key: 'actualRound', label: 'Round',   color: '#3a6b1a', fmt: v => `${Math.round(v)} days` },
-                    { key: 'roundP50',    label: 'P50',     color: '#88a870', fmt: v => `${Math.round(v)} days` },
-                    { key: 'actualLAR',   label: 'LAR',     color: '#c47a12', fmt: v => Number(v).toFixed(4) },
-                    { key: 'larP50',      label: 'P50 LAR', color: '#c47a12', fmt: v => Number(v).toFixed(4) },
-                  ]} />}
-                />
-                <Brush dataKey="date" height={22} stroke="#7ab55c" fill="#e8f5d0" travellerWidth={8}
-                  startIndex={brushRange.startIndex} endIndex={brushRange.endIndex}
-                  onChange={setBrushRange} tickFormatter={() => ''} />
-                {c1.rl  && <Line yAxisId="left"  dataKey="actualRound" stroke="#3a6b1a" strokeWidth={2.5} dot={false} connectNulls />}
-                {c1.p50 && <Line yAxisId="left"  dataKey="roundP50"    stroke="#3a6b1a" strokeWidth={1}   dot={false} strokeDasharray="6 3" connectNulls />}
-                {c1.lar && <Line yAxisId="right" dataKey="actualLAR"   stroke="#c47a12" strokeWidth={2}   dot={false} connectNulls />}
-                {c1.p50 && <Line yAxisId="right" dataKey="larP50"      stroke="#c47a12" strokeWidth={1}   dot={false} strokeDasharray="6 3" connectNulls />}
-              </ComposedChart>
-            </ResponsiveContainer>
+          {!loading && prepared && (
+            <SeasonChartPane
+              dates={prepared.dates}
+              buildDatasets={rlDatasets}
+              buildScales={rlScales}
+              buildReadout={rlReadout}
+              togglePills={RL_PILLS}
+              chartHeight={200}
+              label="Actual round length (days) & LAR"
+              sublabel="Left: round length · Right: LAR (leaves/day) · Dashed = P50 median"
+            />
           )}
-          <TodayLabel />
-          <Legend items={[
-            { label: 'Actual round length', color: '#3a6b1a' },
-            { label: 'Actual LAR', color: '#c47a12' },
-            ...(c1.p50 ? [{ label: 'P50 average', color: '#88a870', dashed: true }] : []),
-          ]} />
-          <ToggleBar
-            show={c1} onToggle={toggle1}
-            items={[
-              { key: 'rl',  label: 'Round length', color: '#3a6b1a' },
-              { key: 'lar', label: 'Actual LAR',   color: '#c47a12' },
-              { key: 'p50', label: 'P50 average',  color: '#88a870' },
-            ]}
-          />
+
           <div style={{ height: 1, background: '#f0ead8', margin: '10px 0' }} />
           <PctBtn open={showPctRL} onToggle={() => setShowPctRL(v => !v)} />
           {showPctRL && (
@@ -259,9 +485,9 @@ export default function SeasonOverview({ scenario, chartData, loading, error, fa
               <div style={{ fontSize: 11, fontWeight: 600, color: '#3a6b1a', marginBottom: 8 }}>
                 Historical percentiles <span style={{ background: '#e8f5d0', color: '#3a6b1a', fontSize: 9, fontWeight: 600, padding: '2px 6px', borderRadius: 8, marginLeft: 6 }}>PERCENTILES</span>
               </div>
-              {series.length > 0 && (
+              {legacySeries.length > 0 && (
                 <ResponsiveContainer width="100%" height={120}>
-                  <ComposedChart data={series} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                  <ComposedChart data={legacySeries} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
                     <XAxis dataKey="date" ticks={ticks} interval={0} height={20} tick={xAxisTick(todayStr)} />
                     <YAxis {...yAxisProps} domain={[0, 'auto']} />
@@ -276,69 +502,34 @@ export default function SeasonOverview({ scenario, chartData, loading, error, fa
           )}
         </div>
 
-        {/* Chart 2: Growth factors over time */}
+        {/* Chart 2: Growth factors */}
         <div style={styles.card}>
           <FormulaBtn open={fFactors} onToggle={() => setFFactors(v => !v)} />
           {fFactors && (
             <FormulaBox
               lines={`Actual LAR = Temp LAR × Solar factor × Moisture factor`}
               vars={[
-                { label: 'Temp LAR today',      value: state?.temp_lar      ? `${Number(state.temp_lar).toFixed(4)} leaves/day` : '—' },
-                { label: 'Solar factor today',   value: state?.solar_factor   != null ? Number(state.solar_factor).toFixed(2)   : '—' },
-                { label: 'Moisture factor today',value: state?.moisture_factor != null ? Number(state.moisture_factor).toFixed(2) : '—' },
+                { label: 'Temp LAR today',       value: state?.temp_lar       ? `${Number(state.temp_lar).toFixed(4)} leaves/day` : '—' },
+                { label: 'Solar factor today',    value: state?.solar_factor    != null ? Number(state.solar_factor).toFixed(2)    : '—' },
+                { label: 'Moisture factor today', value: state?.moisture_factor != null ? Number(state.moisture_factor).toFixed(2) : '—' },
               ]}
             />
           )}
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#2d4a1e', marginBottom: 2 }}>Growth factors over time</div>
-          <div style={{ fontSize: 10, color: C.muted, marginBottom: 8 }}>Left: LAR (leaves/day) · Right: factors (0–1) · Dashed = P50</div>
 
           {loading && <p style={{ ...styles.muted, textAlign: 'center' }}>Loading...</p>}
-          {!loading && series.length > 0 && (
-            <ResponsiveContainer width="100%" height={195}>
-              <ComposedChart {...chartProps}>
-                <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
-                <XAxis dataKey="date" ticks={ticks} interval={0} height={24} tick={xAxisTick(todayStr)} />
-                <YAxis yAxisId="left"  orientation="left"  {...yAxisProps} domain={[0, 'auto']} />
-                <YAxis yAxisId="right" orientation="right" {...yAxisProps} domain={[0, 1]} />
-                <ReferenceLine yAxisId="left" x={todayStr} stroke="#2d5a1b" strokeWidth={2} strokeOpacity={0.7} />
-                <Tooltip
-                  cursor={{ stroke: '#2d4a1e', strokeWidth: 1.5, strokeDasharray: '4 2' }}
-                  content={<ChartTooltip fields={[
-                    { key: 'actualLAR',      label: 'Actual LAR', color: '#3a6b1a', fmt: v => Number(v).toFixed(4) },
-                    { key: 'tempLAR',        label: 'Temp LAR',   color: '#1a5a0a', fmt: v => Number(v).toFixed(4) },
-                    { key: 'solarFactor',    label: 'Solar',      color: '#c47a12', fmt: v => Number(v).toFixed(2) },
-                    { key: 'moistureFactor', label: 'Moisture',   color: '#2a6a9e', fmt: v => Number(v).toFixed(2) },
-                  ]} />}
-                />
-                <Brush dataKey="date" height={22} stroke="#7ab55c" fill="#e8f5d0" travellerWidth={8}
-                  startIndex={brushRange.startIndex} endIndex={brushRange.endIndex}
-                  onChange={setBrushRange} tickFormatter={() => ''} />
-                {c2.actualLAR && <Line yAxisId="left"  dataKey="actualLAR"      stroke="#3a6b1a" strokeWidth={2.5} dot={false} connectNulls />}
-                {c2.tempLAR   && <Line yAxisId="left"  dataKey="tempLAR"        stroke="#1a5a0a" strokeWidth={1.5} dot={false} strokeDasharray="3 2" connectNulls />}
-                {c2.solar     && <Line yAxisId="right" dataKey="solarFactor"    stroke="#c47a12" strokeWidth={1.5} dot={false} connectNulls />}
-                {c2.solar && c2.p50 && <Line yAxisId="right" dataKey="solarP50" stroke="#c47a12" strokeWidth={1} dot={false} strokeDasharray="5 3" connectNulls />}
-                {c2.moisture  && <Line yAxisId="right" dataKey="moistureFactor" stroke="#2a6a9e" strokeWidth={1.5} dot={false} connectNulls />}
-                {c2.moisture && c2.p50 && <Line yAxisId="right" dataKey="moistureP50" stroke="#2a6a9e" strokeWidth={1} dot={false} strokeDasharray="5 3" connectNulls />}
-              </ComposedChart>
-            </ResponsiveContainer>
+          {!loading && prepared && (
+            <SeasonChartPane
+              dates={prepared.dates}
+              buildDatasets={gfDatasets}
+              buildScales={gfScales}
+              buildReadout={gfReadout}
+              togglePills={GF_PILLS}
+              chartHeight={200}
+              label="Growth factors over time"
+              sublabel="Left: LAR (leaves/day) · Right: factors (0–1) · Dashed = P50 median"
+            />
           )}
-          <TodayLabel />
-          <Legend items={[
-            ...(c2.actualLAR ? [{ label: 'Actual LAR', color: '#3a6b1a' }] : []),
-            ...(c2.tempLAR   ? [{ label: 'Temp LAR',   color: '#1a5a0a', dashed: true }] : []),
-            ...(c2.solar     ? [{ label: 'Solar factor', color: '#c47a12' }] : []),
-            ...(c2.moisture  ? [{ label: 'Moisture factor', color: '#2a6a9e' }] : []),
-          ]} />
-          <ToggleBar
-            show={c2} onToggle={toggle2}
-            items={[
-              { key: 'actualLAR', label: 'Actual LAR',      color: '#3a6b1a' },
-              { key: 'tempLAR',   label: 'Temp LAR',        color: '#1a5a0a' },
-              { key: 'solar',     label: 'Solar factor',    color: '#c47a12' },
-              { key: 'moisture',  label: 'Moisture factor', color: '#2a6a9e' },
-              { key: 'p50',       label: 'P50 average',     color: '#88a870' },
-            ]}
-          />
+
           <div style={{ height: 1, background: '#f0ead8', margin: '10px 0' }} />
           <PctBtn open={showPctFactors} onToggle={() => setShowPctFactors(v => !v)} />
           {showPctFactors && (
@@ -346,9 +537,9 @@ export default function SeasonOverview({ scenario, chartData, loading, error, fa
               <div style={{ fontSize: 11, fontWeight: 600, color: '#3a6b1a', marginBottom: 8 }}>
                 Historical percentiles <span style={{ background: '#e8f5d0', color: '#3a6b1a', fontSize: 9, fontWeight: 600, padding: '2px 6px', borderRadius: 8, marginLeft: 6 }}>PERCENTILES</span>
               </div>
-              {series.length > 0 && (
+              {legacySeries.length > 0 && (
                 <ResponsiveContainer width="100%" height={120}>
-                  <ComposedChart data={series} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                  <ComposedChart data={legacySeries} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
                     <XAxis dataKey="date" ticks={ticks} interval={0} height={20} tick={xAxisTick(todayStr)} />
                     <YAxis {...yAxisProps} domain={[0, 'auto']} />
