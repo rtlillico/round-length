@@ -126,7 +126,7 @@ function buildRLDatasets(prepared, range, visible, containerW) {
       pointRadius: 0,
       tension: 0.3,
       yAxisID: 'y2',
-      order: 10,
+      order: 1,
     });
   }
 
@@ -141,7 +141,7 @@ function buildRLDatasets(prepared, range, visible, containerW) {
       borderDash: [6, 3],
       pointRadius: 0,
       yAxisID: 'y2',
-      order: 5,
+      order: 2,
     });
   }
 
@@ -155,7 +155,7 @@ function buildRLDatasets(prepared, range, visible, containerW) {
       borderWidth: 2.5,
       pointRadius: 0,
       yAxisID: 'y',
-      order: 2,
+      order: 8,
     });
   }
 
@@ -170,7 +170,7 @@ function buildRLDatasets(prepared, range, visible, containerW) {
       borderDash: [6, 3],
       pointRadius: 0,
       yAxisID: 'y',
-      order: 3,
+      order: 7,
     });
   }
 
@@ -182,6 +182,7 @@ function buildRLScales() {
     y: {
       type: 'linear',
       position: 'left',
+      grace: '5%',
       ticks: { font: { size: 10 }, color: C.muted, maxTicksLimit: 6 },
       grid: { color: C.border },
     },
@@ -260,14 +261,14 @@ function buildGFDatasets(prepared, range, visible, containerW) {
     ds.push({
       type: 'line', label: 'LAR P50',
       data: toXY(larP50), borderColor: '#88a87088', borderWidth: 1.5,
-      borderDash: [5, 3], pointRadius: 0, yAxisID: 'y', order: 5,
+      borderDash: [5, 3], pointRadius: 0, yAxisID: 'y', order: 7,
     });
   }
   if (visible.solar) {
     ds.push({
       type: 'line', label: 'Solar',
       data: toXY(solF), borderColor: '#c47a12', borderWidth: 1.5,
-      pointRadius: 0, yAxisID: 'y2', order: 4,
+      pointRadius: 0, yAxisID: 'y2', order: 8,
     });
     ds.push({
       type: 'line', label: 'Solar P50',
@@ -279,7 +280,7 @@ function buildGFDatasets(prepared, range, visible, containerW) {
     ds.push({
       type: 'line', label: 'Moisture',
       data: toXY(mf), borderColor: '#2a6a9e', borderWidth: 1.5,
-      pointRadius: 0, yAxisID: 'y2', order: 4,
+      pointRadius: 0, yAxisID: 'y2', order: 8,
     });
     ds.push({
       type: 'line', label: 'Moisture P50',
@@ -295,7 +296,7 @@ function buildGFScales(visible) {
   const hasRight = visible?.solar || visible?.moisture;
   return {
     y: {
-      type: 'linear', position: 'left',
+      type: 'linear', position: 'left', grace: '5%',
       ticks: { font: { size: 10 }, color: C.muted, maxTicksLimit: 5 },
       grid: { color: C.border },
     },
