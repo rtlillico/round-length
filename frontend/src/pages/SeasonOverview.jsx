@@ -62,8 +62,8 @@ function prepareChartData(chartData, targetLeaves) {
     if (i <= CHART_TODAY) {
       const row = actualByDate[dateStr];
       if (row) {
-        aRL[i]  = toNum(row.true_round);
         aLAR[i] = toNum(row.actual_lar) ?? toNum(row.temp_lar);
+        aRL[i]  = toNum(row.true_round) ?? (aLAR[i] > 0 && targetLeaves ? Math.min(365, targetLeaves / aLAR[i]) : null);
         tLAR[i] = toNum(row.temp_lar);
         solF[i] = toNum(row.solar_factor);
         mf[i]   = toNum(row.moisture_factor);
