@@ -94,21 +94,33 @@ function buildRLDatasets(prepared, range, visible, containerW) {
   const binDays = getBinDays(range);
   const rangeW  = range === '1W' ? 14 : range === '1M' ? 60 : CHART_N;
   const bt = Math.max(2, Math.floor((containerW / rangeW) * binDays * 0.82));
+  const useBar = range === '1W';
 
   const larBins = makeBins(aLAR, binDays);
+  const larBinData = larBins.past.map((v, i) => v != null ? {x: i, y: v} : null).filter(Boolean);
 
   const ds = [];
 
-  // LAR bars — past only, y2
+  // LAR — past only, y2
   if (visible.lar) {
-    ds.push({
+    ds.push(useBar ? {
       type: 'bar',
       label: 'Actual LAR',
-      data: larBins.past.map((v, i) => v != null ? {x: i, y: v} : null).filter(Boolean),
+      data: larBinData,
       backgroundColor: '#c47a1244',
       borderColor: '#c47a12',
       borderWidth: 1,
       barThickness: bt,
+      yAxisID: 'y2',
+      order: 10,
+    } : {
+      type: 'line',
+      label: 'Actual LAR',
+      data: larBinData,
+      borderColor: '#c47a12',
+      borderWidth: 2,
+      pointRadius: 0,
+      tension: 0.3,
       yAxisID: 'y2',
       order: 10,
     });
@@ -205,28 +217,39 @@ function buildGFDatasets(prepared, range, visible, containerW) {
   const binDays = getBinDays(range);
   const rangeW  = range === '1W' ? 14 : range === '1M' ? 60 : CHART_N;
   const bt = Math.max(2, Math.floor((containerW / rangeW) * binDays * 0.82));
+  const useBar = range === '1W';
 
   const larBins  = makeBins(aLAR, binDays);
   const tLARBins = makeBins(tLAR, binDays);
-  const solBins  = makeBins(solF, binDays);
-  const mfBins   = makeBins(mf,   binDays);
+  const larBinData  = larBins.past.map((v, i) => v != null ? {x: i, y: v} : null).filter(Boolean);
+  const tLARBinData = tLARBins.past.map((v, i) => v != null ? {x: i, y: v} : null).filter(Boolean);
 
   const ds = [];
 
   if (visible.lar) {
-    ds.push({
+    ds.push(useBar ? {
       type: 'bar', label: 'Actual LAR',
-      data: larBins.past.map((v, i) => v != null ? {x: i, y: v} : null).filter(Boolean),
+      data: larBinData,
       backgroundColor: '#3a6b1a44', borderColor: '#3a6b1a', borderWidth: 1,
       barThickness: bt, yAxisID: 'y', order: 10,
+    } : {
+      type: 'line', label: 'Actual LAR',
+      data: larBinData,
+      borderColor: '#3a6b1a', borderWidth: 2,
+      pointRadius: 0, tension: 0.3, yAxisID: 'y', order: 10,
     });
   }
   if (visible.tLAR) {
-    ds.push({
+    ds.push(useBar ? {
       type: 'bar', label: 'Temp LAR',
-      data: tLARBins.past.map((v, i) => v != null ? {x: i, y: v} : null).filter(Boolean),
+      data: tLARBinData,
       backgroundColor: '#1a5a0a22', borderColor: '#1a5a0a', borderWidth: 1,
       barThickness: bt, yAxisID: 'y', order: 11,
+    } : {
+      type: 'line', label: 'Temp LAR',
+      data: tLARBinData,
+      borderColor: '#1a5a0a', borderWidth: 1.5,
+      borderDash: [3, 2], pointRadius: 0, tension: 0.3, yAxisID: 'y', order: 11,
     });
   }
   if (visible.larP50) {
