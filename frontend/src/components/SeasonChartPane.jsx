@@ -302,10 +302,10 @@ export default function SeasonChartPane({
     // We'll use the DOM overlay instead, so just create the chart:
     chartRef.current = new Chart(canvasRef.current, {
       type: 'bar',
-      data: { labels: dates.map((_, i) => i), datasets },
+      data: { datasets },
       options: {
         animation: false,
-        responsive: false,
+        responsive: true,
         maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
         plugins: { tooltip: { enabled: false }, legend: { display: false } },
@@ -392,7 +392,7 @@ export default function SeasonChartPane({
         onPointerCancel={() => { panRef.current = null; }}
       >
         <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block' }}
-          width={containerRef.current?.offsetWidth || 340} height={chartHeight} />
+          height={chartHeight} />
 
         {/* Scrubber line */}
         <div ref={scrubRef} style={{

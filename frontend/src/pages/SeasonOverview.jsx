@@ -84,6 +84,8 @@ const RL_PILLS = {
   larP50:   { label: 'LAR median',      color: '#c47a12', dashed: true, defaultOn: true  },
 };
 
+const toXY = (arr) => arr.map((v, i) => v != null ? {x: i, y: v} : null).filter(Boolean);
+
 function buildRLDatasets(prepared, range, visible, containerW) {
   if (!prepared) return [];
   const { aRL, rlP50, aLAR, larP50 } = prepared;
@@ -100,7 +102,7 @@ function buildRLDatasets(prepared, range, visible, containerW) {
     ds.push({
       type: 'bar',
       label: 'Actual LAR',
-      data: larBins.past,
+      data: larBins.past.map((v, i) => v != null ? {x: i, y: v} : null).filter(Boolean),
       backgroundColor: '#c47a1244',
       borderColor: '#c47a12',
       borderWidth: 1,
@@ -115,7 +117,7 @@ function buildRLDatasets(prepared, range, visible, containerW) {
     ds.push({
       type: 'line',
       label: 'LAR P50',
-      data: larP50,
+      data: toXY(larP50),
       borderColor: '#c47a1288',
       borderWidth: 1.5,
       borderDash: [6, 3],
@@ -130,7 +132,7 @@ function buildRLDatasets(prepared, range, visible, containerW) {
     ds.push({
       type: 'line',
       label: 'Round length',
-      data: aRL,
+      data: toXY(aRL),
       borderColor: '#3a6b1a',
       borderWidth: 2.5,
       pointRadius: 0,
@@ -144,7 +146,7 @@ function buildRLDatasets(prepared, range, visible, containerW) {
     ds.push({
       type: 'line',
       label: 'RL P50',
-      data: rlP50,
+      data: toXY(rlP50),
       borderColor: '#3a6b1a88',
       borderWidth: 1.5,
       borderDash: [6, 3],
@@ -214,7 +216,7 @@ function buildGFDatasets(prepared, range, visible, containerW) {
   if (visible.lar) {
     ds.push({
       type: 'bar', label: 'Actual LAR',
-      data: larBins.past,
+      data: larBins.past.map((v, i) => v != null ? {x: i, y: v} : null).filter(Boolean),
       backgroundColor: '#3a6b1a44', borderColor: '#3a6b1a', borderWidth: 1,
       barThickness: bt, yAxisID: 'y', order: 10,
     });
@@ -222,7 +224,7 @@ function buildGFDatasets(prepared, range, visible, containerW) {
   if (visible.tLAR) {
     ds.push({
       type: 'bar', label: 'Temp LAR',
-      data: tLARBins.past,
+      data: tLARBins.past.map((v, i) => v != null ? {x: i, y: v} : null).filter(Boolean),
       backgroundColor: '#1a5a0a22', borderColor: '#1a5a0a', borderWidth: 1,
       barThickness: bt, yAxisID: 'y', order: 11,
     });
@@ -230,31 +232,31 @@ function buildGFDatasets(prepared, range, visible, containerW) {
   if (visible.larP50) {
     ds.push({
       type: 'line', label: 'LAR P50',
-      data: larP50, borderColor: '#88a87088', borderWidth: 1.5,
+      data: toXY(larP50), borderColor: '#88a87088', borderWidth: 1.5,
       borderDash: [5, 3], pointRadius: 0, yAxisID: 'y', order: 5,
     });
   }
   if (visible.solar) {
     ds.push({
       type: 'line', label: 'Solar',
-      data: solF, borderColor: '#c47a12', borderWidth: 1.5,
+      data: toXY(solF), borderColor: '#c47a12', borderWidth: 1.5,
       pointRadius: 0, yAxisID: 'y2', order: 4,
     });
     ds.push({
       type: 'line', label: 'Solar P50',
-      data: solP50, borderColor: '#c47a1266', borderWidth: 1,
+      data: toXY(solP50), borderColor: '#c47a1266', borderWidth: 1,
       borderDash: [5, 3], pointRadius: 0, yAxisID: 'y2', order: 6,
     });
   }
   if (visible.moisture) {
     ds.push({
       type: 'line', label: 'Moisture',
-      data: mf, borderColor: '#2a6a9e', borderWidth: 1.5,
+      data: toXY(mf), borderColor: '#2a6a9e', borderWidth: 1.5,
       pointRadius: 0, yAxisID: 'y2', order: 4,
     });
     ds.push({
       type: 'line', label: 'Moisture P50',
-      data: mfP50, borderColor: '#2a6a9e66', borderWidth: 1,
+      data: toXY(mfP50), borderColor: '#2a6a9e66', borderWidth: 1,
       borderDash: [5, 3], pointRadius: 0, yAxisID: 'y2', order: 6,
     });
   }
