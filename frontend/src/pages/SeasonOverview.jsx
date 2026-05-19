@@ -15,9 +15,9 @@ import SeasonChartPane, {
 
 // ── Data preparation ───────────────────────────────────────────────────────────
 
-const toNum = (v) => (v != null && !isNaN(Number(v))) ? Number(v) : null;
+const toNum = (v) => { const n = Number(v); return (v != null && isFinite(n)) ? n : null; };
 
-function prepareChartData(chartData) {
+function prepareChartData(chartData, targetLeaves) {
   if (!chartData) return null;
   const now = new Date();
   const dates = [];
@@ -54,6 +54,10 @@ function prepareChartData(chartData) {
       larP50[i] = toNum(perc.lar_p50);
       solP50[i] = toNum(perc.solar_p50);
       mfP50[i]  = toNum(perc.moisture_p50);
+      // fall back: compute rl_p50 from lar_p50 when round_p50 is missing
+      if (rlP50[i] == null && larP50[i] != null && larP50[i] > 0 && targetLeaves) {
+        rlP50[i] = Math.min(365, targetLeaves / larP50[i]);
+      }
     }
     if (i <= CHART_TODAY) {
       const row = actualByDate[dateStr];
@@ -386,7 +390,7 @@ export default function SeasonOverview({ scenario, chartData, loading, error, fa
   const rlColor   = rl == null ? C.muted : rl <= 20 ? C.green2 : rl <= 50 ? C.amber : C.red;
 
   // Prepared arrays for Chart.js panes
-  const prepared = useMemo(() => prepareChartData(chartData), [chartData]);
+  const prepared = useMemo(() => prepareChartData(chartData, Number(scenario.target_leaves)), [chartData, scenario.target_leaves]);
 
   // Recharts legacy series for percentile sub-charts
   const todayStr   = new Date().toISOString().slice(0, 10);
