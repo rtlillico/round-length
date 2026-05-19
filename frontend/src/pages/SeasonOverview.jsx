@@ -15,6 +15,8 @@ import SeasonChartPane, {
 
 // ── Data preparation ───────────────────────────────────────────────────────────
 
+const toNum = (v) => (v != null && !isNaN(Number(v))) ? Number(v) : null;
+
 function prepareChartData(chartData) {
   if (!chartData) return null;
   const now = new Date();
@@ -48,27 +50,27 @@ function prepareChartData(chartData) {
     const doy = dateToDayOfYear(d);
     const perc = percByDoy[doy];
     if (perc) {
-      rlP50[i]  = perc.round_p50  != null ? Number(perc.round_p50)  : null;
-      larP50[i] = perc.lar_p50    != null ? Number(perc.lar_p50)    : null;
-      solP50[i] = perc.solar_p50  != null ? Number(perc.solar_p50)  : null;
-      mfP50[i]  = perc.moisture_p50 != null ? Number(perc.moisture_p50) : null;
+      rlP50[i]  = toNum(perc.round_p50);
+      larP50[i] = toNum(perc.lar_p50);
+      solP50[i] = toNum(perc.solar_p50);
+      mfP50[i]  = toNum(perc.moisture_p50);
     }
     if (i <= CHART_TODAY) {
       const row = actualByDate[dateStr];
       if (row) {
-        aRL[i]  = row.true_round    != null ? Number(row.true_round)    : null;
-        aLAR[i] = row.actual_lar   != null ? Number(row.actual_lar)   : (row.temp_lar != null ? Number(row.temp_lar) : null);
-        tLAR[i] = row.temp_lar     != null ? Number(row.temp_lar)     : null;
-        solF[i] = row.solar_factor    != null ? Number(row.solar_factor)    : null;
-        mf[i]   = row.moisture_factor != null ? Number(row.moisture_factor) : null;
+        aRL[i]  = toNum(row.true_round);
+        aLAR[i] = toNum(row.actual_lar) ?? toNum(row.temp_lar);
+        tLAR[i] = toNum(row.temp_lar);
+        solF[i] = toNum(row.solar_factor);
+        mf[i]   = toNum(row.moisture_factor);
       }
     } else {
       const row = projByDate[dateStr];
       if (row) {
-        if (row.roundP50 != null) rlP50[i]  = Number(row.roundP50);
-        if (row.larP50   != null) larP50[i] = Number(row.larP50);
-        if (row.solarP50 != null) solP50[i] = Number(row.solarP50);
-        if (row.moistureP50 != null) mfP50[i] = Number(row.moistureP50);
+        if (row.roundP50 != null) rlP50[i]  = toNum(row.roundP50);
+        if (row.larP50   != null) larP50[i] = toNum(row.larP50);
+        if (row.solarP50 != null) solP50[i] = toNum(row.solarP50);
+        if (row.moistureP50 != null) mfP50[i] = toNum(row.moistureP50);
       }
     }
   }
@@ -164,14 +166,12 @@ function buildRLScales() {
     y: {
       type: 'linear',
       position: 'left',
-      beginAtZero: true,
       ticks: { font: { size: 10 }, color: C.muted, maxTicksLimit: 6 },
       grid: { color: C.border },
     },
     y2: {
       type: 'linear',
       position: 'right',
-      beginAtZero: true,
       ticks: { font: { size: 10 }, color: '#c47a12', maxTicksLimit: 4 },
       grid: { display: false },
     },
@@ -268,7 +268,7 @@ function buildGFScales(visible) {
   const hasRight = visible?.solar || visible?.moisture;
   return {
     y: {
-      type: 'linear', position: 'left', beginAtZero: true,
+      type: 'linear', position: 'left',
       ticks: { font: { size: 10 }, color: C.muted, maxTicksLimit: 5 },
       grid: { color: C.border },
     },
