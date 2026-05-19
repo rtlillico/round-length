@@ -1,10 +1,10 @@
 // round-length/frontend/src/components/SeasonChartPane.jsx
 // Chart.js-based chart pane: pan, scrub, range buttons, today marker, toggle pills, readout.
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Chart, LinearScale, CategoryScale, BarElement, LineElement, PointElement, Filler, Tooltip } from 'chart.js';
+import { Chart, BarController, LineController, LinearScale, CategoryScale, BarElement, LineElement, PointElement, Filler, Tooltip } from 'chart.js';
 import { C } from '../App';
 
-Chart.register(LinearScale, CategoryScale, BarElement, LineElement, PointElement, Filler, Tooltip);
+Chart.register(BarController, LineController, LinearScale, CategoryScale, BarElement, LineElement, PointElement, Filler, Tooltip);
 
 export const CHART_N = 730;
 export const CHART_TODAY = 365;
