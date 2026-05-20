@@ -17,36 +17,41 @@ function buildSeries(chartData, targetLeaves, maxLAR) {
   const percByDoy = {};
   for (const p of (chartData.percentiles || [])) percByDoy[p.day_of_year] = p;
 
-  const actual = chartData.actual || [];
-  const tempLARs = actual.map(r => Number(r.temp_lar ?? 0));
+  const allActual = chartData.actual || [];
+  const tempLARs  = allActual.map(r => Number(r.temp_lar ?? 0));
 
-  // Backward cumulative sum of temp_lar per historical day
-  const tempRounds = actual.map((_, i) => {
+  // Backward cumulative sum — return days even if target not reached (underestimate for early rows)
+  const tempRounds = allActual.map((_, i) => {
     let sum = 0, days = 0;
     for (let j = i; j >= 0; j--) {
       sum += tempLARs[j];
       days++;
       if (sum >= targetLeaves) return days;
     }
-    return null;
+    return days;
   });
 
-  const past = actual.map((row, idx) => {
+  // Only display the last 12 months
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - 12);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+
+  const past = allActual.map((row, idx) => {
     const date = (row.date || '').slice(0, 10);
     const doy  = dateToDayOfYear(new Date(date + 'T00:00:00Z'));
     const perc = percByDoy[doy] || {};
     const tLAR = n(row.temp_lar);
     return {
       date,
-      tempRound:   tempRounds[idx],
-      tempRoundP50: n(perc.round_p50), // proxy: using actual round P50 as temp-only is not in percentiles yet
-      tempLAR:     tLAR,
-      larP50:      n(perc.lar_p50),
-      tMean:       n(row.t_mean),
-      tMin:        n(row.t_min),
-      tMax:        n(row.t_max),
+      tempRound:    tempRounds[idx],
+      tempRoundP50: n(perc.round_p50),
+      tempLAR:      tLAR,
+      larP50:       n(perc.lar_p50),
+      tMean:        n(row.t_mean),
+      tMin:         n(row.t_min),
+      tMax:         n(row.t_max),
     };
-  });
+  }).filter(row => row.date >= cutoffStr);
 
   const future = (chartData.projected?.series || []).slice(0, 90).map(row => ({
     date:         row.date,
