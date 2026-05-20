@@ -6,8 +6,8 @@ import { C } from '../App';
 
 Chart.register(BarController, LineController, LinearScale, CategoryScale, BarElement, LineElement, PointElement, Filler, Tooltip);
 
-export const CHART_N = 910;
-export const CHART_TODAY = 545;
+export const CHART_N = 730;
+export const CHART_TODAY = 365;
 
 const RANGE_WIDTHS = { '1W': 14, '1M': 60, 'Full': null };
 const MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
