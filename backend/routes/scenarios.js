@@ -130,7 +130,7 @@ router.get('/:id/chart', async (req, res) => {
     // Past 12 months actual daily state
     const endDate   = new Date();
     const startDate = new Date();
-    startDate.setMonth(startDate.getMonth() - 12);
+    startDate.setMonth(startDate.getMonth() - 18);
     const actual = await getDailyStateRange(
       scenario.id,
       startDate.toISOString().slice(0, 10),
