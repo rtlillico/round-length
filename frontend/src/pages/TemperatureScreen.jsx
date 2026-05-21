@@ -3,12 +3,37 @@ import { useState, useMemo } from 'react';
 import { C, styles } from '../App';
 import { PASTURE_PARAMS, dateToDayOfYear, calcTempLAR } from '../lib/formula';
 import {
-  ComposedChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine, ResponsiveContainer,
+  ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, ReferenceLine, ResponsiveContainer,
 } from 'recharts';
 import {
   ScenarioBanner, NavLinks, FormulaBtn, FormulaBox, ToggleBar, PctBtn, TodayLabel, Legend,
   buildMonthTicks, xAxisTick, yAxisProps,
 } from '../components/SeasonUI';
+
+function binSeries(arr, binDays) {
+  if (binDays <= 1) return arr;
+  const avg = (chunk, key) => {
+    const vals = chunk.map(r => r[key]).filter(v => v != null);
+    return vals.length ? +(vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(5) : null;
+  };
+  const result = [];
+  for (let i = 0; i < arr.length; i += binDays) {
+    const chunk = arr.slice(i, i + binDays);
+    if (!chunk.length) continue;
+    const center = chunk[Math.floor(chunk.length / 2)];
+    result.push({
+      date:         center.date,
+      tempRound:    avg(chunk, 'tempRound'),
+      tempRoundP50: avg(chunk, 'tempRoundP50'),
+      tempLAR:      avg(chunk, 'tempLAR'),
+      larP50:       avg(chunk, 'larP50'),
+      tMean:        avg(chunk, 'tMean'),
+      tMin:         avg(chunk, 'tMin'),
+      tMax:         avg(chunk, 'tMax'),
+    });
+  }
+  return result;
+}
 
 function buildSeries(chartData, targetLeaves, maxLAR, pastureKey) {
   if (!chartData) return [];
@@ -66,6 +91,23 @@ function buildSeries(chartData, targetLeaves, maxLAR, pastureKey) {
   return [...past, ...future];
 }
 
+const RANGE_BTNS = ['1W', '1M', 'Full'];
+
+function RangeBar({ range, setRange }) {
+  return (
+    <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+      {RANGE_BTNS.map(r => (
+        <button key={r} onClick={() => setRange(r)} style={{
+          fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20,
+          border: 'none', cursor: 'pointer',
+          background: range === r ? '#3a6b1a' : '#e8f0e0',
+          color:      range === r ? '#fff'     : '#3a6b1a',
+        }}>{r}</button>
+      ))}
+    </div>
+  );
+}
+
 export default function TemperatureScreen({ scenario, chartData, loading, onNavigate }) {
   const [fRL, setFRL]       = useState(false);
   const [fTemp, setFTemp]   = useState(false);
@@ -73,6 +115,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   const [pctTemp, setPctTemp] = useState(false);
   const [c1, setC1] = useState({ tempRound: true, tempLAR: true, p50: true });
   const [c2, setC2] = useState({ tMax: true, tMean: true, tMin: true });
+  const [range, setRange]   = useState('Full');
 
   const pasture = PASTURE_PARAMS[scenario.pasture_key];
   const maxLAR  = pasture ? (pasture.optimumTemp - pasture.baseTemp) / pasture.phyllochron : 0.17;
@@ -84,14 +127,32 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const series   = useMemo(() => buildSeries(chartData, target, maxLAR, scenario.pasture_key), [chartData, target, maxLAR, scenario.pasture_key]);
-  const ticks    = buildMonthTicks(series, todayStr);
 
-  const tMean = state?.t_mean != null ? Number(state.t_mean) : null;
-  const tMin  = state?.t_min  != null ? Number(state.t_min)  : null;
-  const tMax  = state?.t_max  != null ? Number(state.t_max)  : null;
+  const displaySeries = useMemo(() => {
+    const today = new Date();
+    const binDays = range === '1W' ? 1 : range === '1M' ? 4 : 7;
+    let filtered = series;
+    if (range === '1W') {
+      const p = new Date(today); p.setDate(p.getDate() - 7);
+      const f = new Date(today); f.setDate(f.getDate() + 7);
+      filtered = series.filter(r => r.date >= p.toISOString().slice(0, 10) && r.date <= f.toISOString().slice(0, 10));
+    } else if (range === '1M') {
+      const p = new Date(today); p.setDate(p.getDate() - 30);
+      const f = new Date(today); f.setDate(f.getDate() + 30);
+      filtered = series.filter(r => r.date >= p.toISOString().slice(0, 10) && r.date <= f.toISOString().slice(0, 10));
+    }
+    return binSeries(filtered, binDays);
+  }, [series, range]);
+
+  const useBar = range === '1W';
+  const ticks  = buildMonthTicks(displaySeries, todayStr);
+
+  const tMean = state?.t_mean   != null ? Number(state.t_mean)   : null;
+  const tMin  = state?.t_min    != null ? Number(state.t_min)    : null;
+  const tMax  = state?.t_max    != null ? Number(state.t_max)    : null;
   const tLAR  = state?.temp_lar != null ? Number(state.temp_lar) : null;
 
-  const chartProps = { data: series, margin: { top: 5, right: 38, left: -20, bottom: 0 } };
+  const chartProps = { data: displaySeries, margin: { top: 5, right: 38, left: -20, bottom: 0 } };
 
   return (
     <div style={styles.screen}>
@@ -119,9 +180,10 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
           )}
           <div style={{ fontSize: 12, fontWeight: 600, color: '#2d4a1e', marginBottom: 2 }}>Temp round length & Temp LAR</div>
           <div style={{ fontSize: 10, color: C.muted, marginBottom: 8 }}>Left: round length (days) · Right: Temp LAR (leaves/day) · Dashed = P50</div>
+          <RangeBar range={range} setRange={setRange} />
 
           {loading && <p style={{ ...styles.muted, textAlign: 'center' }}>Loading...</p>}
-          {!loading && series.length > 0 && (
+          {!loading && displaySeries.length > 0 && (
             <ResponsiveContainer width="100%" height={160}>
               <ComposedChart {...chartProps}>
                 <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
@@ -129,10 +191,12 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                 <YAxis yAxisId="left"  orientation="left"  {...yAxisProps} domain={[0, 'auto']} />
                 <YAxis yAxisId="right" orientation="right" {...yAxisProps} domain={[0, 'auto']} />
                 <ReferenceLine yAxisId="left" x={todayStr} stroke="#2d5a1b" strokeWidth={2} strokeOpacity={0.7} />
-                {c1.tempRound && <Line yAxisId="left"  dataKey="tempRound"    stroke="#c47a12" strokeWidth={2.5} dot={false} connectNulls />}
-                {c1.p50       && <Line yAxisId="left"  dataKey="tempRoundP50" stroke="#c47a12" strokeWidth={1}   dot={false} strokeDasharray="6 3" connectNulls />}
-                {c1.tempLAR   && <Line yAxisId="right" dataKey="tempLAR"      stroke="#3a6b1a" strokeWidth={2}   dot={false} connectNulls />}
-                {c1.p50       && <Line yAxisId="right" dataKey="larP50"        stroke="#3a6b1a" strokeWidth={1}   dot={false} strokeDasharray="6 3" connectNulls />}
+                {c1.tempRound && useBar && <Bar  yAxisId="left"  dataKey="tempRound" fill="#c47a12" opacity={0.8} isAnimationActive={false} />}
+                {c1.tempRound && !useBar && <Line yAxisId="left"  dataKey="tempRound" stroke="#c47a12" strokeWidth={2.5} dot={false} connectNulls />}
+                {c1.p50       && <Line yAxisId="left"  dataKey="tempRoundP50" stroke="#c47a12" strokeWidth={1} dot={false} strokeDasharray="6 3" connectNulls />}
+                {c1.tempLAR   && useBar && <Bar  yAxisId="right" dataKey="tempLAR" fill="#3a6b1a" opacity={0.8} isAnimationActive={false} />}
+                {c1.tempLAR   && !useBar && <Line yAxisId="right" dataKey="tempLAR" stroke="#3a6b1a" strokeWidth={2} dot={false} connectNulls />}
+                {c1.p50       && <Line yAxisId="right" dataKey="larP50" stroke="#3a6b1a" strokeWidth={1} dot={false} strokeDasharray="6 3" connectNulls />}
               </ComposedChart>
             </ResponsiveContainer>
           )}
@@ -153,7 +217,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
             <div style={{ background: '#f0f8e8', borderRadius: 10, padding: 12, marginTop: 10, border: '1px solid rgba(90,140,42,0.15)' }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: '#3a6b1a', marginBottom: 8 }}>Historical percentiles</div>
               <ResponsiveContainer width="100%" height={120}>
-                <ComposedChart data={series} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                <ComposedChart data={displaySeries} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
                   <XAxis dataKey="date" ticks={ticks} interval={0} height={20} tick={xAxisTick(todayStr)} />
                   <YAxis {...yAxisProps} domain={[0, 'auto']} />
@@ -182,11 +246,12 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
           )}
           <div style={{ fontSize: 12, fontWeight: 600, color: '#2d4a1e', marginBottom: 2 }}>Temperature (°C)</div>
           <div style={{ fontSize: 10, color: C.muted, marginBottom: 8 }}>Daily T_max, T_mean, T_min · Actual data only (no forecast)</div>
+          <RangeBar range={range} setRange={setRange} />
 
           {loading && <p style={{ ...styles.muted, textAlign: 'center' }}>Loading...</p>}
-          {!loading && series.length > 0 && (
+          {!loading && displaySeries.length > 0 && (
             <ResponsiveContainer width="100%" height={160}>
-              <ComposedChart data={series} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+              <ComposedChart data={displaySeries} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
                 <XAxis dataKey="date" ticks={ticks} interval={0} height={24} tick={xAxisTick(todayStr)} />
                 <YAxis {...yAxisProps} domain={['auto', 'auto']} />
