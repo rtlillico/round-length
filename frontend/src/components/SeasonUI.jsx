@@ -165,7 +165,7 @@ function snapToNearest(target, dates, maxDays = 7) {
   return null;
 }
 
-export function buildMonthTicks(series, todayStr) {
+export function buildMonthTicks(series, todayStr, stepMonths = 1) {
   if (!series.length) return [];
   const dates = series.map(r => r.date);
   const ticks = new Set();
@@ -175,7 +175,7 @@ export function buildMonthTicks(series, todayStr) {
   while (d <= end) {
     const snapped = snapToNearest(d.toISOString().slice(0, 10), dates);
     if (snapped) ticks.add(snapped);
-    d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1));
+    d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + stepMonths, 1));
   }
   const snappedToday = snapToNearest(todayStr, dates) ?? todayStr;
   ticks.add(snappedToday);
