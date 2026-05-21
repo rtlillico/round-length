@@ -166,6 +166,51 @@ export function buildMonthTicks(series, todayStr) {
   return [...new Set([...ticks, todayStr])].sort();
 }
 
+// Weekly tick builder — snaps each 7-day step from today to the nearest series date
+export function buildWeeklyTicks(series, todayStr) {
+  if (!series.length) return [];
+  const dates   = series.map(r => r.date);
+  const dateSet = new Set(dates);
+  const first   = new Date(dates[0] + 'T00:00:00Z');
+  const last    = new Date(dates[dates.length - 1] + 'T00:00:00Z');
+  const today   = new Date(todayStr + 'T00:00:00Z');
+  const ticks   = new Set([todayStr]);
+
+  for (const dir of [-1, 1]) {
+    let d = new Date(today);
+    d.setUTCDate(d.getUTCDate() + dir * 7);
+    while (d >= first && d <= last) {
+      for (let dd = 0; dd <= 4; dd++) {
+        const p = new Date(d); p.setUTCDate(p.getUTCDate() + dd);
+        const m = new Date(d); m.setUTCDate(m.getUTCDate() - dd);
+        if (dateSet.has(p.toISOString().slice(0, 10))) { ticks.add(p.toISOString().slice(0, 10)); break; }
+        if (dd > 0 && dateSet.has(m.toISOString().slice(0, 10))) { ticks.add(m.toISOString().slice(0, 10)); break; }
+      }
+      d.setUTCDate(d.getUTCDate() + dir * 7);
+    }
+  }
+  return [...ticks].sort();
+}
+
+// Tick renderer showing "26 Apr" — used for 1W and 1M views
+export function dayMonthTick(todayStr) {
+  return ({ x, y, payload }) => {
+    const isToday = payload.value === todayStr;
+    const d = new Date(payload.value + 'T00:00:00Z');
+    if (isToday) return (
+      <text textAnchor="middle" fontSize={9} fontWeight="bold" fill="#2d5a1b">
+        <tspan x={x} y={y + 10}>TODAY</tspan>
+      </text>
+    );
+    const mon = d.toLocaleDateString('en-AU', { month: 'short', timeZone: 'UTC' });
+    return (
+      <text textAnchor="middle" fontSize={8} fill="#9aab85">
+        <tspan x={x} y={y + 10}>{d.getUTCDate()} {mon}</tspan>
+      </text>
+    );
+  };
+}
+
 // Custom XAxis tick renderer
 export function xAxisTick(todayStr) {
   return ({ x, y, payload }) => {

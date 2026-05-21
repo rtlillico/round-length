@@ -7,7 +7,7 @@ import {
 } from 'recharts';
 import {
   ScenarioBanner, NavLinks, FormulaBtn, FormulaBox, ToggleBar, PctBtn, TodayLabel, Legend,
-  buildMonthTicks, xAxisTick, yAxisProps,
+  buildMonthTicks, buildWeeklyTicks, xAxisTick, dayMonthTick, yAxisProps,
 } from '../components/SeasonUI';
 
 const MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -217,8 +217,9 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     panStartRef.current = null;
   }, []);
 
-  const ticks   = buildMonthTicks(displaySeries, todayStr);
-  const useBar  = range === '1W';
+  const ticks  = range === 'Full' ? buildMonthTicks(displaySeries, todayStr) : buildWeeklyTicks(displaySeries, todayStr);
+  const tickFn = range === 'Full' ? xAxisTick(todayStr) : dayMonthTick(todayStr);
+  const useBar = range === '1W';
 
   const tMean = state?.t_mean   != null ? Number(state.t_mean)   : null;
   const tMin  = state?.t_min    != null ? Number(state.t_min)    : null;
@@ -278,7 +279,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
               <ResponsiveContainer width="100%" height={160}>
                 <ComposedChart data={displaySeries} margin={chartMargin}>
                   <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
-                  <XAxis dataKey="date" ticks={ticks} interval={0} height={24} tick={xAxisTick(todayStr)} />
+                  <XAxis dataKey="date" ticks={ticks} interval={0} height={24} tick={tickFn} />
                   <YAxis yAxisId="left"  orientation="left"  {...yAxisProps} domain={[0, 'auto']} />
                   <YAxis yAxisId="right" orientation="right" {...yAxisProps} domain={[0, 'auto']} />
                   <ReferenceLine yAxisId="left" x={todayStr} stroke="#2d5a1b" strokeWidth={2} strokeOpacity={0.7} />
@@ -311,7 +312,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
               <ResponsiveContainer width="100%" height={120}>
                 <ComposedChart data={displaySeries} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
-                  <XAxis dataKey="date" ticks={ticks} interval={0} height={20} tick={xAxisTick(todayStr)} />
+                  <XAxis dataKey="date" ticks={ticks} interval={0} height={20} tick={tickFn} />
                   <YAxis {...yAxisProps} domain={[0, 'auto']} />
                   <ReferenceLine x={todayStr} stroke="#2d5a1b" strokeWidth={1.5} strokeOpacity={0.6} />
                   <Line dataKey="tempRoundP50" stroke="#88a870" strokeWidth={1.5} dot={false} strokeDasharray="5 3" connectNulls />
@@ -346,7 +347,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
               <ResponsiveContainer width="100%" height={160}>
                 <ComposedChart data={displaySeries} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
-                  <XAxis dataKey="date" ticks={ticks} interval={0} height={24} tick={xAxisTick(todayStr)} />
+                  <XAxis dataKey="date" ticks={ticks} interval={0} height={24} tick={tickFn} />
                   <YAxis {...yAxisProps} domain={['auto', 'auto']} />
                   <ReferenceLine x={todayStr} stroke="#2d5a1b" strokeWidth={2} strokeOpacity={0.7} />
                   {c2.tMax  && <Line dataKey="tMax"  stroke="#c43a2a" strokeWidth={1.5} dot={false} connectNulls />}
