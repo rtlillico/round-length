@@ -53,11 +53,15 @@ function buildSeries(chartData, targetLeaves, maxLAR, pastureKey) {
     };
   }).filter(row => row.date >= cutoffStr);
 
-  const future = (chartData.projected?.series || []).slice(0, 90).map(row => ({
-    date:         row.date,
-    tempRoundP50: n(row.roundP50),
-    larP50:       n(row.larP50),
-  }));
+  const future = (chartData.projected?.series || []).slice(0, 365).map(row => {
+    const doy  = dateToDayOfYear(new Date(row.date + 'T00:00:00Z'));
+    const perc = percByDoy[doy] || {};
+    return {
+      date:         row.date,
+      tempRoundP50: n(row.roundP50),
+      larP50:       perc.temp_p50 != null ? calcTempLAR(Number(perc.temp_p50), pastureKey) : null,
+    };
+  });
 
   return [...past, ...future];
 }
