@@ -151,19 +151,41 @@ export function Legend({ items }) {
 }
 
 // Build month-start ticks for XAxis, always including todayStr
+// Snap a target date string to the nearest date in the series (within maxDays).
+function snapToNearest(target, dates, maxDays = 7) {
+  const dateSet = new Set(dates);
+  if (dateSet.has(target)) return target;
+  for (let dd = 1; dd <= maxDays; dd++) {
+    const t = new Date(target + 'T00:00:00Z');
+    const p = new Date(t); p.setUTCDate(p.getUTCDate() + dd);
+    const m = new Date(t); m.setUTCDate(m.getUTCDate() - dd);
+    if (dateSet.has(p.toISOString().slice(0, 10))) return p.toISOString().slice(0, 10);
+    if (dateSet.has(m.toISOString().slice(0, 10))) return m.toISOString().slice(0, 10);
+  }
+  return null;
+}
+
 export function buildMonthTicks(series, todayStr) {
   if (!series.length) return [];
-  const dateSet = new Set(series.map(r => r.date));
-  const ticks = [];
-  const end = new Date(series[series.length - 1].date + 'T00:00:00Z');
-  let d = new Date(series[0].date + 'T00:00:00Z');
+  const dates = series.map(r => r.date);
+  const ticks = new Set();
+  const end = new Date(dates[dates.length - 1] + 'T00:00:00Z');
+  let d = new Date(dates[0] + 'T00:00:00Z');
   d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
   while (d <= end) {
-    const s = d.toISOString().slice(0, 10);
-    if (dateSet.has(s)) ticks.push(s);
+    const snapped = snapToNearest(d.toISOString().slice(0, 10), dates);
+    if (snapped) ticks.add(snapped);
     d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1));
   }
-  return [...new Set([...ticks, todayStr])].sort();
+  const snappedToday = snapToNearest(todayStr, dates) ?? todayStr;
+  ticks.add(snappedToday);
+  return [...ticks].sort();
+}
+
+// Returns the nearest data point date to today — use for ReferenceLine x and tick renderer.
+export function nearestToToday(series, todayStr) {
+  if (!series.length) return todayStr;
+  return snapToNearest(todayStr, series.map(r => r.date)) ?? todayStr;
 }
 
 // Weekly tick builder — snaps each 7-day step from today to the nearest series date
@@ -212,9 +234,10 @@ export function dayMonthTick(todayStr) {
 }
 
 // Custom XAxis tick renderer
-export function xAxisTick(todayStr) {
+export function xAxisTick(todayStr, nearestToday) {
+  const todayMark = nearestToday ?? todayStr;
   return ({ x, y, payload }) => {
-    const isToday = payload.value === todayStr;
+    const isToday = payload.value === todayMark;
     const d = new Date(payload.value + 'T00:00:00Z');
     if (isToday) return (
       <text textAnchor="middle" fontSize={9} fontWeight="bold" fill="#2d5a1b">

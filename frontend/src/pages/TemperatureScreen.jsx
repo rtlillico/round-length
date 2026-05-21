@@ -7,7 +7,7 @@ import {
 } from 'recharts';
 import {
   ScenarioBanner, NavLinks, FormulaBtn, FormulaBox, ToggleBar, PctBtn, TodayLabel, Legend,
-  buildMonthTicks, buildWeeklyTicks, xAxisTick, dayMonthTick, yAxisProps,
+  buildMonthTicks, buildWeeklyTicks, nearestToToday, xAxisTick, dayMonthTick, yAxisProps,
 } from '../components/SeasonUI';
 
 const MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -217,8 +217,9 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     panStartRef.current = null;
   }, []);
 
+  const todayNearest = nearestToToday(displaySeries, todayStr);
   const ticks  = range === 'Full' ? buildMonthTicks(displaySeries, todayStr) : buildWeeklyTicks(displaySeries, todayStr);
-  const tickFn = range === 'Full' ? xAxisTick(todayStr) : dayMonthTick(todayStr);
+  const tickFn = range === 'Full' ? xAxisTick(todayStr, todayNearest) : dayMonthTick(todayStr);
   const useBar = range === '1W';
 
   const tMean = state?.t_mean   != null ? Number(state.t_mean)   : null;
@@ -282,7 +283,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                   <XAxis dataKey="date" ticks={ticks} interval={0} height={24} tick={tickFn} />
                   <YAxis yAxisId="left"  orientation="left"  {...yAxisProps} domain={[0, 'auto']} />
                   <YAxis yAxisId="right" orientation="right" {...yAxisProps} domain={[0, 'auto']} />
-                  <ReferenceLine yAxisId="left" x={todayStr} stroke="#2d5a1b" strokeWidth={2} strokeOpacity={0.7} />
+                  <ReferenceLine yAxisId="left" x={todayNearest} stroke="#2d5a1b" strokeWidth={2} strokeOpacity={0.7} />
                   {c1.tempRound && useBar  && <Bar  yAxisId="left"  dataKey="tempRound" fill="#c47a12" opacity={0.8} isAnimationActive={false} />}
                   {c1.tempRound && !useBar && <Line yAxisId="left"  dataKey="tempRound" stroke="#c47a12" strokeWidth={2.5} dot={false} connectNulls />}
                   {c1.p50                  && <Line yAxisId="left"  dataKey="tempRoundP50" stroke="#c47a12" strokeWidth={1} dot={false} strokeDasharray="6 3" connectNulls />}
@@ -314,7 +315,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                   <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
                   <XAxis dataKey="date" ticks={ticks} interval={0} height={20} tick={tickFn} />
                   <YAxis {...yAxisProps} domain={[0, 'auto']} />
-                  <ReferenceLine x={todayStr} stroke="#2d5a1b" strokeWidth={1.5} strokeOpacity={0.6} />
+                  <ReferenceLine x={todayNearest} stroke="#2d5a1b" strokeWidth={1.5} strokeOpacity={0.6} />
                   <Line dataKey="tempRoundP50" stroke="#88a870" strokeWidth={1.5} dot={false} strokeDasharray="5 3" connectNulls />
                   <Line dataKey="tempRound"    stroke="#c47a12" strokeWidth={2}   dot={false} connectNulls />
                 </ComposedChart>
@@ -349,7 +350,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                   <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
                   <XAxis dataKey="date" ticks={ticks} interval={0} height={24} tick={tickFn} />
                   <YAxis {...yAxisProps} domain={['auto', 'auto']} />
-                  <ReferenceLine x={todayStr} stroke="#2d5a1b" strokeWidth={2} strokeOpacity={0.7} />
+                  <ReferenceLine x={todayNearest} stroke="#2d5a1b" strokeWidth={2} strokeOpacity={0.7} />
                   {c2.tMax  && <Line dataKey="tMax"  stroke="#c43a2a" strokeWidth={1.5} dot={false} connectNulls />}
                   {c2.tMean && <Line dataKey="tMean" stroke="#c47a12" strokeWidth={2}   dot={false} connectNulls />}
                   {c2.tMin  && <Line dataKey="tMin"  stroke="#2a6a9e" strokeWidth={1.5} dot={false} connectNulls />}
