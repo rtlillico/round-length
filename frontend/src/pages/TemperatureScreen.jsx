@@ -1,5 +1,5 @@
 // round-length/frontend/src/pages/TemperatureScreen.jsx
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { C, styles } from '../App';
 import { PASTURE_PARAMS, dateToDayOfYear, calcTempLAR } from '../lib/formula';
 import {
@@ -9,6 +9,13 @@ import {
   ScenarioBanner, NavLinks, FormulaBtn, FormulaBox, ToggleBar, PctBtn, TodayLabel, Legend,
   buildMonthTicks, xAxisTick, yAxisProps,
 } from '../components/SeasonUI';
+
+const MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function fmtDay(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00Z');
+  return `${d.getUTCDate()} ${MO[d.getUTCMonth()]}`;
+}
 
 function binSeries(arr, binDays) {
   if (binDays <= 1) return arr;
@@ -45,7 +52,6 @@ function buildSeries(chartData, targetLeaves, maxLAR, pastureKey) {
   const allActual = chartData.actual || [];
   const tempLARs  = allActual.map(r => Number(r.temp_lar ?? 0));
 
-  // Backward cumulative sum — return days even if target not reached (underestimate for early rows)
   const tempRounds = allActual.map((_, i) => {
     let sum = 0, days = 0;
     for (let j = i; j >= 0; j--) {
@@ -56,7 +62,6 @@ function buildSeries(chartData, targetLeaves, maxLAR, pastureKey) {
     return days;
   });
 
-  // Only display the last 12 months
   const cutoff = new Date();
   cutoff.setMonth(cutoff.getMonth() - 12);
   const cutoffStr = cutoff.toISOString().slice(0, 10);
@@ -65,12 +70,11 @@ function buildSeries(chartData, targetLeaves, maxLAR, pastureKey) {
     const date = (row.date || '').slice(0, 10);
     const doy  = dateToDayOfYear(new Date(date + 'T00:00:00Z'));
     const perc = percByDoy[doy] || {};
-    const tLAR = n(row.temp_lar);
     return {
       date,
       tempRound:    tempRounds[idx],
       tempRoundP50: n(perc.round_p50),
-      tempLAR:      tLAR,
+      tempLAR:      n(row.temp_lar),
       larP50:       perc.temp_p50 != null ? calcTempLAR(Number(perc.temp_p50), pastureKey) : null,
       tMean:        n(row.t_mean),
       tMin:         n(row.t_min),
@@ -91,12 +95,51 @@ function buildSeries(chartData, targetLeaves, maxLAR, pastureKey) {
   return [...past, ...future];
 }
 
-const RANGE_BTNS = ['1W', '1M', 'Full'];
+// ── PanChart ──────────────────────────────────────────────────────────────────
+// Wraps a chart div with pointer-based pan gesture support.
+function PanChart({ canPan, onPanDelta, onTap, children, containerRef }) {
+  const panRef = useRef(null);
+
+  function handlePointerDown(e) {
+    if (!canPan) return;
+    panRef.current = { startX: e.clientX, lastDelta: 0, moved: false };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+
+  function handlePointerMove(e) {
+    const p = panRef.current;
+    if (!p) return;
+    const dx = e.clientX - p.startX;
+    if (Math.abs(dx) > 5) p.moved = true;
+    const w = containerRef?.current?.offsetWidth || 300;
+    onPanDelta(dx, w);
+  }
+
+  function handlePointerUp(e) {
+    const p = panRef.current;
+    panRef.current = null;
+    if (!p) return;
+    if (!p.moved) onTap?.();
+  }
+
+  return (
+    <div
+      ref={containerRef}
+      style={{ touchAction: canPan ? 'none' : 'auto', userSelect: 'none', cursor: canPan ? 'grab' : 'default' }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={() => { panRef.current = null; }}
+    >
+      {children}
+    </div>
+  );
+}
 
 function RangeBar({ range, setRange }) {
   return (
     <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-      {RANGE_BTNS.map(r => (
+      {['1W', '1M', 'Full'].map(r => (
         <button key={r} onClick={() => setRange(r)} style={{
           fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20,
           border: 'none', cursor: 'pointer',
@@ -109,13 +152,14 @@ function RangeBar({ range, setRange }) {
 }
 
 export default function TemperatureScreen({ scenario, chartData, loading, onNavigate }) {
-  const [fRL, setFRL]       = useState(false);
-  const [fTemp, setFTemp]   = useState(false);
-  const [pctRL, setPctRL]   = useState(false);
-  const [pctTemp, setPctTemp] = useState(false);
+  const [fRL, setFRL]         = useState(false);
+  const [fTemp, setFTemp]     = useState(false);
+  const [pctRL, setPctRL]     = useState(false);
   const [c1, setC1] = useState({ tempRound: true, tempLAR: true, p50: true });
   const [c2, setC2] = useState({ tMax: true, tMean: true, tMin: true });
-  const [range, setRange]   = useState('Full');
+  const [range, setRange]     = useState('Full');
+  const [offset, setOffset]   = useState(0);   // days offset from today
+  const panStartRef = useRef(null); // { startOffset }
 
   const pasture = PASTURE_PARAMS[scenario.pasture_key];
   const maxLAR  = pasture ? (pasture.optimumTemp - pasture.baseTemp) / pasture.phyllochron : 0.17;
@@ -128,31 +172,68 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   const todayStr = new Date().toISOString().slice(0, 10);
   const series   = useMemo(() => buildSeries(chartData, target, maxLAR, scenario.pasture_key), [chartData, target, maxLAR, scenario.pasture_key]);
 
+  const halfWindow = range === '1W' ? 7 : range === '1M' ? 30 : null;
+  const canPan     = halfWindow != null;
+  const windowDays = halfWindow != null ? halfWindow * 2 : null;
+
   const displaySeries = useMemo(() => {
-    const today = new Date();
     const binDays = range === '1W' ? 1 : range === '1M' ? 4 : 7;
     let filtered = series;
-    if (range === '1W') {
-      const p = new Date(today); p.setDate(p.getDate() - 7);
-      const f = new Date(today); f.setDate(f.getDate() + 7);
-      filtered = series.filter(r => r.date >= p.toISOString().slice(0, 10) && r.date <= f.toISOString().slice(0, 10));
-    } else if (range === '1M') {
-      const p = new Date(today); p.setDate(p.getDate() - 30);
-      const f = new Date(today); f.setDate(f.getDate() + 30);
+    if (halfWindow != null) {
+      const center = new Date(todayStr + 'T00:00:00Z');
+      center.setUTCDate(center.getUTCDate() + offset);
+      const p = new Date(center); p.setUTCDate(p.getUTCDate() - halfWindow);
+      const f = new Date(center); f.setUTCDate(f.getUTCDate() + halfWindow);
       filtered = series.filter(r => r.date >= p.toISOString().slice(0, 10) && r.date <= f.toISOString().slice(0, 10));
     }
     return binSeries(filtered, binDays);
-  }, [series, range]);
+  }, [series, range, offset, halfWindow, todayStr]);
 
-  const useBar = range === '1W';
-  const ticks  = buildMonthTicks(displaySeries, todayStr);
+  const handleRangeChange = useCallback((r) => {
+    setRange(r);
+    setOffset(0);
+  }, []);
+
+  const containerRef = useRef(null);
+
+  const handlePanDelta = useCallback((dx, containerW) => {
+    if (!canPan || !windowDays) return;
+    if (!panStartRef.current) panStartRef.current = { startOffset: offset };
+    const pxPerDay = containerW / windowDays;
+    const dayDelta = Math.round(-dx / pxPerDay);
+    const maxOff = 365 - halfWindow;
+    const minOff = -(365 - halfWindow);
+    setOffset(Math.max(minOff, Math.min(maxOff, panStartRef.current.startOffset + dayDelta)));
+  }, [canPan, windowDays, offset, halfWindow]);
+
+  // Reset panStartRef on pointer up
+  const handleTap = useCallback(() => {
+    panStartRef.current = null;
+    setOffset(0);
+  }, []);
+
+  // Also reset panStartRef when pan ends (pointer up)
+  const handlePanEnd = useCallback(() => {
+    panStartRef.current = null;
+  }, []);
+
+  const ticks   = buildMonthTicks(displaySeries, todayStr);
+  const useBar  = range === '1W';
 
   const tMean = state?.t_mean   != null ? Number(state.t_mean)   : null;
   const tMin  = state?.t_min    != null ? Number(state.t_min)    : null;
   const tMax  = state?.t_max    != null ? Number(state.t_max)    : null;
   const tLAR  = state?.temp_lar != null ? Number(state.temp_lar) : null;
 
-  const chartProps = { data: displaySeries, margin: { top: 5, right: 38, left: -20, bottom: 0 } };
+  // Show center date when panned away from today
+  const centerDate = useMemo(() => {
+    if (!canPan || offset === 0) return null;
+    const d = new Date(todayStr + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() + offset);
+    return fmtDay(d.toISOString().slice(0, 10));
+  }, [canPan, offset, todayStr]);
+
+  const chartMargin = { top: 5, right: 38, left: -20, bottom: 0 };
 
   return (
     <div style={styles.screen}>
@@ -180,25 +261,36 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
           )}
           <div style={{ fontSize: 12, fontWeight: 600, color: '#2d4a1e', marginBottom: 2 }}>Temp round length & Temp LAR</div>
           <div style={{ fontSize: 10, color: C.muted, marginBottom: 8 }}>Left: round length (days) · Right: Temp LAR (leaves/day) · Dashed = P50</div>
-          <RangeBar range={range} setRange={setRange} />
+          <RangeBar range={range} setRange={handleRangeChange} />
+
+          {centerDate && (
+            <div
+              onClick={() => { panStartRef.current = null; setOffset(0); }}
+              style={{ fontSize: 10, color: C.muted, marginBottom: 6, cursor: 'pointer' }}
+            >
+              Centred on {centerDate} · Tap to return to today
+            </div>
+          )}
 
           {loading && <p style={{ ...styles.muted, textAlign: 'center' }}>Loading...</p>}
           {!loading && displaySeries.length > 0 && (
-            <ResponsiveContainer width="100%" height={160}>
-              <ComposedChart {...chartProps}>
-                <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
-                <XAxis dataKey="date" ticks={ticks} interval={0} height={24} tick={xAxisTick(todayStr)} />
-                <YAxis yAxisId="left"  orientation="left"  {...yAxisProps} domain={[0, 'auto']} />
-                <YAxis yAxisId="right" orientation="right" {...yAxisProps} domain={[0, 'auto']} />
-                <ReferenceLine yAxisId="left" x={todayStr} stroke="#2d5a1b" strokeWidth={2} strokeOpacity={0.7} />
-                {c1.tempRound && useBar && <Bar  yAxisId="left"  dataKey="tempRound" fill="#c47a12" opacity={0.8} isAnimationActive={false} />}
-                {c1.tempRound && !useBar && <Line yAxisId="left"  dataKey="tempRound" stroke="#c47a12" strokeWidth={2.5} dot={false} connectNulls />}
-                {c1.p50       && <Line yAxisId="left"  dataKey="tempRoundP50" stroke="#c47a12" strokeWidth={1} dot={false} strokeDasharray="6 3" connectNulls />}
-                {c1.tempLAR   && useBar && <Bar  yAxisId="right" dataKey="tempLAR" fill="#3a6b1a" opacity={0.8} isAnimationActive={false} />}
-                {c1.tempLAR   && !useBar && <Line yAxisId="right" dataKey="tempLAR" stroke="#3a6b1a" strokeWidth={2} dot={false} connectNulls />}
-                {c1.p50       && <Line yAxisId="right" dataKey="larP50" stroke="#3a6b1a" strokeWidth={1} dot={false} strokeDasharray="6 3" connectNulls />}
-              </ComposedChart>
-            </ResponsiveContainer>
+            <PanChart canPan={canPan} onPanDelta={handlePanDelta} onTap={handleTap} containerRef={containerRef}>
+              <ResponsiveContainer width="100%" height={160}>
+                <ComposedChart data={displaySeries} margin={chartMargin}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
+                  <XAxis dataKey="date" ticks={ticks} interval={0} height={24} tick={xAxisTick(todayStr)} />
+                  <YAxis yAxisId="left"  orientation="left"  {...yAxisProps} domain={[0, 'auto']} />
+                  <YAxis yAxisId="right" orientation="right" {...yAxisProps} domain={[0, 'auto']} />
+                  <ReferenceLine yAxisId="left" x={todayStr} stroke="#2d5a1b" strokeWidth={2} strokeOpacity={0.7} />
+                  {c1.tempRound && useBar  && <Bar  yAxisId="left"  dataKey="tempRound" fill="#c47a12" opacity={0.8} isAnimationActive={false} />}
+                  {c1.tempRound && !useBar && <Line yAxisId="left"  dataKey="tempRound" stroke="#c47a12" strokeWidth={2.5} dot={false} connectNulls />}
+                  {c1.p50                  && <Line yAxisId="left"  dataKey="tempRoundP50" stroke="#c47a12" strokeWidth={1} dot={false} strokeDasharray="6 3" connectNulls />}
+                  {c1.tempLAR  && useBar  && <Bar  yAxisId="right" dataKey="tempLAR" fill="#3a6b1a" opacity={0.8} isAnimationActive={false} />}
+                  {c1.tempLAR  && !useBar && <Line yAxisId="right" dataKey="tempLAR" stroke="#3a6b1a" strokeWidth={2} dot={false} connectNulls />}
+                  {c1.p50                  && <Line yAxisId="right" dataKey="larP50" stroke="#3a6b1a" strokeWidth={1} dot={false} strokeDasharray="6 3" connectNulls />}
+                </ComposedChart>
+              </ResponsiveContainer>
+            </PanChart>
           )}
           <TodayLabel />
           <Legend items={[
@@ -246,21 +338,23 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
           )}
           <div style={{ fontSize: 12, fontWeight: 600, color: '#2d4a1e', marginBottom: 2 }}>Temperature (°C)</div>
           <div style={{ fontSize: 10, color: C.muted, marginBottom: 8 }}>Daily T_max, T_mean, T_min · Actual data only (no forecast)</div>
-          <RangeBar range={range} setRange={setRange} />
+          <RangeBar range={range} setRange={handleRangeChange} />
 
           {loading && <p style={{ ...styles.muted, textAlign: 'center' }}>Loading...</p>}
           {!loading && displaySeries.length > 0 && (
-            <ResponsiveContainer width="100%" height={160}>
-              <ComposedChart data={displaySeries} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
-                <XAxis dataKey="date" ticks={ticks} interval={0} height={24} tick={xAxisTick(todayStr)} />
-                <YAxis {...yAxisProps} domain={['auto', 'auto']} />
-                <ReferenceLine x={todayStr} stroke="#2d5a1b" strokeWidth={2} strokeOpacity={0.7} />
-                {c2.tMax  && <Line dataKey="tMax"  stroke="#c43a2a" strokeWidth={1.5} dot={false} connectNulls />}
-                {c2.tMean && <Line dataKey="tMean" stroke="#c47a12" strokeWidth={2}   dot={false} connectNulls />}
-                {c2.tMin  && <Line dataKey="tMin"  stroke="#2a6a9e" strokeWidth={1.5} dot={false} connectNulls />}
-              </ComposedChart>
-            </ResponsiveContainer>
+            <PanChart canPan={canPan} onPanDelta={handlePanDelta} onTap={handleTap} containerRef={containerRef}>
+              <ResponsiveContainer width="100%" height={160}>
+                <ComposedChart data={displaySeries} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
+                  <XAxis dataKey="date" ticks={ticks} interval={0} height={24} tick={xAxisTick(todayStr)} />
+                  <YAxis {...yAxisProps} domain={['auto', 'auto']} />
+                  <ReferenceLine x={todayStr} stroke="#2d5a1b" strokeWidth={2} strokeOpacity={0.7} />
+                  {c2.tMax  && <Line dataKey="tMax"  stroke="#c43a2a" strokeWidth={1.5} dot={false} connectNulls />}
+                  {c2.tMean && <Line dataKey="tMean" stroke="#c47a12" strokeWidth={2}   dot={false} connectNulls />}
+                  {c2.tMin  && <Line dataKey="tMin"  stroke="#2a6a9e" strokeWidth={1.5} dot={false} connectNulls />}
+                </ComposedChart>
+              </ResponsiveContainer>
+            </PanChart>
           )}
           <TodayLabel />
           <Legend items={[
