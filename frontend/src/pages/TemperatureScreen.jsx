@@ -1,7 +1,7 @@
 // round-length/frontend/src/pages/TemperatureScreen.jsx
 import { useState, useMemo } from 'react';
 import { C, styles } from '../App';
-import { PASTURE_PARAMS, dateToDayOfYear } from '../lib/formula';
+import { PASTURE_PARAMS, dateToDayOfYear, calcTempLAR } from '../lib/formula';
 import {
   ComposedChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine, ResponsiveContainer,
 } from 'recharts';
@@ -10,7 +10,7 @@ import {
   buildMonthTicks, xAxisTick, yAxisProps,
 } from '../components/SeasonUI';
 
-function buildSeries(chartData, targetLeaves, maxLAR) {
+function buildSeries(chartData, targetLeaves, maxLAR, pastureKey) {
   if (!chartData) return [];
   const n = v => v != null ? Number(v) : null;
 
@@ -46,7 +46,7 @@ function buildSeries(chartData, targetLeaves, maxLAR) {
       tempRound:    tempRounds[idx],
       tempRoundP50: n(perc.round_p50),
       tempLAR:      tLAR,
-      larP50:       n(perc.lar_p50),
+      larP50:       perc.temp_p50 != null ? calcTempLAR(Number(perc.temp_p50), pastureKey) : null,
       tMean:        n(row.t_mean),
       tMin:         n(row.t_min),
       tMax:         n(row.t_max),
@@ -79,7 +79,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   const toggle2 = k => setC2(p => ({ ...p, [k]: !p[k] }));
 
   const todayStr = new Date().toISOString().slice(0, 10);
-  const series   = useMemo(() => buildSeries(chartData, target, maxLAR), [chartData, target, maxLAR]);
+  const series   = useMemo(() => buildSeries(chartData, target, maxLAR, scenario.pasture_key), [chartData, target, maxLAR, scenario.pasture_key]);
   const ticks    = buildMonthTicks(series, todayStr);
 
   const tMean = state?.t_mean != null ? Number(state.t_mean) : null;
