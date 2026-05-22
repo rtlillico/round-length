@@ -280,7 +280,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
               <ResponsiveContainer width="100%" height={160}>
                 <ComposedChart data={displaySeries} margin={chartMargin}>
                   <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
-                  <XAxis dataKey="date" ticks={ticks} interval={0} height={24} tick={tickFn} />
+                  <XAxis dataKey="date" ticks={ticks} interval={0} height={32} tick={tickFn} />
                   <YAxis yAxisId="left"  orientation="left"  {...yAxisProps} domain={[0, 'auto']} />
                   <YAxis yAxisId="right" orientation="right" {...yAxisProps} domain={[0, 'auto']} />
                   <ReferenceLine yAxisId="left" x={todayNearest} stroke="#2d5a1b" strokeWidth={2} strokeOpacity={0.7} />
@@ -348,7 +348,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
               <ResponsiveContainer width="100%" height={160}>
                 <ComposedChart data={displaySeries} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
-                  <XAxis dataKey="date" ticks={ticks} interval={0} height={24} tick={tickFn} />
+                  <XAxis dataKey="date" ticks={ticks} interval={0} height={32} tick={tickFn} />
                   <YAxis {...yAxisProps} domain={['auto', 'auto']} />
                   <ReferenceLine x={todayNearest} stroke="#2d5a1b" strokeWidth={2} strokeOpacity={0.7} />
                   {c2.tMax  && <Line dataKey="tMax"  stroke="#c43a2a" strokeWidth={1.5} dot={false} connectNulls />}

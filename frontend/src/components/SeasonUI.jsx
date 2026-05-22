@@ -172,12 +172,16 @@ export function buildMonthTicks(series, todayStr, stepMonths = 1) {
   const end = new Date(dates[dates.length - 1] + 'T00:00:00Z');
   let d = new Date(dates[0] + 'T00:00:00Z');
   d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
+  const snappedToday = snapToNearest(todayStr, dates) ?? todayStr;
+  const todayMs = new Date(snappedToday + 'T00:00:00Z').getTime();
   while (d <= end) {
     const snapped = snapToNearest(d.toISOString().slice(0, 10), dates);
-    if (snapped) ticks.add(snapped);
+    if (snapped) {
+      const diffDays = Math.abs(new Date(snapped + 'T00:00:00Z').getTime() - todayMs) / 86400000;
+      if (diffDays > 20) ticks.add(snapped); // skip month ticks too close to TODAY
+    }
     d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + stepMonths, 1));
   }
-  const snappedToday = snapToNearest(todayStr, dates) ?? todayStr;
   ticks.add(snappedToday);
   return [...ticks].sort();
 }
@@ -249,7 +253,7 @@ export function xAxisTick(todayStr, nearestToday) {
     return (
       <text textAnchor="middle" fontSize={8} fill="#9aab85">
         <tspan x={x} y={y + 10}>{mon}</tspan>
-        {isJan && <tspan x={x} y={y + 18} fontSize={7}>{d.getUTCFullYear()}</tspan>}
+        {isJan && <tspan x={x} y={y + 20} fontSize={9}>{d.getUTCFullYear()}</tspan>}
       </text>
     );
   };
