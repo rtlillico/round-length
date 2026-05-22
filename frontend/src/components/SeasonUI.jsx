@@ -192,15 +192,18 @@ export function nearestToToday(series, todayStr) {
   return snapToNearest(todayStr, series.map(r => r.date)) ?? todayStr;
 }
 
-// Weekly tick builder — snaps each 7-day step from today to the nearest series date
+// Weekly tick builder — snaps each 7-day step from today to the nearest series date.
+// Excludes any weekly tick within 4 days of snappedToday to avoid crowding TODAY label.
 export function buildWeeklyTicks(series, todayStr) {
   if (!series.length) return [];
-  const dates   = series.map(r => r.date);
-  const dateSet = new Set(dates);
-  const first   = new Date(dates[0] + 'T00:00:00Z');
-  const last    = new Date(dates[dates.length - 1] + 'T00:00:00Z');
-  const today   = new Date(todayStr + 'T00:00:00Z');
-  const ticks   = new Set([todayStr]);
+  const dates        = series.map(r => r.date);
+  const dateSet      = new Set(dates);
+  const first        = new Date(dates[0] + 'T00:00:00Z');
+  const last         = new Date(dates[dates.length - 1] + 'T00:00:00Z');
+  const today        = new Date(todayStr + 'T00:00:00Z');
+  const snappedToday = snapToNearest(todayStr, dates) ?? todayStr;
+  const todayMs      = new Date(snappedToday + 'T00:00:00Z').getTime();
+  const ticks        = new Set([snappedToday]);
 
   for (const dir of [-1, 1]) {
     let d = new Date(today);
@@ -209,8 +212,16 @@ export function buildWeeklyTicks(series, todayStr) {
       for (let dd = 0; dd <= 4; dd++) {
         const p = new Date(d); p.setUTCDate(p.getUTCDate() + dd);
         const m = new Date(d); m.setUTCDate(m.getUTCDate() - dd);
-        if (dateSet.has(p.toISOString().slice(0, 10))) { ticks.add(p.toISOString().slice(0, 10)); break; }
-        if (dd > 0 && dateSet.has(m.toISOString().slice(0, 10))) { ticks.add(m.toISOString().slice(0, 10)); break; }
+        const ps = p.toISOString().slice(0, 10);
+        const ms = m.toISOString().slice(0, 10);
+        if (dateSet.has(ps)) {
+          if (Math.abs(new Date(ps + 'T00:00:00Z') - todayMs) / 86400000 > 4) ticks.add(ps);
+          break;
+        }
+        if (dd > 0 && dateSet.has(ms)) {
+          if (Math.abs(new Date(ms + 'T00:00:00Z') - todayMs) / 86400000 > 4) ticks.add(ms);
+          break;
+        }
       }
       d.setUTCDate(d.getUTCDate() + dir * 7);
     }
@@ -218,10 +229,12 @@ export function buildWeeklyTicks(series, todayStr) {
   return [...ticks].sort();
 }
 
-// Tick renderer showing "26 Apr" — used for 1W and 1M views
-export function dayMonthTick(todayStr) {
+// Tick renderer showing "26 Apr" — used for 1W and 1M views.
+// Pass nearestToday so TODAY is correctly detected even on binned data.
+export function dayMonthTick(todayStr, nearestToday) {
+  const todayMark = nearestToday ?? todayStr;
   return ({ x, y, payload }) => {
-    const isToday = payload.value === todayStr;
+    const isToday = payload.value === todayMark;
     const d = new Date(payload.value + 'T00:00:00Z');
     if (isToday) return (
       <text textAnchor="middle" fontSize={9} fontWeight="bold" fill="#2d5a1b">

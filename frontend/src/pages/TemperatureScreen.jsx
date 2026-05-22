@@ -219,7 +219,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
 
   const todayNearest = nearestToToday(displaySeries, todayStr);
   const ticks  = range === 'Full' ? buildMonthTicks(displaySeries, todayStr, 2) : buildWeeklyTicks(displaySeries, todayStr);
-  const tickFn = range === 'Full' ? xAxisTick(todayStr, todayNearest) : dayMonthTick(todayStr);
+  const tickFn = range === 'Full' ? xAxisTick(todayStr, todayNearest) : dayMonthTick(todayStr, todayNearest);
   const useBar = range === '1W';
 
   const tMean = state?.t_mean   != null ? Number(state.t_mean)   : null;
