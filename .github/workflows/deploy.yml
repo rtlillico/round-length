@@ -1,0 +1,35 @@
+name: Deploy to server
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 139.84.199.217
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            cd /var/www/round-length
+
+            echo "==> Pulling latest code"
+            git pull origin master
+
+            echo "==> Installing frontend dependencies"
+            cd frontend
+            npm ci
+
+            echo "==> Building frontend"
+            npm run build
+
+            echo "==> Restarting backend"
+            cd ..
+            pm2 restart round-length
+
+            echo "==> Done"
