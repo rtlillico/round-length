@@ -224,9 +224,10 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     };
   }
 
-  const yL = { type: 'linear', position: 'left',  ticks: { color: '#9aab85', font: { size: 7 }, maxTicksLimit: 3 }, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false } };
-  const yR = { type: 'linear', position: 'right', ticks: { color: '#9aab85', font: { size: 7 }, maxTicksLimit: 3 }, grid: { display: false }, border: { display: false } };
-  const yS = { ticks: { color: '#9aab85', font: { size: 7 }, maxTicksLimit: 4 }, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false } };
+  // Factory functions — Chart.js mutates scale objects internally, so never reuse across charts
+  const mkYL = () => ({ type: 'linear', position: 'left',  ticks: { color: '#9aab85', font: { size: 7 }, maxTicksLimit: 3 }, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false } });
+  const mkYR = () => ({ type: 'linear', position: 'right', ticks: { color: '#9aab85', font: { size: 7 }, maxTicksLimit: 3 }, grid: { display: false }, border: { display: false } });
+  const mkYS = () => ({ ticks: { color: '#9aab85', font: { size: 7 }, maxTicksLimit: 4 }, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false } });
 
   // ── dataset builders ─────────────────────────────────────────────────────────
   function ds1main() {
@@ -321,19 +322,19 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     const win = clampWin(winRef.current.start, winRef.current.width);
     const ic = (cv, ct, h) => { if (!cv || !ct) return; cv.width = ct.clientWidth || 340; cv.height = h; };
     [mC1, zC1, mC2, zC2].forEach(r => { if (r.current) { r.current.destroy(); r.current = null; } });
-    ic(mCv1.current, mCt1.current, 80);
+    ic(mCv1.current, mCt1.current, 120);
     ic(zCv1.current, zCt1.current, 180);
-    ic(mCv2.current, mCt2.current, 80);
+    ic(mCv2.current, mCt2.current, 120);
     ic(zCv2.current, zCt2.current, 180);
 
     const base = { responsive: false, animation: false, plugins: { legend: { display: false }, tooltip: { enabled: false } } };
-    if (mCv1.current) mC1.current = new Chart(mCv1.current, { type: 'line', data: { datasets: ds1main() }, options: { ...base, scales: { x: xMain(), yL, yR } } });
-    if (mCv2.current) mC2.current = new Chart(mCv2.current, { type: 'line', data: { datasets: ds2main() }, options: { ...base, scales: { x: xMain(), y: yS } } });
+    if (mCv1.current) mC1.current = new Chart(mCv1.current, { type: 'line', data: { datasets: ds1main() }, options: { ...base, scales: { x: xMain(), yL: mkYL(), yR: mkYR() } } });
+    if (mCv2.current) mC2.current = new Chart(mCv2.current, { type: 'line', data: { datasets: ds2main() }, options: { ...base, scales: { x: xMain(), y: mkYS() } } });
 
     const pw1 = zCt1.current?.clientWidth || 340;
     const pw2 = zCt2.current?.clientWidth || 340;
-    if (zCv1.current) zC1.current = new Chart(zCv1.current, { type: 'bar', data: { datasets: ds1zoom(win, pw1) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yL, yR } } });
-    if (zCv2.current) zC2.current = new Chart(zCv2.current, { type: 'line', data: { datasets: ds2zoom(win, pw2) }, options: { ...base, scales: { x: xZoom(win.start, win.end), y: yS } } });
+    if (zCv1.current) zC1.current = new Chart(zCv1.current, { type: 'bar', data: { datasets: ds1zoom(win, pw1) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yL: mkYL(), yR: mkYR() } } });
+    if (zCv2.current) zC2.current = new Chart(zCv2.current, { type: 'line', data: { datasets: ds2zoom(win, pw2) }, options: { ...base, scales: { x: xZoom(win.start, win.end), y: mkYS() } } });
 
     posOverlays();
   }
@@ -347,13 +348,13 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     if (zCv1.current && zCt1.current) {
       const pw = zCt1.current.clientWidth || 340;
       zCv1.current.width = pw; zCv1.current.height = 180;
-      zC1.current = new Chart(zCv1.current, { type: 'bar', data: { datasets: ds1zoom(win, pw) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yL, yR } } });
+      zC1.current = new Chart(zCv1.current, { type: 'bar', data: { datasets: ds1zoom(win, pw) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yL: mkYL(), yR: mkYR() } } });
     }
     if (zC2.current) { zC2.current.destroy(); zC2.current = null; }
     if (zCv2.current && zCt2.current) {
       const pw = zCt2.current.clientWidth || 340;
       zCv2.current.width = pw; zCv2.current.height = 180;
-      zC2.current = new Chart(zCv2.current, { type: 'line', data: { datasets: ds2zoom(win, pw) }, options: { ...base, scales: { x: xZoom(win.start, win.end), y: yS } } });
+      zC2.current = new Chart(zCv2.current, { type: 'line', data: { datasets: ds2zoom(win, pw) }, options: { ...base, scales: { x: xZoom(win.start, win.end), y: mkYS() } } });
     }
     posOverlays();
   }
@@ -510,7 +511,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
           {!loading && (
             <>
               <div ref={mCt1}
-                style={{ position: 'relative', height: 80, touchAction: 'none', userSelect: 'none', overflow: 'hidden' }}
+                style={{ position: 'relative', height: 120, touchAction: 'none', userSelect: 'none', overflow: 'hidden' }}
                 onPointerDown={onMainDown} onPointerMove={onMainMove} onPointerUp={onMainUp} onPointerCancel={onMainUp}
               >
                 <canvas ref={mCv1} style={{ display: 'block' }} />
@@ -592,7 +593,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
           {!loading && (
             <>
               <div ref={mCt2}
-                style={{ position: 'relative', height: 80, touchAction: 'none', userSelect: 'none', overflow: 'hidden' }}
+                style={{ position: 'relative', height: 120, touchAction: 'none', userSelect: 'none', overflow: 'hidden' }}
                 onPointerDown={onMainDown} onPointerMove={onMainMove} onPointerUp={onMainUp} onPointerCancel={onMainUp}
               >
                 <canvas ref={mCv2} style={{ display: 'block' }} />
