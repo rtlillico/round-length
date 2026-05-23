@@ -104,6 +104,7 @@ function buildArrays(chartData, targetLeaves, pastureKey) {
 }
 
 const toXY = (arr) => arr.map((v, i) => v != null ? { x: i, y: v } : null).filter(Boolean);
+const toXYWin = (arr, s, e) => { const r = []; for (let i = s; i <= e; i++) { if (arr[i] != null) r.push({ x: i, y: arr[i] }); } return r; };
 
 function clampWin(start, width) {
   let end = start + width - 1;
@@ -255,11 +256,11 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     const bt = Math.max(2, Math.floor((pw / span) * 0.82));
     const v = v1Ref.current; const ds = [];
     if (v.tempRound) ds.push(bars
-      ? { type: 'bar',  data: roundData, backgroundColor: 'rgba(196,122,18,0.85)', borderWidth: 0, barThickness: bt, yAxisID: 'yL' }
+      ? { type: 'bar',  data: toXYWin(roundData, win.start, win.end), backgroundColor: 'rgba(196,122,18,0.85)', borderWidth: 0, barThickness: bt, yAxisID: 'yL' }
       : { type: 'line', data: toXY(roundData), borderColor: '#c47a12', borderWidth: 2.5, pointRadius: 0, tension: 0.2, yAxisID: 'yL' });
     if (v.p50) ds.push({ type: 'line', data: toXY(roundP50), borderColor: '#c47a12', borderWidth: 1, pointRadius: 0, borderDash: [6, 3], yAxisID: 'yL' });
     if (v.tempLAR) ds.push(bars
-      ? { type: 'bar',  data: larData, backgroundColor: 'rgba(58,107,26,0.85)', borderWidth: 0, barThickness: bt, yAxisID: 'yR' }
+      ? { type: 'bar',  data: toXYWin(larData, win.start, win.end), backgroundColor: 'rgba(58,107,26,0.85)', borderWidth: 0, barThickness: bt, yAxisID: 'yR' }
       : { type: 'line', data: toXY(larData), borderColor: '#3a6b1a', borderWidth: 2, pointRadius: 0, tension: 0.2, yAxisID: 'yR' });
     if (v.p50) ds.push({ type: 'line', data: toXY(larP50), borderColor: '#3a6b1a', borderWidth: 1, pointRadius: 0, borderDash: [6, 3], yAxisID: 'yR' });
     return ds;
@@ -269,9 +270,9 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     const span = win.end - win.start + 1; const bars = span < 60;
     const bt = Math.max(2, Math.floor((pw / span) * 0.82));
     const v = v2Ref.current; const ds = [];
-    if (v.tMax)  ds.push(bars ? { type: 'bar', data: tMaxData,  backgroundColor: 'rgba(196,58,42,0.7)',   borderWidth: 0, barThickness: bt } : { type: 'line', data: toXY(tMaxData),  borderColor: '#c43a2a', borderWidth: 2,   pointRadius: 0, tension: 0.2 });
-    if (v.tMean) ds.push(bars ? { type: 'bar', data: tMeanData, backgroundColor: 'rgba(196,122,18,0.85)', borderWidth: 0, barThickness: bt } : { type: 'line', data: toXY(tMeanData), borderColor: '#c47a12', borderWidth: 2.5, pointRadius: 0, tension: 0.2 });
-    if (v.tMin)  ds.push(bars ? { type: 'bar', data: tMinData,  backgroundColor: 'rgba(42,106,158,0.7)',  borderWidth: 0, barThickness: bt } : { type: 'line', data: toXY(tMinData),  borderColor: '#2a6a9e', borderWidth: 2,   pointRadius: 0, tension: 0.2 });
+    if (v.tMax)  ds.push(bars ? { type: 'bar', data: toXYWin(tMaxData,  win.start, win.end), backgroundColor: 'rgba(196,58,42,0.7)',   borderWidth: 0, barThickness: bt } : { type: 'line', data: toXY(tMaxData),  borderColor: '#c43a2a', borderWidth: 2,   pointRadius: 0, tension: 0.2 });
+    if (v.tMean) ds.push(bars ? { type: 'bar', data: toXYWin(tMeanData, win.start, win.end), backgroundColor: 'rgba(196,122,18,0.85)', borderWidth: 0, barThickness: bt } : { type: 'line', data: toXY(tMeanData), borderColor: '#c47a12', borderWidth: 2.5, pointRadius: 0, tension: 0.2 });
+    if (v.tMin)  ds.push(bars ? { type: 'bar', data: toXYWin(tMinData,  win.start, win.end), backgroundColor: 'rgba(42,106,158,0.7)',  borderWidth: 0, barThickness: bt } : { type: 'line', data: toXY(tMinData),  borderColor: '#2a6a9e', borderWidth: 2,   pointRadius: 0, tension: 0.2 });
     return ds;
   }
 
