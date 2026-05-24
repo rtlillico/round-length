@@ -214,7 +214,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   function xZoom(xMin, xMax) {
     const tl = tlRef.current;
     return {
-      type: 'linear', min: xMin, max: xMax,
+      type: 'linear', min: xMin, max: xMax, offset: false,
       ticks: {
         autoSkip: false, maxRotation: 0, padding: 2, color: '#9aab85', font: { size: 8 },
         callback(val) { const i = Math.round(val); return (i >= 0 && i < tl.length && tl[i]) ? tl[i] : null; },
@@ -255,9 +255,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     const span = win.end - win.start + 1; const bars = span < 60;
     const bt = Math.max(2, Math.floor((pw / span) * 0.82));
     const v = v1Ref.current; const ds = [];
-    if (v.tempRound) ds.push(bars
-      ? { type: 'bar',  data: toXYWin(roundData, win.start, win.end), backgroundColor: 'rgba(196,122,18,0.85)', borderWidth: 0, barThickness: bt, yAxisID: 'yL' }
-      : { type: 'line', data: toXYWin(roundData, win.start, win.end), borderColor: '#c47a12', borderWidth: 2.5, pointRadius: 0, tension: 0.2, yAxisID: 'yL' });
+    if (v.tempRound) ds.push({ type: 'line', data: toXYWin(roundData, win.start, win.end), borderColor: '#c47a12', borderWidth: bars ? 2.5 : 2.5, pointRadius: 0, tension: 0.2, yAxisID: 'yL' });
     if (v.p50) ds.push({ type: 'line', data: toXYWin(roundP50, win.start, win.end), borderColor: '#c47a12', borderWidth: 1, pointRadius: 0, borderDash: [6, 3], yAxisID: 'yL' });
     if (v.tempLAR) ds.push(bars
       ? { type: 'bar',  data: toXYWin(larData, win.start, win.end), backgroundColor: 'rgba(58,107,26,0.85)', borderWidth: 0, barThickness: bt, yAxisID: 'yR' }
