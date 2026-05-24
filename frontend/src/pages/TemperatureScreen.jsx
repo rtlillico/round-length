@@ -427,6 +427,11 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   }
   function onEdgeUp() { edgeR.current = null; }
 
+  function centerOnToday() {
+    winRef.current.start = Math.round(TODAY - winRef.current.width / 2);
+    refreshZoom();
+  }
+
   function handlePill(w) {
     const win = clampWin(winRef.current.start, winRef.current.width);
     const ctr = Math.round((win.start + win.end) / 2);
@@ -557,7 +562,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                 {edgeDiv(seR1, 'r')}
                 <div ref={scM1} style={S.scrub}><div style={S.sDot} /></div>
                 <div ref={tL1}  style={S.todayL} />
-                <div ref={tP1}  style={S.todayP}>Today · {fmtDay(todayDateStr)}</div>
+                <div ref={tP1} style={{ ...S.todayP, pointerEvents: 'auto', cursor: 'pointer' }} onPointerDown={e => e.stopPropagation()} onClick={centerOnToday}>Today · {fmtDay(todayDateStr)}</div>
               </div>
 
               <div style={{ marginTop: 8 }}>
@@ -631,7 +636,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                 {edgeDiv(seR2, 'r')}
                 <div ref={scM2} style={S.scrub}><div style={S.sDot} /></div>
                 <div ref={tL2}  style={S.todayL} />
-                <div ref={tP2}  style={S.todayP}>Today · {fmtDay(todayDateStr)}</div>
+                <div ref={tP2} style={{ ...S.todayP, pointerEvents: 'auto', cursor: 'pointer' }} onPointerDown={e => e.stopPropagation()} onClick={centerOnToday}>Today · {fmtDay(todayDateStr)}</div>
               </div>
 
               <div style={{ marginTop: 8 }}>
