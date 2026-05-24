@@ -336,7 +336,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
 
     const pw1 = zCt1.current?.clientWidth || 340;
     const pw2 = zCt2.current?.clientWidth || 340;
-    if (zCv1.current) zC1.current = new Chart(zCv1.current, { type: 'bar', data: { datasets: ds1zoom(win, pw1) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yL: mkYL(), yR: mkYR() } } });
+    if (zCv1.current) zC1.current = new Chart(zCv1.current, { type: 'line', data: { datasets: ds1zoom(win, pw1) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yL: mkYL(), yR: mkYR() } } });
     if (zCv2.current) zC2.current = new Chart(zCv2.current, { type: 'line', data: { datasets: ds2zoom(win, pw2) }, options: { ...base, scales: { x: xZoom(win.start, win.end), y: mkYS() } } });
 
     posOverlays();
@@ -351,7 +351,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     if (zCv1.current && zCt1.current) {
       const pw = zCt1.current.clientWidth || 340;
       zCv1.current.width = pw; zCv1.current.height = 180;
-      zC1.current = new Chart(zCv1.current, { type: 'bar', data: { datasets: ds1zoom(win, pw) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yL: mkYL(), yR: mkYR() } } });
+      zC1.current = new Chart(zCv1.current, { type: 'line', data: { datasets: ds1zoom(win, pw) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yL: mkYL(), yR: mkYR() } } });
     }
     if (zC2.current) { zC2.current.destroy(); zC2.current = null; }
     if (zCv2.current && zCt2.current) {
