@@ -231,6 +231,14 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   const mkYL = () => ({ type: 'linear', position: 'left',  ticks: { color: '#9aab85', font: { size: 7 }, maxTicksLimit: 3 }, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false } });
   const mkYR = () => ({ type: 'linear', position: 'right', ticks: { color: '#9aab85', font: { size: 7 }, maxTicksLimit: 3 }, grid: { display: false }, border: { display: false } });
   const mkYS = () => ({ ticks: { color: '#9aab85', font: { size: 7 }, maxTicksLimit: 4 }, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false } });
+  // Fixed yR for zoom chart — max from full dataset so axis doesn't rescale while panning
+  function mkYRZoom() {
+    const { larData, larP50 } = arrRef.current;
+    const vals = [...larData, ...larP50].filter(v => v != null && isFinite(v) && v > 0);
+    const rawMax = vals.length ? Math.max(...vals) : 0.15;
+    const max = Math.ceil(rawMax * 20) / 20; // round up to nearest 0.05
+    return { type: 'linear', position: 'right', min: 0, max, ticks: { color: '#9aab85', font: { size: 7 }, maxTicksLimit: 3 }, grid: { display: false }, border: { display: false } };
+  }
 
   // ── dataset builders ─────────────────────────────────────────────────────────
   function ds1main() {
@@ -334,7 +342,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
 
     const pw1 = zCt1.current?.clientWidth || 340;
     const pw2 = zCt2.current?.clientWidth || 340;
-    if (zCv1.current) zC1.current = new Chart(zCv1.current, { type: 'line', data: { datasets: ds1zoom(win, pw1) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yL: mkYL(), yR: mkYR() } } });
+    if (zCv1.current) zC1.current = new Chart(zCv1.current, { type: 'line', data: { datasets: ds1zoom(win, pw1) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yL: mkYL(), yR: mkYRZoom() } } });
     if (zCv2.current) zC2.current = new Chart(zCv2.current, { type: 'line', data: { datasets: ds2zoom(win, pw2) }, options: { ...base, scales: { x: xZoom(win.start, win.end), y: mkYS() } } });
 
     posOverlays();
@@ -349,7 +357,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     if (zCv1.current && zCt1.current) {
       const pw = zCt1.current.clientWidth || 340;
       zCv1.current.width = pw; zCv1.current.height = 180;
-      zC1.current = new Chart(zCv1.current, { type: 'line', data: { datasets: ds1zoom(win, pw) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yL: mkYL(), yR: mkYR() } } });
+      zC1.current = new Chart(zCv1.current, { type: 'line', data: { datasets: ds1zoom(win, pw) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yL: mkYL(), yR: mkYRZoom() } } });
     }
     if (zC2.current) { zC2.current.destroy(); zC2.current = null; }
     if (zCv2.current && zCt2.current) {
