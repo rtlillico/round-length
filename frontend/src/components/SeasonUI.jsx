@@ -24,6 +24,11 @@ export function ScenarioBanner({ scenario, pasture, title, onBack }) {
           <div style={{ height: 1.5, background: 'rgba(255,255,255,0.25)', margin: '9px 0 7px' }} />
           <div style={{ fontSize: 16, fontWeight: 700, color: '#f0ead8', letterSpacing: 0.2 }}>{title}</div>
         </div>
+        <button onClick={() => window.location.reload()}
+          style={{ background: 'transparent', border: 'none', color: '#a8c48a', fontSize: 18, cursor: 'pointer', padding: '4px 6px', lineHeight: 1, flexShrink: 0 }}
+          title="Refresh">
+          ↻
+        </button>
       </div>
     </div>
   );
