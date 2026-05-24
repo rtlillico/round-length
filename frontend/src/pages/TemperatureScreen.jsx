@@ -513,19 +513,15 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
           {loading && <p style={{ color: C.muted, textAlign: 'center' }}>Loading…</p>}
           {!loading && (
             <>
-              <div ref={mCt1}
-                style={{ position: 'relative', height: 120, touchAction: 'none', userSelect: 'none', overflow: 'hidden' }}
-                onPointerDown={onMainDown} onPointerMove={onMainMove} onPointerUp={onMainUp} onPointerCancel={onMainUp}
+              <div style={{ fontSize: 10, color: '#5a6f48', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                Zoomed detail of window <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to pan</span>
+              </div>
+              <div ref={zCt1}
+                style={{ position: 'relative', height: 180, marginTop: 5, touchAction: 'none', userSelect: 'none', overflow: 'hidden', borderRadius: 6, cursor: 'grab' }}
+                onPointerDown={onZoomDown} onPointerMove={onZoomMove} onPointerUp={onZoomUp} onPointerCancel={onZoomUp}
               >
-                <canvas ref={mCv1} style={{ display: 'block' }} />
-                <div ref={sdl1} style={S.dim} />
-                <div ref={sb1}  style={S.band} />
-                <div ref={sdr1} style={S.dim} />
-                {edgeDiv(seL1, 'l')}
-                {edgeDiv(seR1, 'r')}
-                <div ref={scM1} style={S.scrub}><div style={S.sDot} /></div>
-                <div ref={tL1}  style={S.todayL} />
-                <div ref={tP1}  style={S.todayP}>Today · {fmtDay(todayDateStr)}</div>
+                <canvas ref={zCv1} style={{ display: 'block' }} />
+                <div ref={scZ1} style={S.scrub}><div style={S.sDot} /></div>
               </div>
 
               <div style={{ fontSize: 10, color: '#5a6f48', textAlign: 'center', marginTop: 6, fontWeight: 500 }}>{winLabel}</div>
@@ -549,14 +545,21 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
               )}
 
               <div style={{ fontSize: 10, color: '#5a6f48', marginTop: 10, fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                Zoomed detail of window <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to pan</span>
+                Full range <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to move window</span>
               </div>
-              <div ref={zCt1}
-                style={{ position: 'relative', height: 180, marginTop: 5, touchAction: 'none', userSelect: 'none', overflow: 'hidden', borderRadius: 6, cursor: 'grab' }}
-                onPointerDown={onZoomDown} onPointerMove={onZoomMove} onPointerUp={onZoomUp} onPointerCancel={onZoomUp}
+              <div ref={mCt1}
+                style={{ position: 'relative', height: 120, marginTop: 5, touchAction: 'none', userSelect: 'none', overflow: 'hidden' }}
+                onPointerDown={onMainDown} onPointerMove={onMainMove} onPointerUp={onMainUp} onPointerCancel={onMainUp}
               >
-                <canvas ref={zCv1} style={{ display: 'block' }} />
-                <div ref={scZ1} style={S.scrub}><div style={S.sDot} /></div>
+                <canvas ref={mCv1} style={{ display: 'block' }} />
+                <div ref={sdl1} style={S.dim} />
+                <div ref={sb1}  style={S.band} />
+                <div ref={sdr1} style={S.dim} />
+                {edgeDiv(seL1, 'l')}
+                {edgeDiv(seR1, 'r')}
+                <div ref={scM1} style={S.scrub}><div style={S.sDot} /></div>
+                <div ref={tL1}  style={S.todayL} />
+                <div ref={tP1}  style={S.todayP}>Today · {fmtDay(todayDateStr)}</div>
               </div>
 
               <div style={{ marginTop: 8 }}>
@@ -595,19 +598,15 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
 
           {!loading && (
             <>
-              <div ref={mCt2}
-                style={{ position: 'relative', height: 120, touchAction: 'none', userSelect: 'none', overflow: 'hidden' }}
-                onPointerDown={onMainDown} onPointerMove={onMainMove} onPointerUp={onMainUp} onPointerCancel={onMainUp}
+              <div style={{ fontSize: 10, color: '#5a6f48', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                Zoomed detail of window <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to pan</span>
+              </div>
+              <div ref={zCt2}
+                style={{ position: 'relative', height: 180, marginTop: 5, touchAction: 'none', userSelect: 'none', overflow: 'hidden', borderRadius: 6, cursor: 'grab' }}
+                onPointerDown={onZoomDown} onPointerMove={onZoomMove} onPointerUp={onZoomUp} onPointerCancel={onZoomUp}
               >
-                <canvas ref={mCv2} style={{ display: 'block' }} />
-                <div ref={sdl2} style={S.dim} />
-                <div ref={sb2}  style={S.band} />
-                <div ref={sdr2} style={S.dim} />
-                {edgeDiv(seL2, 'l')}
-                {edgeDiv(seR2, 'r')}
-                <div ref={scM2} style={S.scrub}><div style={S.sDot} /></div>
-                <div ref={tL2}  style={S.todayL} />
-                <div ref={tP2}  style={S.todayP}>Today · {fmtDay(todayDateStr)}</div>
+                <canvas ref={zCv2} style={{ display: 'block' }} />
+                <div ref={scZ2} style={S.scrub}><div style={S.sDot} /></div>
               </div>
 
               <div style={{ fontSize: 10, color: '#5a6f48', textAlign: 'center', marginTop: 6, fontWeight: 500 }}>{winLabel}</div>
@@ -620,14 +619,21 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
               )}
 
               <div style={{ fontSize: 10, color: '#5a6f48', marginTop: 10, fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                Zoomed detail of window <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to pan</span>
+                Full range <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to move window</span>
               </div>
-              <div ref={zCt2}
-                style={{ position: 'relative', height: 180, marginTop: 5, touchAction: 'none', userSelect: 'none', overflow: 'hidden', borderRadius: 6, cursor: 'grab' }}
-                onPointerDown={onZoomDown} onPointerMove={onZoomMove} onPointerUp={onZoomUp} onPointerCancel={onZoomUp}
+              <div ref={mCt2}
+                style={{ position: 'relative', height: 120, marginTop: 5, touchAction: 'none', userSelect: 'none', overflow: 'hidden' }}
+                onPointerDown={onMainDown} onPointerMove={onMainMove} onPointerUp={onMainUp} onPointerCancel={onMainUp}
               >
-                <canvas ref={zCv2} style={{ display: 'block' }} />
-                <div ref={scZ2} style={S.scrub}><div style={S.sDot} /></div>
+                <canvas ref={mCv2} style={{ display: 'block' }} />
+                <div ref={sdl2} style={S.dim} />
+                <div ref={sb2}  style={S.band} />
+                <div ref={sdr2} style={S.dim} />
+                {edgeDiv(seL2, 'l')}
+                {edgeDiv(seR2, 'r')}
+                <div ref={scM2} style={S.scrub}><div style={S.sDot} /></div>
+                <div ref={tL2}  style={S.todayL} />
+                <div ref={tP2}  style={S.todayP}>Today · {fmtDay(todayDateStr)}</div>
               </div>
 
               <div style={{ marginTop: 8 }}>
