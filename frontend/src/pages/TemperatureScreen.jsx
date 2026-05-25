@@ -14,7 +14,7 @@ Chart.register(BarController, LineController, LinearScale, CategoryScale, BarEle
 
 const N = 730, TODAY = 365;
 const MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const PILLS = [{ label: '2W', w: 14 }, { label: '2M', w: 60 }, { label: '4M', w: 120 }];
+const PILLS = [{ label: '1M', w: 30 }, { label: '4M', w: 120 }, { label: '8M', w: 240 }, { label: 'Full', w: 730 }];
 
 function fmtDay(dateStr) {
   if (!dateStr) return '';
@@ -131,7 +131,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   const [fTemp,   setFTemp]  = useState(false);
   const [visC1,   setVisC1]  = useState({ tempRound: true, tempLAR: true, p50: true });
   const [visC2,   setVisC2]  = useState({ tMax: true, tMean: true, tMin: true });
-  const [pill,    setPill]   = useState(60);
+  const [pill,    setPill]   = useState(120);
   const [winInfo, setWinInfo] = useState(null);  // { start, end }
   const [ctr1,    setCtr1]   = useState(null);
   const [ctr2,    setCtr2]   = useState(null);
@@ -149,7 +149,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   const tLabels = useMemo(() => buildTickLabels(arrays.dates), [arrays.dates]);
 
   // mutable refs for perf-sensitive state
-  const winRef  = useRef({ width: 60, start: TODAY - 30 });
+  const winRef  = useRef({ width: 120, start: TODAY - 60 });
   const panM    = useRef(null);
   const panZ    = useRef(null);
   const edgeR   = useRef(null);
