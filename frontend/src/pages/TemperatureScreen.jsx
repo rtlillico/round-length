@@ -185,6 +185,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   const seL2 = useRef(null), seR2 = useRef(null);
   const scM2 = useRef(null), scZ2 = useRef(null);
   const tL2  = useRef(null), tP2  = useRef(null);
+  const tLZ1 = useRef(null), tLZ2 = useRef(null);
 
   // ── x-scale configs ───────────────────────────────────────────────────────────
   function xMain() {
@@ -312,6 +313,8 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
 
     if (zC1.current && scZ1.current) scZ1.current.style.left = zC1.current.scales.x.getPixelForValue(cDay) + 'px';
     if (zC2.current && scZ2.current) scZ2.current.style.left = zC2.current.scales.x.getPixelForValue(cDay) + 'px';
+    if (zC1.current && tLZ1.current) tLZ1.current.style.left = zC1.current.scales.x.getPixelForValue(TODAY) + 'px';
+    if (zC2.current && tLZ2.current) tLZ2.current.style.left = zC2.current.scales.x.getPixelForValue(TODAY) + 'px';
 
     // update React state for readouts / window label
     const { dates, larData, roundData, tMeanData } = arrRef.current;
@@ -532,6 +535,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                 onPointerDown={onZoomDown} onPointerMove={onZoomMove} onPointerUp={onZoomUp} onPointerCancel={onZoomUp}
               >
                 <canvas ref={zCv1} style={{ display: 'block' }} />
+                <div ref={tLZ1} style={S.todayL} />
                 <div ref={scZ1} style={S.scrub}><div style={S.sDot} /></div>
               </div>
 
@@ -617,6 +621,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                 onPointerDown={onZoomDown} onPointerMove={onZoomMove} onPointerUp={onZoomUp} onPointerCancel={onZoomUp}
               >
                 <canvas ref={zCv2} style={{ display: 'block' }} />
+                <div ref={tLZ2} style={S.todayL} />
                 <div ref={scZ2} style={S.scrub}><div style={S.sDot} /></div>
               </div>
 
