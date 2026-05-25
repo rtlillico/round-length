@@ -135,7 +135,6 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   const [winInfo, setWinInfo] = useState(null);  // { start, end }
   const [ctr1,    setCtr1]   = useState(null);
   const [ctr2,    setCtr2]   = useState(null);
-  const [stats,   setStats]  = useState(null);
 
   const pasture = PASTURE_PARAMS[scenario.pasture_key];
   const target  = Number(scenario.target_leaves);
@@ -339,11 +338,6 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     const ds = dates[cDay] || '';
     setCtr1(ds ? { dl: fmtDayFull(ds), round: roundData[cDay] != null ? roundData[cDay].toFixed(0) + ' days' : '—', lar: larData[cDay] != null ? larData[cDay].toFixed(4) : '—' } : null);
     setCtr2(ds ? { dl: fmtDayFull(ds), tMean: tMeanData[cDay] != null ? tMeanData[cDay].toFixed(1) + '°C' : '—' } : null);
-    const slice = larData.slice(win.start, win.end + 1).filter(v => v != null);
-    if (slice.length) {
-      const avg = slice.reduce((a, b) => a + b, 0) / slice.length;
-      setStats({ avg: avg.toFixed(4), min: Math.min(...slice).toFixed(4), max: Math.max(...slice).toFixed(4), total: slice.reduce((a, b) => a + b, 0).toFixed(2) });
-    } else setStats(null);
     setWinInfo({ start: win.start, end: win.end });
   }
 
@@ -566,17 +560,6 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                 <div style={{ fontSize: 11, color: '#2d4a1e', textAlign: 'center', marginTop: 6, background: '#f5fae8', border: '1px solid #cfe2b3', borderRadius: 6, padding: '6px 9px', lineHeight: 1.5 }}>
                   <strong>{ctr1.dl}</strong> · RL <strong>{ctr1.round}</strong> · LAR <strong>{ctr1.lar}</strong>
                   <div style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic', marginTop: 2 }}>centre of window — pan to explore</div>
-                </div>
-              )}
-
-              {stats && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 6, marginTop: 8, background: '#f5fae8', border: '1px solid #cfe2b3', borderRadius: 8, padding: 8 }}>
-                  {[['Avg LAR', stats.avg], ['Min', stats.min], ['Max', stats.max], ['Total leaves', stats.total]].map(([lbl, val]) => (
-                    <div key={lbl} style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#9aab85', marginBottom: 2 }}>{lbl}</div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: '#2d4a1e', lineHeight: 1.1 }}>{val}</div>
-                    </div>
-                  ))}
                 </div>
               )}
 
