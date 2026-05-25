@@ -535,7 +535,10 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                 onPointerDown={onZoomDown} onPointerMove={onZoomMove} onPointerUp={onZoomUp} onPointerCancel={onZoomUp}
               >
                 <canvas ref={zCv1} style={{ display: 'block' }} />
-                <div ref={tLZ1} style={S.todayL} />
+                <div ref={tLZ1} style={{ position: 'absolute', top: 0, bottom: 0, pointerEvents: 'none', zIndex: 4 }}>
+                  <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: '1.5px', background: '#3a6b1a', opacity: 0.7 }} />
+                  <div style={{ position: 'absolute', top: 4, left: 3, fontSize: 8, color: '#3a6b1a', fontWeight: 700, whiteSpace: 'nowrap', background: 'rgba(240,248,232,0.88)', padding: '1px 4px', borderRadius: 3 }}>Today</div>
+                </div>
                 <div ref={scZ1} style={S.scrub}><div style={S.sDot} /></div>
               </div>
 
@@ -574,7 +577,10 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                 {edgeDiv(seL1, 'l')}
                 {edgeDiv(seR1, 'r')}
                 <div ref={scM1} style={S.scrub}><div style={S.sDot} /></div>
-                <div ref={tL1}  style={S.todayL} />
+                <div ref={tL1} style={{ position: 'absolute', top: 0, bottom: 0, pointerEvents: 'none', zIndex: 4 }}>
+                  <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: '1.5px', background: '#3a6b1a', opacity: 0.7 }} />
+                  <div style={{ position: 'absolute', top: 2, left: 3, fontSize: 7, color: '#3a6b1a', fontWeight: 700, whiteSpace: 'nowrap', background: 'rgba(240,248,232,0.85)', padding: '1px 3px', borderRadius: 3 }}>Today</div>
+                </div>
               </div>
 
               <div style={{ marginTop: 8 }}>
@@ -621,7 +627,10 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                 onPointerDown={onZoomDown} onPointerMove={onZoomMove} onPointerUp={onZoomUp} onPointerCancel={onZoomUp}
               >
                 <canvas ref={zCv2} style={{ display: 'block' }} />
-                <div ref={tLZ2} style={S.todayL} />
+                <div ref={tLZ2} style={{ position: 'absolute', top: 0, bottom: 0, pointerEvents: 'none', zIndex: 4 }}>
+                  <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: '1.5px', background: '#3a6b1a', opacity: 0.7 }} />
+                  <div style={{ position: 'absolute', top: 4, left: 3, fontSize: 8, color: '#3a6b1a', fontWeight: 700, whiteSpace: 'nowrap', background: 'rgba(240,248,232,0.88)', padding: '1px 4px', borderRadius: 3 }}>Today</div>
+                </div>
                 <div ref={scZ2} style={S.scrub}><div style={S.sDot} /></div>
               </div>
 
@@ -649,7 +658,10 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                 {edgeDiv(seL2, 'l')}
                 {edgeDiv(seR2, 'r')}
                 <div ref={scM2} style={S.scrub}><div style={S.sDot} /></div>
-                <div ref={tL2}  style={S.todayL} />
+                <div ref={tL2} style={{ position: 'absolute', top: 0, bottom: 0, pointerEvents: 'none', zIndex: 4 }}>
+                  <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: '1.5px', background: '#3a6b1a', opacity: 0.7 }} />
+                  <div style={{ position: 'absolute', top: 2, left: 3, fontSize: 7, color: '#3a6b1a', fontWeight: 700, whiteSpace: 'nowrap', background: 'rgba(240,248,232,0.85)', padding: '1px 3px', borderRadius: 3 }}>Today</div>
+                </div>
               </div>
 
               <div style={{ marginTop: 8 }}>
