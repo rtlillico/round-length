@@ -214,6 +214,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
 
   function xZoom(xMin, xMax) {
     const tl = tlRef.current;
+    const span = xMax - xMin;
     return {
       type: 'linear', min: xMin, max: xMax, offset: false,
       ticks: {
@@ -221,8 +222,25 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
         callback(val) { const i = Math.round(val); return (i >= 0 && i < tl.length && tl[i]) ? tl[i] : null; },
       },
       afterBuildTicks(sc) {
-        const span = sc.max - sc.min; const gap = Math.max(2, Math.ceil(span / 5)); let last = -Infinity;
-        sc.ticks = sc.ticks.filter(t => { if (!tl[Math.round(t.value)]) return false; if (t.value - last < gap) return false; last = t.value; return true; });
+        const isMonthStart = l => l && isNaN(Number(l));
+        // Collect candidates within window
+        const months = [], weeks = [];
+        for (let i = Math.floor(sc.min); i <= Math.ceil(sc.max); i++) {
+          const l = tl[i];
+          if (!l) continue;
+          if (isMonthStart(l)) months.push(i);
+          else weeks.push(i);
+        }
+        // For short spans use weekly ticks; for longer use month-starts only
+        const pool = (span <= 45 || months.length < 3) ? [...months, ...weeks].sort((a, b) => a - b) : months;
+        // Thin to ~5 ticks
+        const target = 5;
+        let chosen = pool;
+        if (pool.length > target) {
+          const step = Math.ceil(pool.length / target);
+          chosen = pool.filter((_, idx) => idx % step === 0);
+        }
+        sc.ticks = chosen.map(v => ({ value: v }));
       },
       grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false },
     };
