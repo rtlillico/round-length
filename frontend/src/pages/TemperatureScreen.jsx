@@ -528,10 +528,10 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
           {!loading && (
             <>
               <div style={{ fontSize: 10, color: '#5a6f48', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                Zoomed detail of window <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to pan</span>
+                Expanded view · selected period <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to pan</span>
               </div>
               <div ref={zCt1}
-                style={{ position: 'relative', height: 180, marginTop: 5, touchAction: 'none', userSelect: 'none', overflow: 'hidden', borderRadius: 6, cursor: 'grab' }}
+                style={{ position: 'relative', height: 180, marginTop: 5, touchAction: 'none', userSelect: 'none', overflow: 'hidden', borderRadius: 6, cursor: 'grab', border: '2px solid #3a6b1a' }}
                 onPointerDown={onZoomDown} onPointerMove={onZoomMove} onPointerUp={onZoomUp} onPointerCancel={onZoomUp}
               >
                 <canvas ref={zCv1} style={{ display: 'block' }} />
@@ -560,7 +560,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
               )}
 
               <div style={{ fontSize: 10, color: '#5a6f48', marginTop: 10, fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>Full range <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to move window</span></span>
+                <span>Full season overview <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to move selection</span></span>
                 <button onClick={centerOnToday} style={{ background: 'transparent', border: '1.5px solid #3a6b1a', borderRadius: 10, color: '#3a6b1a', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}>↩ Today</button>
               </div>
               <div ref={mCt1}
@@ -614,10 +614,10 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
           {!loading && (
             <>
               <div style={{ fontSize: 10, color: '#5a6f48', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                Zoomed detail of window <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to pan</span>
+                Expanded view · selected period <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to pan</span>
               </div>
               <div ref={zCt2}
-                style={{ position: 'relative', height: 180, marginTop: 5, touchAction: 'none', userSelect: 'none', overflow: 'hidden', borderRadius: 6, cursor: 'grab' }}
+                style={{ position: 'relative', height: 180, marginTop: 5, touchAction: 'none', userSelect: 'none', overflow: 'hidden', borderRadius: 6, cursor: 'grab', border: '2px solid #3a6b1a' }}
                 onPointerDown={onZoomDown} onPointerMove={onZoomMove} onPointerUp={onZoomUp} onPointerCancel={onZoomUp}
               >
                 <canvas ref={zCv2} style={{ display: 'block' }} />
@@ -635,7 +635,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
               )}
 
               <div style={{ fontSize: 10, color: '#5a6f48', marginTop: 10, fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>Full range <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to move window</span></span>
+                <span>Full season overview <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to move selection</span></span>
                 <button onClick={centerOnToday} style={{ background: 'transparent', border: '1.5px solid #3a6b1a', borderRadius: 10, color: '#3a6b1a', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}>↩ Today</button>
               </div>
               <div ref={mCt2}
