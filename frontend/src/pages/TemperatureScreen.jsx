@@ -555,8 +555,9 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                 </div>
               )}
 
-              <div style={{ fontSize: 10, color: '#5a6f48', marginTop: 10, fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                Full range <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to move window</span>
+              <div style={{ fontSize: 10, color: '#5a6f48', marginTop: 10, fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Full range <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to move window</span></span>
+                <button onClick={centerOnToday} style={{ background: 'transparent', border: '1.5px solid #3a6b1a', borderRadius: 10, color: '#3a6b1a', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}>↩ Today</button>
               </div>
               <div ref={mCt1}
                 style={{ position: 'relative', height: 120, marginTop: 5, touchAction: 'none', userSelect: 'none', overflow: 'hidden' }}
@@ -570,7 +571,6 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                 {edgeDiv(seR1, 'r')}
                 <div ref={scM1} style={S.scrub}><div style={S.sDot} /></div>
                 <div ref={tL1}  style={S.todayL} />
-                <div ref={tP1} style={{ ...S.todayP, pointerEvents: 'auto', cursor: 'pointer' }} onPointerDown={e => e.stopPropagation()} onClick={centerOnToday}>Today · {fmtDay(todayDateStr)}</div>
               </div>
 
               <div style={{ marginTop: 8 }}>
@@ -629,8 +629,9 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                 </div>
               )}
 
-              <div style={{ fontSize: 10, color: '#5a6f48', marginTop: 10, fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                Full range <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to move window</span>
+              <div style={{ fontSize: 10, color: '#5a6f48', marginTop: 10, fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Full range <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to move window</span></span>
+                <button onClick={centerOnToday} style={{ background: 'transparent', border: '1.5px solid #3a6b1a', borderRadius: 10, color: '#3a6b1a', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}>↩ Today</button>
               </div>
               <div ref={mCt2}
                 style={{ position: 'relative', height: 120, marginTop: 5, touchAction: 'none', userSelect: 'none', overflow: 'hidden' }}
@@ -644,7 +645,6 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                 {edgeDiv(seR2, 'r')}
                 <div ref={scM2} style={S.scrub}><div style={S.sDot} /></div>
                 <div ref={tL2}  style={S.todayL} />
-                <div ref={tP2} style={{ ...S.todayP, pointerEvents: 'auto', cursor: 'pointer' }} onPointerDown={e => e.stopPropagation()} onClick={centerOnToday}>Today · {fmtDay(todayDateStr)}</div>
               </div>
 
               <div style={{ marginTop: 8 }}>
