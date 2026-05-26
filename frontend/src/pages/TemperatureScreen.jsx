@@ -545,8 +545,10 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
           {loading && <p style={{ color: C.muted, textAlign: 'center' }}>Loading…</p>}
           {!loading && (
             <>
-              <div style={{ fontSize: 10, color: '#5a6f48', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                Expanded view · selected period <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to pan</span>
+              <div style={{ fontSize: 10, color: '#5a6f48', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Expanded view · selected period</span>
+                <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to pan</span>
+                <button onClick={centerOnToday} style={{ background: 'transparent', border: '1.5px solid #3a6b1a', borderRadius: 10, color: '#3a6b1a', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}>↩ Today</button>
               </div>
               <div ref={zCt1}
                 style={{ position: 'relative', height: 180, marginTop: 5, touchAction: 'none', userSelect: 'none', overflow: 'hidden', borderRadius: 6, cursor: 'grab', border: '2px solid #3a6b1a' }}
@@ -626,8 +628,10 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
 
           {!loading && (
             <>
-              <div style={{ fontSize: 10, color: '#5a6f48', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                Expanded view · selected period <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to pan</span>
+              <div style={{ fontSize: 10, color: '#5a6f48', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Expanded view · selected period</span>
+                <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to pan</span>
+                <button onClick={centerOnToday} style={{ background: 'transparent', border: '1.5px solid #3a6b1a', borderRadius: 10, color: '#3a6b1a', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}>↩ Today</button>
               </div>
               <div ref={zCt2}
                 style={{ position: 'relative', height: 180, marginTop: 5, touchAction: 'none', userSelect: 'none', overflow: 'hidden', borderRadius: 6, cursor: 'grab', border: '2px solid #3a6b1a' }}
