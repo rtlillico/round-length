@@ -571,6 +571,19 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                 </div>
               )}
 
+              <div style={{ marginTop: 8 }}>
+                <Legend items={[
+                  { label: 'Temp round length', color: '#c47a12' },
+                  { label: 'Temp LAR', color: '#3a6b1a' },
+                  ...(visC1.p50 ? [{ label: 'P50', color: '#88a870', dashed: true }] : []),
+                ]} />
+              </div>
+              <ToggleBar show={visC1} onToggle={k => setVisC1(p => ({ ...p, [k]: !p[k] }))} items={[
+                { key: 'tempRound', label: 'Temp round length', color: '#c47a12' },
+                { key: 'tempLAR',   label: 'Temp LAR',          color: '#3a6b1a' },
+                { key: 'p50',       label: 'P50 average',       color: '#88a870' },
+              ]} />
+
               <div style={{ fontSize: 10, color: '#5a6f48', marginTop: 10, fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span>Full season overview <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to move selection</span></span>
                 <button onClick={centerOnToday} style={{ background: 'transparent', border: '1.5px solid #3a6b1a', borderRadius: 10, color: '#3a6b1a', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}>↩ Today</button>
@@ -592,18 +605,6 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                 </div>
               </div>
 
-              <div style={{ marginTop: 8 }}>
-                <Legend items={[
-                  { label: 'Temp round length', color: '#c47a12' },
-                  { label: 'Temp LAR', color: '#3a6b1a' },
-                  ...(visC1.p50 ? [{ label: 'P50', color: '#88a870', dashed: true }] : []),
-                ]} />
-              </div>
-              <ToggleBar show={visC1} onToggle={k => setVisC1(p => ({ ...p, [k]: !p[k] }))} items={[
-                { key: 'tempRound', label: 'Temp round length', color: '#c47a12' },
-                { key: 'tempLAR',   label: 'Temp LAR',          color: '#3a6b1a' },
-                { key: 'p50',       label: 'P50 average',       color: '#88a870' },
-              ]} />
               {gestureCard}
             </>
           )}
@@ -654,6 +655,19 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                 </div>
               )}
 
+              <div style={{ marginTop: 8 }}>
+                <Legend items={[
+                  ...(visC2.tMax  ? [{ label: 'T_max',  color: '#c43a2a' }] : []),
+                  ...(visC2.tMean ? [{ label: 'T_mean', color: '#c47a12' }] : []),
+                  ...(visC2.tMin  ? [{ label: 'T_min',  color: '#2a6a9e' }] : []),
+                ]} />
+              </div>
+              <ToggleBar show={visC2} onToggle={k => setVisC2(p => ({ ...p, [k]: !p[k] }))} items={[
+                { key: 'tMax',  label: 'T_max',  color: '#c43a2a' },
+                { key: 'tMean', label: 'T_mean', color: '#c47a12' },
+                { key: 'tMin',  label: 'T_min',  color: '#2a6a9e' },
+              ]} />
+
               <div style={{ fontSize: 10, color: '#5a6f48', marginTop: 10, fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span>Full season overview <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to move selection</span></span>
                 <button onClick={centerOnToday} style={{ background: 'transparent', border: '1.5px solid #3a6b1a', borderRadius: 10, color: '#3a6b1a', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}>↩ Today</button>
@@ -675,18 +689,6 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                 </div>
               </div>
 
-              <div style={{ marginTop: 8 }}>
-                <Legend items={[
-                  ...(visC2.tMax  ? [{ label: 'T_max',  color: '#c43a2a' }] : []),
-                  ...(visC2.tMean ? [{ label: 'T_mean', color: '#c47a12' }] : []),
-                  ...(visC2.tMin  ? [{ label: 'T_min',  color: '#2a6a9e' }] : []),
-                ]} />
-              </div>
-              <ToggleBar show={visC2} onToggle={k => setVisC2(p => ({ ...p, [k]: !p[k] }))} items={[
-                { key: 'tMax',  label: 'T_max',  color: '#c43a2a' },
-                { key: 'tMean', label: 'T_mean', color: '#c47a12' },
-                { key: 'tMin',  label: 'T_min',  color: '#2a6a9e' },
-              ]} />
             </>
           )}
         </div>
