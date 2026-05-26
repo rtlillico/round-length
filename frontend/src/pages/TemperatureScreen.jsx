@@ -221,17 +221,20 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
         callback(val) { const i = Math.round(val); return (i >= 0 && i < tl.length && tl[i]) ? tl[i] : null; },
       },
       afterBuildTicks(sc) {
+        const isYearStart  = l => l && l.includes("'");
         const isMonthStart = l => l && isNaN(Number(l));
-        // Collect candidates within window
-        const months = [], weeks = [];
+        const yearTicks = [], months = [], weeks = [];
         for (let i = Math.floor(sc.min); i <= Math.ceil(sc.max); i++) {
           const l = tl[i];
           if (!l) continue;
-          if (isMonthStart(l)) months.push(i);
+          if (isYearStart(l)) yearTicks.push(i);
+          else if (isMonthStart(l)) months.push(i);
           else weeks.push(i);
         }
         // For short spans use weekly ticks; for longer use month-starts only
-        const pool = (span <= 45 || months.length < 3) ? [...months, ...weeks].sort((a, b) => a - b) : months;
+        const pool = (span <= 45 || months.length < 3)
+          ? [...yearTicks, ...months, ...weeks].sort((a, b) => a - b)
+          : months;
         // Thin to ~5 ticks
         const target = 5;
         let chosen = pool;
@@ -239,7 +242,10 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
           const step = Math.ceil(pool.length / target);
           chosen = pool.filter((_, idx) => idx % step === 0);
         }
-        sc.ticks = chosen.map(v => ({ value: v }));
+        // Always include year-boundary ticks regardless of thinning
+        const chosenSet = new Set(chosen);
+        yearTicks.forEach(i => chosenSet.add(i));
+        sc.ticks = [...chosenSet].sort((a, b) => a - b).map(v => ({ value: v }));
       },
       grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false },
     };
