@@ -65,22 +65,25 @@ async function setFarmIFD(id, ifdData) {
 async function insertSILORows(farmId, rows) {
   if (rows.length === 0) return;
 
-  // Build a single multi-row INSERT per chunk (max 1000 rows = 8000 params, well within pg limit)
+  // Chunk to stay within PostgreSQL's ~32k parameter limit (8 cols × 3000 rows = 24000 params)
   const COLS = 8;
-  const values = [];
-  const params = [];
-  rows.forEach((row, i) => {
-    const b = i * COLS;
-    values.push(`($${b+1},$${b+2},$${b+3},$${b+4},$${b+5},$${b+6},$${b+7},$${b+8})`);
-    params.push(farmId, row.date, row.max_temp, row.min_temp, row.radiation, row.daily_rain, row.vp, row.et_morton_wet);
-  });
-
-  await pool.query(
-    `INSERT INTO silo_daily (farm_id, date, max_temp, min_temp, radiation, daily_rain, vp, et_morton_wet)
-     VALUES ${values.join(',')}
-     ON CONFLICT (farm_id, date) DO NOTHING`,
-    params
-  );
+  const CHUNK = 3000;
+  for (let offset = 0; offset < rows.length; offset += CHUNK) {
+    const chunk = rows.slice(offset, offset + CHUNK);
+    const values = [];
+    const params = [];
+    chunk.forEach((row, i) => {
+      const b = i * COLS;
+      values.push(`($${b+1},$${b+2},$${b+3},$${b+4},$${b+5},$${b+6},$${b+7},$${b+8})`);
+      params.push(farmId, row.date, row.max_temp, row.min_temp, row.radiation, row.daily_rain, row.vp, row.et_morton_wet);
+    });
+    await pool.query(
+      `INSERT INTO silo_daily (farm_id, date, max_temp, min_temp, radiation, daily_rain, vp, et_morton_wet)
+       VALUES ${values.join(',')}
+       ON CONFLICT (farm_id, date) DO NOTHING`,
+      params
+    );
+  }
 }
 
 /**
