@@ -192,7 +192,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     return {
       type: 'linear', min: 0, max: N - 1,
       ticks: {
-        autoSkip: false, maxRotation: 0, padding: 2, color: '#9aab85', font: { size: 7 },
+        autoSkip: false, maxRotation: 0, padding: 2, color: '#5a6f48', font: { size: 9 },
         callback(val) { const i = Math.round(val); return (i >= 0 && i < tl.length && tl[i]) ? tl[i] : null; },
       },
       afterBuildTicks(sc) {
@@ -217,7 +217,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     return {
       type: 'linear', min: xMin, max: xMax, offset: false,
       ticks: {
-        autoSkip: false, maxRotation: 0, padding: 2, color: '#9aab85', font: { size: 8 },
+        autoSkip: false, maxRotation: 0, padding: 2, color: '#5a6f48', font: { size: 10 },
         callback(val) { const i = Math.round(val); return (i >= 0 && i < tl.length && tl[i]) ? tl[i] : null; },
       },
       afterBuildTicks(sc) {
@@ -252,16 +252,16 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   }
 
   // Factory functions — Chart.js mutates scale objects internally, so never reuse across charts
-  const mkYL = () => ({ type: 'linear', position: 'left',  ticks: { color: '#9aab85', font: { size: 7 }, maxTicksLimit: 3 }, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false } });
-  const mkYR = () => ({ type: 'linear', position: 'right', ticks: { color: '#9aab85', font: { size: 7 }, maxTicksLimit: 3 }, grid: { display: false }, border: { display: false } });
-  const mkYS = () => ({ ticks: { color: '#9aab85', font: { size: 7 }, maxTicksLimit: 4 }, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false } });
+  const mkYL = () => ({ type: 'linear', position: 'left',  ticks: { color: '#5a6f48', font: { size: 9 }, maxTicksLimit: 3 }, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false } });
+  const mkYR = () => ({ type: 'linear', position: 'right', ticks: { color: '#5a6f48', font: { size: 9 }, maxTicksLimit: 3 }, grid: { display: false }, border: { display: false } });
+  const mkYS = () => ({ ticks: { color: '#5a6f48', font: { size: 9 }, maxTicksLimit: 4 }, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false } });
   // Fixed yR for zoom chart — max from full dataset so axis doesn't rescale while panning
   function mkYRZoom() {
     const { larData, larP50 } = arrRef.current;
     const vals = [...larData, ...larP50].filter(v => v != null && isFinite(v) && v > 0);
     const rawMax = vals.length ? Math.max(...vals) : 0.15;
     const max = Math.ceil(rawMax * 20) / 20; // round up to nearest 0.05
-    return { type: 'linear', position: 'right', min: 0, max, ticks: { color: '#9aab85', font: { size: 7 }, maxTicksLimit: 3 }, grid: { display: false }, border: { display: false } };
+    return { type: 'linear', position: 'right', min: 0, max, ticks: { color: '#5a6f48', font: { size: 9 }, maxTicksLimit: 3 }, grid: { display: false }, border: { display: false } };
   }
 
   // ── dataset builders ─────────────────────────────────────────────────────────
