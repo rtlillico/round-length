@@ -251,17 +251,18 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     };
   }
 
+  const titleCfg = (text) => ({ display: true, text, color: '#5a6f48', font: { size: 8, weight: '600' }, align: 'end', padding: 0 });
   // Factory functions — Chart.js mutates scale objects internally, so never reuse across charts
-  const mkYL = () => ({ type: 'linear', position: 'left',  ticks: { color: '#5a6f48', font: { size: 9 }, maxTicksLimit: 3 }, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false } });
-  const mkYR = () => ({ type: 'linear', position: 'right', ticks: { color: '#5a6f48', font: { size: 9 }, maxTicksLimit: 3 }, grid: { display: false }, border: { display: false } });
-  const mkYS = () => ({ ticks: { color: '#5a6f48', font: { size: 9 }, maxTicksLimit: 4 }, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false } });
+  const mkYL = () => ({ type: 'linear', position: 'left',  title: titleCfg('days'), ticks: { color: '#5a6f48', font: { size: 9 }, maxTicksLimit: 3 }, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false } });
+  const mkYR = () => ({ type: 'linear', position: 'right', title: titleCfg('LAR'),  ticks: { color: '#5a6f48', font: { size: 9 }, maxTicksLimit: 3 }, grid: { display: false }, border: { display: false } });
+  const mkYS = () => ({ title: titleCfg('°C'), ticks: { color: '#5a6f48', font: { size: 9 }, maxTicksLimit: 4 }, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false } });
   // Fixed yR for zoom chart — max from full dataset so axis doesn't rescale while panning
   function mkYRZoom() {
     const { larData, larP50 } = arrRef.current;
     const vals = [...larData, ...larP50].filter(v => v != null && isFinite(v) && v > 0);
     const rawMax = vals.length ? Math.max(...vals) : 0.15;
-    const max = Math.ceil(rawMax * 20) / 20; // round up to nearest 0.05
-    return { type: 'linear', position: 'right', min: 0, max, ticks: { color: '#5a6f48', font: { size: 9 }, maxTicksLimit: 3 }, grid: { display: false }, border: { display: false } };
+    const max = Math.ceil(rawMax * 20) / 20;
+    return { type: 'linear', position: 'right', min: 0, max, title: titleCfg('LAR'), ticks: { color: '#5a6f48', font: { size: 9 }, maxTicksLimit: 3 }, grid: { display: false }, border: { display: false } };
   }
 
   // ── dataset builders ─────────────────────────────────────────────────────────
@@ -528,7 +529,6 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
             <div style={{ fontSize: 12, fontWeight: 600, color: '#2d4a1e' }}>Temp round length & Temp LAR</div>
             <FormulaBtn open={fRL} onToggle={() => setFRL(v => !v)} />
           </div>
-          <div style={{ fontSize: 10, color: C.muted, marginBottom: 8 }}>Left axis: round length (days) · Right axis: Temp LAR (leaves/day) · Dashed = P50</div>
           {fRL && (
             <FormulaBox
               lines={`Rising (${pasture?.baseTemp ?? 5}–${pasture?.optimumTemp ?? 22}°C):  Temp LAR = (T_mean − base) / phyllochron\nFalling (${pasture?.optimumTemp ?? 22}–${pasture?.ceilingTemp ?? 35}°C): Temp LAR = maxLAR × (ceiling − T_mean) / (ceiling − optimum)\nOutside range: Temp LAR = 0\nTemp round length = cumulative backward sum of daily Temp LAR`}
@@ -611,7 +611,6 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
             <div style={{ fontSize: 12, fontWeight: 600, color: '#2d4a1e' }}>Temperature (°C)</div>
             <FormulaBtn open={fTemp} onToggle={() => setFTemp(v => !v)} />
           </div>
-          <div style={{ fontSize: 10, color: C.muted, marginBottom: 8 }}>Daily T_max, T_mean, T_min · Actual data only</div>
           {fTemp && (
             <FormulaBox
               lines={`T_mean = (T_max + T_min) / 2`}
