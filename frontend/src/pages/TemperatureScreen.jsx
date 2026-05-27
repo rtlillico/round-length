@@ -251,18 +251,19 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     };
   }
 
-  const titleCfg = (text) => ({ display: true, text, color: '#5a6f48', font: { size: 8, weight: '600' }, align: 'end', padding: 0 });
+  // Tick callback: appends a unit label below the top tick value
+  const withUnit = (unit) => (val, idx, ticks) => idx === ticks.length - 1 ? [val, unit] : val;
   // Factory functions — Chart.js mutates scale objects internally, so never reuse across charts
-  const mkYL = () => ({ type: 'linear', position: 'left',  title: titleCfg('days'), ticks: { color: '#5a6f48', font: { size: 9 }, maxTicksLimit: 3 }, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false } });
-  const mkYR = () => ({ type: 'linear', position: 'right', title: titleCfg('LAR'),  ticks: { color: '#5a6f48', font: { size: 9 }, maxTicksLimit: 3 }, grid: { display: false }, border: { display: false } });
-  const mkYS = () => ({ title: titleCfg('°C'), ticks: { color: '#5a6f48', font: { size: 9 }, maxTicksLimit: 4 }, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false } });
+  const mkYL = () => ({ type: 'linear', position: 'left',  ticks: { color: '#5a6f48', font: { size: 9 }, maxTicksLimit: 3, callback: withUnit('days') }, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false } });
+  const mkYR = () => ({ type: 'linear', position: 'right', ticks: { color: '#5a6f48', font: { size: 9 }, maxTicksLimit: 3, callback: withUnit('LAR')  }, grid: { display: false }, border: { display: false } });
+  const mkYS = () => ({                                     ticks: { color: '#5a6f48', font: { size: 9 }, maxTicksLimit: 4, callback: withUnit('°C')   }, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false } });
   // Fixed yR for zoom chart — max from full dataset so axis doesn't rescale while panning
   function mkYRZoom() {
     const { larData, larP50 } = arrRef.current;
     const vals = [...larData, ...larP50].filter(v => v != null && isFinite(v) && v > 0);
     const rawMax = vals.length ? Math.max(...vals) : 0.15;
     const max = Math.ceil(rawMax * 20) / 20;
-    return { type: 'linear', position: 'right', min: 0, max, title: titleCfg('LAR'), ticks: { color: '#5a6f48', font: { size: 9 }, maxTicksLimit: 3 }, grid: { display: false }, border: { display: false } };
+    return { type: 'linear', position: 'right', min: 0, max, ticks: { color: '#5a6f48', font: { size: 9 }, maxTicksLimit: 3, callback: withUnit('LAR') }, grid: { display: false }, border: { display: false } };
   }
 
   // ── dataset builders ─────────────────────────────────────────────────────────
