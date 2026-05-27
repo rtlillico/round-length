@@ -252,7 +252,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   }
 
   // Tick callback: appends a unit label below the top tick value
-  const withUnit = (unit) => (val, idx, ticks) => idx === ticks.length - 1 ? [val, unit] : val;
+  const withUnit = (unit) => (val, idx, ticks) => idx === ticks.length - 1 ? [unit, val] : val;
   // Factory functions — Chart.js mutates scale objects internally, so never reuse across charts
   const mkYL = () => ({ type: 'linear', position: 'left',  ticks: { color: '#5a6f48', font: { size: 9 }, maxTicksLimit: 3, callback: withUnit('days') }, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false } });
   const mkYR = () => ({ type: 'linear', position: 'right', ticks: { color: '#5a6f48', font: { size: 9 }, maxTicksLimit: 3, callback: withUnit('LAR')  }, grid: { display: false }, border: { display: false } });
