@@ -524,7 +524,11 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
 
         {/* ── Card 1: Temp round length & Temp LAR ──────────────────────────── */}
         <div style={styles.card}>
-          <FormulaBtn open={fRL} onToggle={() => setFRL(v => !v)} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#2d4a1e' }}>Temp round length & Temp LAR</div>
+            <FormulaBtn open={fRL} onToggle={() => setFRL(v => !v)} />
+          </div>
+          <div style={{ fontSize: 10, color: C.muted, marginBottom: 8 }}>Left axis: round length (days) · Right axis: Temp LAR (leaves/day) · Dashed = P50</div>
           {fRL && (
             <FormulaBox
               lines={`Rising (${pasture?.baseTemp ?? 5}–${pasture?.optimumTemp ?? 22}°C):  Temp LAR = (T_mean − base) / phyllochron\nFalling (${pasture?.optimumTemp ?? 22}–${pasture?.ceilingTemp ?? 35}°C): Temp LAR = maxLAR × (ceiling − T_mean) / (ceiling − optimum)\nOutside range: Temp LAR = 0\nTemp round length = cumulative backward sum of daily Temp LAR`}
@@ -538,8 +542,6 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
               ]}
             />
           )}
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#2d4a1e', marginBottom: 2 }}>Temp round length & Temp LAR</div>
-          <div style={{ fontSize: 10, color: C.muted, marginBottom: 8 }}>Left axis: round length (days) · Right axis: Temp LAR (leaves/day) · Dashed = P50</div>
           {pillRow}
 
           {loading && <p style={{ color: C.muted, textAlign: 'center' }}>Loading…</p>}
@@ -605,7 +607,11 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
 
         {/* ── Card 2: Temperature °C ────────────────────────────────────────── */}
         <div style={styles.card}>
-          <FormulaBtn open={fTemp} onToggle={() => setFTemp(v => !v)} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#2d4a1e' }}>Temperature (°C)</div>
+            <FormulaBtn open={fTemp} onToggle={() => setFTemp(v => !v)} />
+          </div>
+          <div style={{ fontSize: 10, color: C.muted, marginBottom: 8 }}>Daily T_max, T_mean, T_min · Actual data only</div>
           {fTemp && (
             <FormulaBox
               lines={`T_mean = (T_max + T_min) / 2`}
@@ -616,8 +622,6 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
               ]}
             />
           )}
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#2d4a1e', marginBottom: 2 }}>Temperature (°C)</div>
-          <div style={{ fontSize: 10, color: C.muted, marginBottom: 8 }}>Daily T_max, T_mean, T_min · Actual data only</div>
           {pillRow}
 
           {!loading && (
