@@ -526,7 +526,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
         {/* ── Card 1: Temp round length & Temp LAR ──────────────────────────── */}
         <div style={styles.card}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#2d4a1e' }}>Temp round length & Temp LAR</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#1e3a12' }}>Temp round length & Temp LAR</div>
             <FormulaBtn open={fRL} onToggle={() => setFRL(v => !v)} />
           </div>
           {fRL && (
@@ -608,7 +608,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
         {/* ── Card 2: Temperature °C ────────────────────────────────────────── */}
         <div style={styles.card}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#2d4a1e' }}>Temperature (°C)</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#1e3a12' }}>Temperature (°C)</div>
             <FormulaBtn open={fTemp} onToggle={() => setFTemp(v => !v)} />
           </div>
           {fTemp && (
