@@ -273,7 +273,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     if (v.tempRound) ds.push({ type: 'line', data: toXY(roundData), borderColor: '#c47a12', borderWidth: 1.4, pointRadius: 0, tension: 0.2, yAxisID: 'yL' });
     if (v.p50)       ds.push({ type: 'line', data: toXY(roundP50),  borderColor: '#c47a12', borderWidth: 0.8, pointRadius: 0, borderDash: [6, 3], yAxisID: 'yL' });
     if (v.tempLAR)   ds.push({ type: 'line', data: toXY(larData),   borderColor: '#3a6b1a', borderWidth: 1.4, pointRadius: 0, tension: 0.2, yAxisID: 'yR' });
-    if (v.p50)       ds.push({ type: 'line', data: toXY(larP50),    borderColor: '#3a6b1a', borderWidth: 0.8, pointRadius: 0, borderDash: [6, 3], yAxisID: 'yR' });
+    if (v.p50)       ds.push({ type: 'line', data: toXY(larP50),    borderColor: '#7ab050', borderWidth: 1,   pointRadius: 0, borderDash: [8, 4], yAxisID: 'yR' });
     return ds;
   }
   function ds2main() {
@@ -294,7 +294,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     if (v.tempLAR) ds.push(bars
       ? { type: 'bar',  data: toXYWin(larData, win.start, win.end), backgroundColor: 'rgba(58,107,26,0.85)', borderWidth: 0, barThickness: bt, yAxisID: 'yR' }
       : { type: 'line', data: toXYWin(larData, win.start, win.end), borderColor: '#3a6b1a', borderWidth: 2, pointRadius: 0, tension: 0.2, yAxisID: 'yR' });
-    if (v.p50) ds.push({ type: 'line', data: toXYWin(larP50, win.start, win.end), borderColor: '#3a6b1a', borderWidth: 1, pointRadius: 0, borderDash: [6, 3], yAxisID: 'yR' });
+    if (v.p50) ds.push({ type: 'line', data: toXYWin(larP50, win.start, win.end), borderColor: '#7ab050', borderWidth: 1.5, pointRadius: 0, borderDash: [8, 4], yAxisID: 'yR' });
     return ds;
   }
   function ds2zoom(win, pw) {
@@ -577,7 +577,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
               <ToggleBar show={visC1} onToggle={k => setVisC1(p => ({ ...p, [k]: !p[k] }))} items={[
                 { key: 'tempRound', label: 'Temp round length', color: '#c47a12' },
                 { key: 'tempLAR',   label: 'Temp LAR',          color: '#3a6b1a' },
-                { key: 'p50',       label: 'P50 average',       color: '#88a870' },
+                { key: 'p50',       label: 'P50 average',       color: '#7ab050' },
               ]} />
 
               <div style={{ fontSize: 10, color: '#5a6f48', marginTop: 10, fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
