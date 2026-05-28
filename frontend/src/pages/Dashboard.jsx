@@ -4,6 +4,7 @@ import { api } from '../lib/api';
 import { C, styles } from '../App';
 import { PASTURE_PARAMS, SOIL_PARAMS } from '../lib/formula';
 import ComparisonTable from '../components/ComparisonTable';
+import { ScenarioInfoSheet } from '../components/SeasonUI';
 
 const ScenarioDetail = lazy(() => import('./ScenarioDetail'));
 
@@ -48,7 +49,7 @@ function StatusBanner({ progress }) {
 const LABEL_W = 96;
 const COL_W   = 112;
 
-function ScenarioSummaryTable({ scenarios, farm, onSelectScenario }) {
+function ScenarioSummaryTable({ scenarios, farm, onSelectScenario, onEdit }) {
   const ROWS = [
     { label: 'Farm',          getValue: (s) => farm?.name || '—' },
     { label: 'Description',   getValue: (s) => s.description || '—' },
@@ -67,12 +68,17 @@ function ScenarioSummaryTable({ scenarios, farm, onSelectScenario }) {
           {scenarios.map((s, i) => (
             <div
               key={s.id}
-              style={{ width: COL_W, flexShrink: 0, textAlign: 'center', padding: '12px 6px 10px', cursor: 'pointer', borderLeft: `1px solid ${C.border}` }}
-              onClick={() => onSelectScenario(s)}
+              style={{ width: COL_W, flexShrink: 0, textAlign: 'center', padding: '12px 6px 10px', borderLeft: `1px solid ${C.border}` }}
             >
-              <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'Lora', Georgia, serif", color: C.green1, lineHeight: 1 }}>
+              <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'Lora', Georgia, serif", color: C.green1, lineHeight: 1, cursor: 'pointer' }} onClick={() => onSelectScenario(s)}>
                 {s.short_code || `S${i + 1}`}
               </div>
+              <button
+                onClick={(e) => { e.stopPropagation(); onEdit(s); }}
+                style={{ marginTop: 6, background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 6, color: C.muted, fontSize: 11, padding: '3px 8px', cursor: 'pointer' }}
+              >
+                Edit
+              </button>
             </div>
           ))}
         </div>
@@ -106,6 +112,7 @@ export default function Dashboard({ farmId, onSelectScenario, onAdd, forceTable,
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState(null);
   const [downloadProgress, setDownloadProgress] = useState(null);
+  const [editingScenario, setEditingScenario] = useState(null);
 
   const today = new Date().toLocaleDateString('en-AU', {
     weekday: 'long', day: 'numeric', month: 'long'
@@ -244,7 +251,18 @@ export default function Dashboard({ farmId, onSelectScenario, onAdd, forceTable,
         scenarios={scenarios}
         farm={farm}
         onSelectScenario={onSelectScenario}
+        onEdit={setEditingScenario}
       />
+      {editingScenario && (
+        <ScenarioInfoSheet
+          scenario={editingScenario}
+          onClose={() => setEditingScenario(null)}
+          onSaved={(updated) => {
+            setScenarios(prev => prev.map(s => s.id === updated.id ? { ...s, ...updated } : s));
+            setEditingScenario(null);
+          }}
+        />
+      )}
 
       {scenarios.length >= 2 && (
         <ComparisonTable

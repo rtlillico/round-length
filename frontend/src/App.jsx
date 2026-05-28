@@ -75,6 +75,7 @@ export default function App() {
 
   function handleBackFromScenario() {
     setSelectedScenario(null);
+    setDashboardForceTable(true);
   }
 
   // If no farm set up yet, show setup wizard

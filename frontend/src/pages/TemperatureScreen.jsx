@@ -146,7 +146,7 @@ const S = {
 };
 
 // ── TemperatureScreen ──────────────────────────────────────────────────────────
-export default function TemperatureScreen({ scenario, chartData, loading, onNavigate }) {
+export default function TemperatureScreen({ scenario, chartData, loading, onNavigate, onGoToScenarios }) {
   const [fRL,     setFRL]    = useState(false);
   const [fTemp,   setFTemp]  = useState(false);
   const [visC1,   setVisC1]  = useState({ tempLAR: true, tempRound: true });
@@ -552,7 +552,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   return (
     <div style={styles.screen}>
       <div style={{ background: '#2d4a1e', position: 'sticky', top: 0, zIndex: 20 }}>
-        <ScenarioBanner scenario={scenario} pasture={pasture} title="🌡️ Temperature" onBack={() => onNavigate('overview')} />
+        <ScenarioBanner scenario={scenario} pasture={pasture} title="🌡️ Temperature" onBack={() => onNavigate('overview')} onGoToScenarios={onGoToScenarios} />
       </div>
 
       <div style={{ padding: '10px 10px 0' }}>

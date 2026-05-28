@@ -3,13 +3,13 @@ import { styles } from '../App';
 import { PASTURE_PARAMS } from '../lib/formula';
 import { ScenarioBanner, NavLinks } from '../components/SeasonUI';
 
-export default function NitrogenScreen({ scenario, onNavigate }) {
+export default function NitrogenScreen({ scenario, onNavigate, onGoToScenarios }) {
   const pasture = PASTURE_PARAMS[scenario.pasture_key];
 
   return (
     <div style={styles.screen}>
       <div style={{ background: '#2d4a1e', position: 'sticky', top: 0, zIndex: 20 }}>
-        <ScenarioBanner scenario={scenario} pasture={pasture} title="🌱 Nitrogen" onBack={() => onNavigate('overview')} />
+        <ScenarioBanner scenario={scenario} pasture={pasture} title="🌱 Nitrogen" onBack={() => onNavigate('overview')} onGoToScenarios={onGoToScenarios} />
       </div>
 
       <div style={{ padding: '10px 10px 0' }}>

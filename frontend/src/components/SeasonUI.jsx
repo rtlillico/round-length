@@ -5,7 +5,7 @@ import { C } from '../App';
 import { api } from '../lib/api';
 import { PASTURE_PARAMS, SOIL_PARAMS } from '../lib/formula';
 
-function ScenarioInfoSheet({ scenario, onClose, onSaved }) {
+export function ScenarioInfoSheet({ scenario, onClose, onSaved }) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     name:         scenario.name         || '',
@@ -149,50 +149,35 @@ function ScenarioInfoSheet({ scenario, onClose, onSaved }) {
   );
 }
 
-export function ScenarioBanner({ scenario, pasture, title, onBack }) {
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [current, setCurrent] = useState(scenario);
-  const currentPasture = PASTURE_PARAMS[current.pasture_key] || pasture;
-
+export function ScenarioBanner({ scenario, pasture, title, onBack, onGoToScenarios }) {
   return (
-    <>
-      <div style={{ background: '#1e3a12', padding: '14px 16px 10px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {onBack && (
-            <button onClick={onBack}
-              style={{ background: 'transparent', border: 'none', color: '#a8c48a', fontSize: 20, cursor: 'pointer', padding: '0 6px 0 0', lineHeight: 1 }}>
-              ←
-            </button>
-          )}
-          <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => setSheetOpen(true)}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 28, fontWeight: 700, color: '#e8f5d0', lineHeight: 1, fontFamily: "'Lora', Georgia, serif" }}>
-                {current.short_code || 'S1'}
-              </span>
-              <span style={{ fontSize: 12, color: '#a8c48a' }}>
-                {currentPasture?.name || current.pasture_key} · {current.target_leaves} leaf
-              </span>
-              <span style={{ fontSize: 11, color: '#a8c48a', opacity: 0.6 }}>ⓘ</span>
-            </div>
-          </div>
-          <button onClick={() => window.location.reload()}
-            style={{ background: 'transparent', border: 'none', color: '#a8c48a', fontSize: 18, cursor: 'pointer', padding: '4px 6px', lineHeight: 1, flexShrink: 0 }}
-            title="Refresh">
-            ↻
+    <div style={{ background: '#1e3a12', padding: '14px 16px 10px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {onBack && (
+          <button onClick={onBack}
+            style={{ background: 'transparent', border: 'none', color: '#a8c48a', fontSize: 20, cursor: 'pointer', padding: '0 6px 0 0', lineHeight: 1 }}>
+            ←
           </button>
+        )}
+        <div style={{ flex: 1, cursor: onGoToScenarios ? 'pointer' : 'default' }} onClick={onGoToScenarios}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 28, fontWeight: 700, color: '#e8f5d0', lineHeight: 1, fontFamily: "'Lora', Georgia, serif" }}>
+              {scenario.short_code || 'S1'}
+            </span>
+            <span style={{ fontSize: 12, color: '#a8c48a' }}>
+              {pasture?.name || scenario.pasture_key} · {scenario.target_leaves} leaf
+            </span>
+          </div>
         </div>
-        <div style={{ height: 1.5, background: 'rgba(255,255,255,0.25)', margin: '9px 0 7px' }} />
-        <div style={{ fontSize: 16, fontWeight: 700, color: '#f0ead8', letterSpacing: 0.2 }}>{title}</div>
+        <button onClick={() => window.location.reload()}
+          style={{ background: 'transparent', border: 'none', color: '#a8c48a', fontSize: 18, cursor: 'pointer', padding: '4px 6px', lineHeight: 1, flexShrink: 0 }}
+          title="Refresh">
+          ↻
+        </button>
       </div>
-
-      {sheetOpen && (
-        <ScenarioInfoSheet
-          scenario={current}
-          onClose={() => setSheetOpen(false)}
-          onSaved={(updated) => { setCurrent(updated); setSheetOpen(false); }}
-        />
-      )}
-    </>
+      <div style={{ height: 1.5, background: 'rgba(255,255,255,0.25)', margin: '9px 0 7px' }} />
+      <div style={{ fontSize: 16, fontWeight: 700, color: '#f0ead8', letterSpacing: 0.2 }}>{title}</div>
+    </div>
   );
 }
 

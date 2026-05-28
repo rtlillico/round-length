@@ -59,7 +59,7 @@ function buildSeries(chartData, targetLeaves) {
   return [...past, ...future];
 }
 
-export default function SolarScreen({ scenario, chartData, loading, onNavigate }) {
+export default function SolarScreen({ scenario, chartData, loading, onNavigate, onGoToScenarios }) {
   const [fSolar, setFSolar]   = useState(false);
   const [fRad, setFRad]       = useState(false);
   const [pctRL, setPctRL]     = useState(false);
@@ -87,7 +87,7 @@ export default function SolarScreen({ scenario, chartData, loading, onNavigate }
   return (
     <div style={styles.screen}>
       <div style={{ background: '#2d4a1e', position: 'sticky', top: 0, zIndex: 20 }}>
-        <ScenarioBanner scenario={scenario} pasture={pasture} title="☀️ Solar" onBack={() => onNavigate('overview')} />
+        <ScenarioBanner scenario={scenario} pasture={pasture} title="☀️ Solar" onBack={() => onNavigate('overview')} onGoToScenarios={onGoToScenarios} />
       </div>
 
       <div style={{ padding: '10px 10px 0' }}>

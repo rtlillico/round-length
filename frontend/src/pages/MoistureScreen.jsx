@@ -247,7 +247,7 @@ function buildSeries(chartData, targetLeaves) {
   return [...past, ...future];
 }
 
-export default function MoistureScreen({ scenario, chartData, loading, onNavigate }) {
+export default function MoistureScreen({ scenario, chartData, loading, onNavigate, onGoToScenarios }) {
   const [fMoisture, setFMoisture] = useState(false);
   const [fSoil, setFSoil]         = useState(false);
   const [pctRL, setPctRL]         = useState(false);
@@ -277,7 +277,7 @@ export default function MoistureScreen({ scenario, chartData, loading, onNavigat
   return (
     <div style={styles.screen}>
       <div style={{ background: '#2d4a1e', position: 'sticky', top: 0, zIndex: 20 }}>
-        <ScenarioBanner scenario={scenario} pasture={pasture} title="💧 Moisture" onBack={() => onNavigate('overview')} />
+        <ScenarioBanner scenario={scenario} pasture={pasture} title="💧 Moisture" onBack={() => onNavigate('overview')} onGoToScenarios={onGoToScenarios} />
       </div>
 
       <div style={{ padding: '10px 10px 0' }}>

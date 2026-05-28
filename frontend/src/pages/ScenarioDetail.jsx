@@ -20,7 +20,7 @@ export default function ScenarioDetail({ scenario, farmId, onBack }) {
       .catch(err  => { setError(err.message); setLoading(false); });
   }, [scenario.id]);
 
-  const shared = { scenario, chartData, loading, onNavigate: setScreen };
+  const shared = { scenario, chartData, loading, onNavigate: setScreen, onGoToScenarios: onBack };
 
   if (screen === 'formula')  return <FormulaBreakdown scenario={scenario} actualSeries={chartData?.actual} onBack={() => setScreen('overview')} />;
   if (screen === 'temp')     return <TemperatureScreen {...shared} />;

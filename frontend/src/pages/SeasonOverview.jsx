@@ -426,7 +426,7 @@ export default function SeasonOverview({ scenario, chartData, loading, error, fa
     <div style={styles.screen}>
       {/* Header */}
       <div style={{ background: '#2d4a1e', color: '#f0ead8', position: 'sticky', top: 0, zIndex: 20 }}>
-        <ScenarioBanner scenario={scenario} pasture={pasture} title="Season overview" onBack={onBack} />
+        <ScenarioBanner scenario={scenario} pasture={pasture} title="Season overview" onBack={onBack} onGoToScenarios={onBack} />
       </div>
 
       <div style={{ padding: '10px 10px 0' }}>
