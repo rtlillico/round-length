@@ -175,7 +175,7 @@ async function getScenariosForFarm(farmId) {
 
 async function updateScenarioMeta(id, { name, pastureKey, targetLeaves, soilType, description }) {
   const { rows } = await pool.query(
-    `UPDATE scenarios SET name=$1, pasture_key=$2, target_leaves=$3, soil_type=$4, description=$5, updated_at=NOW()
+    `UPDATE scenarios SET name=$1, pasture_key=$2, target_leaves=$3, soil_type=$4, description=$5
      WHERE id=$6 RETURNING *`,
     [name, pastureKey, targetLeaves, soilType, description ?? null, id]
   );
