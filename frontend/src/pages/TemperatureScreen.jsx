@@ -88,16 +88,25 @@ function buildArrays(chartData, targetLeaves, pastureKey) {
     const doy  = dateToDayOfYear(new Date(ds + 'T00:00:00Z'));
     const perc = percByDoy[doy] || {};
     larP50[i]   = perc.temp_p50  != null ? calcTempLAR(Number(perc.temp_p50), pastureKey) : null;
-    roundP50[i] = perc.round_p50 != null ? Number(perc.round_p50) : null;
   }
 
   for (let i = TODAY + 1; i < N; i++) {
     const ds   = dates[i];
     const doy  = dateToDayOfYear(new Date(ds + 'T00:00:00Z'));
     const perc = percByDoy[doy] || {};
-    const proj = projByDate[ds];
     larP50[i]   = perc.temp_p50 != null ? calcTempLAR(Number(perc.temp_p50), pastureKey) : null;
-    roundP50[i] = proj?.roundP50 != null ? Number(proj.roundP50) : null;
+  }
+
+  // Compute roundP50 from larP50 (temp-only P50 LAR) using same backward-accumulation as roundData
+  for (let i = 0; i < N; i++) {
+    let sum = 0, days = 0;
+    for (let j = i; j >= 0; j--) {
+      const v = larP50[j];
+      if (v != null) { sum += v; days++; }
+      if (sum >= targetLeaves) { roundP50[i] = days; break; }
+      if (days >= 365) { roundP50[i] = 365; break; }
+    }
+    if (roundP50[i] == null) roundP50[i] = days || null;
   }
 
   return { dates, larData, larP50, roundData, roundP50, tMaxData, tMeanData, tMinData };
