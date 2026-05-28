@@ -173,6 +173,15 @@ async function getScenariosForFarm(farmId) {
   return rows;
 }
 
+async function updateScenarioMeta(id, { name, pastureKey, targetLeaves, soilType, description }) {
+  const { rows } = await pool.query(
+    `UPDATE scenarios SET name=$1, pasture_key=$2, target_leaves=$3, soil_type=$4, description=$5, updated_at=NOW()
+     WHERE id=$6 RETURNING *`,
+    [name, pastureKey, targetLeaves, soilType, description ?? null, id]
+  );
+  return rows[0] || null;
+}
+
 async function deleteScenario(id) {
   await pool.query('DELETE FROM scenarios WHERE id = $1', [id]);
 }
@@ -342,7 +351,7 @@ module.exports = {
   pool,
   createFarm, getFarm, getAllFarms, updateFarm, setFarmIFD,
   insertSILORows, getAllSILORows, getSILORange, getLatestSILODate,
-  getNextShortCode, createScenario, getScenario, getScenariosForFarm, deleteScenario,
+  getNextShortCode, createScenario, getScenario, getScenariosForFarm, updateScenarioMeta, deleteScenario,
   upsertPercentiles, getPercentiles,
   upsertDailyState, upsertDailyStateBulk, getLatestDailyState, getLatestDailyStateForScenarios, getDailyStateRange,
 };

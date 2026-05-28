@@ -31,6 +31,7 @@ export const api = {
     list:   (farmId)     => request('GET',    `/scenarios?farmId=${farmId}`),
     get:    (id)         => request('GET',    `/scenarios/${id}`),
     create: (data)       => request('POST',   '/scenarios', data),
+    update: (id, data)   => request('PATCH',  `/scenarios/${id}`, data),
     delete: (id)         => request('DELETE', `/scenarios/${id}`),
     chart:  (id)         => request('GET',    `/scenarios/${id}/chart`),
     status: (id)         => request('GET',    `/scenarios/${id}/status`),

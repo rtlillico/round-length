@@ -9,6 +9,7 @@ const {
   createScenario,
   getScenario,
   getScenariosForFarm,
+  updateScenarioMeta,
   deleteScenario,
   getAllSILORows,
   getPercentiles,
@@ -43,6 +44,21 @@ router.get('/:id', async (req, res) => {
     if (!scenario) return res.status(404).json({ error: 'Scenario not found' });
     const state = await getLatestDailyState(scenario.id);
     res.json({ ...scenario, todayState: state });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/scenarios/:id — update editable metadata
+router.patch('/:id', async (req, res) => {
+  const { name, pastureKey, targetLeaves, soilType, description } = req.body;
+  if (!name || !pastureKey || !targetLeaves) {
+    return res.status(400).json({ error: 'name, pastureKey and targetLeaves are required' });
+  }
+  try {
+    const updated = await updateScenarioMeta(req.params.id, { name, pastureKey, targetLeaves, soilType, description });
+    if (!updated) return res.status(404).json({ error: 'Scenario not found' });
+    res.json(updated);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
