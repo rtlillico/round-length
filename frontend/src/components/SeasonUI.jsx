@@ -70,7 +70,14 @@ function ScenarioInfoSheet({ scenario, onClose, onSaved }) {
             <span style={{ fontSize: 22, fontWeight: 700, color: '#1e3a12', fontFamily: "'Lora', Georgia, serif" }}>{scenario.short_code}</span>
             <span style={{ fontSize: 12, color: '#8a9a78' }}>Scenario details</span>
           </div>
-          <button onClick={onClose} style={{ background: 'transparent', border: 'none', fontSize: 18, color: '#8a9a78', cursor: 'pointer', lineHeight: 1, padding: 4 }}>✕</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {!editing && (
+              <button onClick={() => setEditing(true)} style={{ background: '#3a6b1a', border: 'none', borderRadius: 8, color: '#fff', fontSize: 12, fontWeight: 600, padding: '6px 12px', cursor: 'pointer' }}>
+                Edit
+              </button>
+            )}
+            <button onClick={onClose} style={{ background: 'transparent', border: 'none', fontSize: 18, color: '#8a9a78', cursor: 'pointer', lineHeight: 1, padding: 4 }}>✕</button>
+          </div>
         </div>
 
         {/* body */}
@@ -134,9 +141,6 @@ function ScenarioInfoSheet({ scenario, onClose, onSaved }) {
               {row('Target leaf stage', `${form.targetLeaves} leaf`)}
               {row('Soil type', SOIL_PARAMS[form.soilType]?.name || form.soilType)}
               {row('Description', form.description || '—')}
-              <button onClick={() => setEditing(true)} style={{ marginTop: 20, width: '100%', padding: '12px', border: 'none', borderRadius: 10, background: '#3a6b1a', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
-                Edit details
-              </button>
             </>
           )}
         </div>
