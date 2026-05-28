@@ -608,7 +608,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
               )}
 
               <ToggleBar show={visC1} onToggle={k => setVisC1(p => ({ ...p, [k]: !p[k] }))} items={[
-                { key: 'tempLAR',   label: 'Temp LAR',          color: '#3a6b1a' },
+                { key: 'tempLAR',   label: 'Temp LAR',          color: '#4aa8d8' },
                 { key: 'tempRound', label: 'Temp round length', color: '#c47a12' },
               ]} />
 
