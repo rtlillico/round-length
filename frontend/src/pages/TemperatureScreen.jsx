@@ -254,10 +254,21 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   // Tick callback: appends a unit label below the top tick value
   const withUnit = (unit) => (val, idx, ticks) => idx === ticks.length - 1 ? [unit, val] : val;
   // Factory functions — Chart.js mutates scale objects internally, so never reuse across charts
-  const mkYL = () => ({ type: 'linear', position: 'left',  ticks: { color: '#5a6f48', font: { size: 9 }, maxTicksLimit: 3, callback: withUnit('days') }, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false } });
-  const mkYR = () => ({ type: 'linear', position: 'right', ticks: { color: '#5a6f48', font: { size: 9 }, maxTicksLimit: 3, callback: withUnit('LAR')  }, grid: { display: false }, border: { display: false } });
+  // Max from full dataset so axis doesn't rescale while panning
+  function mkYL() {
+    const { roundData, roundP50 } = arrRef.current;
+    const v = v1Ref.current;
+    const vals = [
+      ...(v.tempRound ? roundData : []),
+      ...(v.p50 ? roundP50 : []),
+    ].filter(x => x != null && isFinite(x) && x > 0);
+    const rawMax = vals.length ? Math.max(...vals) : 80;
+    const step = rawMax > 50 ? 20 : rawMax > 20 ? 10 : 5;
+    const max = Math.ceil(rawMax / step) * step;
+    return { type: 'linear', position: 'left', min: 0, max, ticks: { color: '#5a6f48', font: { size: 9 }, maxTicksLimit: 5, callback: withUnit('days') }, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false } };
+  }
+  const mkYR = () => ({ type: 'linear', position: 'right', ticks: { color: '#5a6f48', font: { size: 9 }, maxTicksLimit: 5, callback: withUnit('LAR')  }, grid: { display: false }, border: { display: false } });
   const mkYS = () => ({                                     ticks: { color: '#5a6f48', font: { size: 9 }, maxTicksLimit: 4, callback: withUnit('°C')   }, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false } });
-  // Fixed yR for zoom chart — max from full dataset so axis doesn't rescale while panning
   function mkYRZoom() {
     const { larData, larP50 } = arrRef.current;
     const vals = [...larData, ...larP50].filter(v => v != null && isFinite(v) && v > 0);
@@ -360,12 +371,13 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     ic(zCv2.current, zCt2.current, 180);
 
     const base = { responsive: false, animation: false, plugins: { legend: { display: false }, tooltip: { enabled: false } } };
-    if (mCv1.current) mC1.current = new Chart(mCv1.current, { type: 'line', data: { datasets: ds1main() }, options: { ...base, scales: { x: xMain(), yL: mkYL(), yR: mkYR() } } });
+    const showYR1 = v1Ref.current.tempLAR || v1Ref.current.p50;
+    if (mCv1.current) mC1.current = new Chart(mCv1.current, { type: 'line', data: { datasets: ds1main() }, options: { ...base, scales: { x: xMain(), yL: mkYL(), ...(showYR1 ? { yR: mkYR() } : {}) } } });
     if (mCv2.current) mC2.current = new Chart(mCv2.current, { type: 'line', data: { datasets: ds2main() }, options: { ...base, scales: { x: xMain(), y: mkYS() } } });
 
     const pw1 = zCt1.current?.clientWidth || 340;
     const pw2 = zCt2.current?.clientWidth || 340;
-    if (zCv1.current) zC1.current = new Chart(zCv1.current, { type: 'line', data: { datasets: ds1zoom(win, pw1) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yL: mkYL(), yR: mkYRZoom() } } });
+    if (zCv1.current) zC1.current = new Chart(zCv1.current, { type: 'line', data: { datasets: ds1zoom(win, pw1) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yL: mkYL(), ...(showYR1 ? { yR: mkYRZoom() } : {}) } } });
     if (zCv2.current) zC2.current = new Chart(zCv2.current, { type: 'line', data: { datasets: ds2zoom(win, pw2) }, options: { ...base, scales: { x: xZoom(win.start, win.end), y: mkYS() } } });
 
     posOverlays();
@@ -376,11 +388,12 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     const win = clampWin(winRef.current.start, winRef.current.width);
     const base = { responsive: false, animation: false, plugins: { legend: { display: false }, tooltip: { enabled: false } } };
 
+    const showYR1 = v1Ref.current.tempLAR || v1Ref.current.p50;
     if (zC1.current) { zC1.current.destroy(); zC1.current = null; }
     if (zCv1.current && zCt1.current) {
       const pw = zCt1.current.clientWidth || 340;
       zCv1.current.width = pw; zCv1.current.height = 180;
-      zC1.current = new Chart(zCv1.current, { type: 'line', data: { datasets: ds1zoom(win, pw) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yL: mkYL(), yR: mkYRZoom() } } });
+      zC1.current = new Chart(zCv1.current, { type: 'line', data: { datasets: ds1zoom(win, pw) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yL: mkYL(), ...(showYR1 ? { yR: mkYRZoom() } : {}) } } });
     }
     if (zC2.current) { zC2.current.destroy(); zC2.current = null; }
     if (zCv2.current && zCt2.current) {
