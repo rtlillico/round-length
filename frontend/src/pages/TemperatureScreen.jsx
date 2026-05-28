@@ -105,6 +105,17 @@ function buildArrays(chartData, targetLeaves, pastureKey) {
 
 const toXY = (arr) => arr.map((v, i) => v != null ? { x: i, y: v } : null).filter(Boolean);
 const toXYWin = (arr, s, e) => { const r = []; for (let i = s; i <= e; i++) { if (arr[i] != null) r.push({ x: i, y: arr[i] }); } return r; };
+// Centered moving average — returns same-length array, nulls excluded from window
+const smooth = (arr, w) => {
+  const half = Math.floor(w / 2);
+  return arr.map((_, i) => {
+    const vals = [];
+    for (let j = Math.max(0, i - half); j <= Math.min(arr.length - 1, i + half); j++) {
+      if (arr[j] != null && isFinite(arr[j])) vals.push(arr[j]);
+    }
+    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+  });
+};
 
 function clampWin(start, width) {
   let end = start + width - 1;
@@ -281,8 +292,8 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   function ds1main() {
     const { larData, larP50, roundData, roundP50 } = arrRef.current;
     const v = v1Ref.current; const ds = [];
-    if (v.tempLAR)   ds.push({ type: 'line', data: toXY(larData),   borderColor: '#3a6b1a', borderWidth: 1.4, pointRadius: 0, tension: 0.2, yAxisID: 'yR' });
-    if (v.tempLAR)   ds.push({ type: 'line', data: toXY(larP50),    borderColor: '#4aa8d8', borderWidth: 1,   pointRadius: 0, borderDash: [8, 4], yAxisID: 'yR' });
+    if (v.tempLAR)   ds.push({ type: 'line', data: toXY(smooth(larData, 14)),   borderColor: '#3a6b1a', borderWidth: 1.4, pointRadius: 0, tension: 0, yAxisID: 'yR' });
+    if (v.tempLAR)   ds.push({ type: 'line', data: toXY(smooth(larP50, 14)),    borderColor: '#4aa8d8', borderWidth: 1,   pointRadius: 0, borderDash: [8, 4], yAxisID: 'yR' });
     if (v.tempRound) ds.push({ type: 'line', data: toXY(roundData), borderColor: '#c47a12', borderWidth: 1.4, pointRadius: 0, tension: 0.2, yAxisID: 'yL' });
     if (v.tempRound) ds.push({ type: 'line', data: toXY(roundP50),  borderColor: '#c47a12', borderWidth: 0.8, pointRadius: 0, borderDash: [6, 3], yAxisID: 'yL' });
     return ds;
@@ -302,8 +313,8 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     const v = v1Ref.current; const ds = [];
     if (v.tempLAR) ds.push(bars
       ? { type: 'bar',  data: toXYWin(larData, win.start, win.end), backgroundColor: 'rgba(58,107,26,0.45)', borderWidth: 0, barThickness: bt, yAxisID: 'yR' }
-      : { type: 'line', data: toXYWin(larData, win.start, win.end), borderColor: '#3a6b1a', borderWidth: 2, pointRadius: 0, tension: 0.2, yAxisID: 'yR' });
-    if (v.tempLAR) ds.push({ type: 'line', data: toXYWin(larP50, win.start, win.end), borderColor: '#4aa8d8', borderWidth: 3, pointRadius: 0, borderDash: [10, 5], yAxisID: 'yR' });
+      : { type: 'line', data: toXYWin(smooth(larData, 14), win.start, win.end), borderColor: '#3a6b1a', borderWidth: 2, pointRadius: 0, tension: 0, yAxisID: 'yR' });
+    if (v.tempLAR) ds.push({ type: 'line', data: toXYWin(smooth(larP50, 14), win.start, win.end), borderColor: '#4aa8d8', borderWidth: 3, pointRadius: 0, borderDash: [10, 5], yAxisID: 'yR' });
     if (v.tempRound) ds.push({ type: 'line', data: toXYWin(roundData, win.start, win.end), borderColor: '#c47a12', borderWidth: bars ? 2.5 : 2.5, pointRadius: 0, tension: 0.2, yAxisID: 'yL' });
     if (v.tempRound) ds.push({ type: 'line', data: toXYWin(roundP50, win.start, win.end), borderColor: '#c47a12', borderWidth: 1, pointRadius: 0, borderDash: [6, 3], yAxisID: 'yL' });
     return ds;
