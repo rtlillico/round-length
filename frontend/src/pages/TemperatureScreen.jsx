@@ -129,7 +129,7 @@ const S = {
 export default function TemperatureScreen({ scenario, chartData, loading, onNavigate }) {
   const [fRL,     setFRL]    = useState(false);
   const [fTemp,   setFTemp]  = useState(false);
-  const [visC1,   setVisC1]  = useState({ tempRound: true, tempLAR: true, p50: true });
+  const [visC1,   setVisC1]  = useState({ tempLAR: true, tempRound: true });
   const [visC2,   setVisC2]  = useState({ tMax: true, tMean: true, tMin: true });
   const [pill,    setPill]   = useState(120);
   const [winInfo, setWinInfo] = useState(null);  // { start, end }
@@ -260,7 +260,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     const v = v1Ref.current;
     const vals = [
       ...(v.tempRound ? roundData : []),
-      ...(v.p50 ? roundP50 : []),
+      ...(v.tempRound ? roundP50 : []),
     ].filter(x => x != null && isFinite(x) && x > 0);
     const rawMax = vals.length ? Math.max(...vals) : 80;
     const step = rawMax > 50 ? 20 : rawMax > 20 ? 10 : 5;
@@ -281,10 +281,10 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   function ds1main() {
     const { larData, larP50, roundData, roundP50 } = arrRef.current;
     const v = v1Ref.current; const ds = [];
-    if (v.tempRound) ds.push({ type: 'line', data: toXY(roundData), borderColor: '#c47a12', borderWidth: 1.4, pointRadius: 0, tension: 0.2, yAxisID: 'yL' });
-    if (v.p50)       ds.push({ type: 'line', data: toXY(roundP50),  borderColor: '#c47a12', borderWidth: 0.8, pointRadius: 0, borderDash: [6, 3], yAxisID: 'yL' });
     if (v.tempLAR)   ds.push({ type: 'line', data: toXY(larData),   borderColor: '#3a6b1a', borderWidth: 1.4, pointRadius: 0, tension: 0.2, yAxisID: 'yR' });
-    if (v.p50)       ds.push({ type: 'line', data: toXY(larP50),    borderColor: '#4aa8d8', borderWidth: 1,   pointRadius: 0, borderDash: [8, 4], yAxisID: 'yR' });
+    if (v.tempLAR)   ds.push({ type: 'line', data: toXY(larP50),    borderColor: '#4aa8d8', borderWidth: 1,   pointRadius: 0, borderDash: [8, 4], yAxisID: 'yR' });
+    if (v.tempRound) ds.push({ type: 'line', data: toXY(roundData), borderColor: '#c47a12', borderWidth: 1.4, pointRadius: 0, tension: 0.2, yAxisID: 'yL' });
+    if (v.tempRound) ds.push({ type: 'line', data: toXY(roundP50),  borderColor: '#c47a12', borderWidth: 0.8, pointRadius: 0, borderDash: [6, 3], yAxisID: 'yL' });
     return ds;
   }
   function ds2main() {
@@ -300,12 +300,12 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     const span = win.end - win.start + 1; const bars = span < 60;
     const bt = Math.max(2, Math.floor((pw / span) * 0.82));
     const v = v1Ref.current; const ds = [];
-    if (v.tempRound) ds.push({ type: 'line', data: toXYWin(roundData, win.start, win.end), borderColor: '#c47a12', borderWidth: bars ? 2.5 : 2.5, pointRadius: 0, tension: 0.2, yAxisID: 'yL' });
-    if (v.p50) ds.push({ type: 'line', data: toXYWin(roundP50, win.start, win.end), borderColor: '#c47a12', borderWidth: 1, pointRadius: 0, borderDash: [6, 3], yAxisID: 'yL' });
     if (v.tempLAR) ds.push(bars
       ? { type: 'bar',  data: toXYWin(larData, win.start, win.end), backgroundColor: 'rgba(58,107,26,0.45)', borderWidth: 0, barThickness: bt, yAxisID: 'yR' }
       : { type: 'line', data: toXYWin(larData, win.start, win.end), borderColor: '#3a6b1a', borderWidth: 2, pointRadius: 0, tension: 0.2, yAxisID: 'yR' });
-    if (v.p50) ds.push({ type: 'line', data: toXYWin(larP50, win.start, win.end), borderColor: '#4aa8d8', borderWidth: 3, pointRadius: 0, borderDash: [10, 5], yAxisID: 'yR' });
+    if (v.tempLAR) ds.push({ type: 'line', data: toXYWin(larP50, win.start, win.end), borderColor: '#4aa8d8', borderWidth: 3, pointRadius: 0, borderDash: [10, 5], yAxisID: 'yR' });
+    if (v.tempRound) ds.push({ type: 'line', data: toXYWin(roundData, win.start, win.end), borderColor: '#c47a12', borderWidth: bars ? 2.5 : 2.5, pointRadius: 0, tension: 0.2, yAxisID: 'yL' });
+    if (v.tempRound) ds.push({ type: 'line', data: toXYWin(roundP50, win.start, win.end), borderColor: '#c47a12', borderWidth: 1, pointRadius: 0, borderDash: [6, 3], yAxisID: 'yL' });
     return ds;
   }
   function ds2zoom(win, pw) {
@@ -371,7 +371,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     ic(zCv2.current, zCt2.current, 180);
 
     const base = { responsive: false, animation: false, plugins: { legend: { display: false }, tooltip: { enabled: false } } };
-    const showYR1 = v1Ref.current.tempLAR || v1Ref.current.p50;
+    const showYR1 = v1Ref.current.tempLAR;
     if (mCv1.current) mC1.current = new Chart(mCv1.current, { type: 'line', data: { datasets: ds1main() }, options: { ...base, scales: { x: xMain(), yL: mkYL(), ...(showYR1 ? { yR: mkYR() } : {}) } } });
     if (mCv2.current) mC2.current = new Chart(mCv2.current, { type: 'line', data: { datasets: ds2main() }, options: { ...base, scales: { x: xMain(), y: mkYS() } } });
 
@@ -388,7 +388,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     const win = clampWin(winRef.current.start, winRef.current.width);
     const base = { responsive: false, animation: false, plugins: { legend: { display: false }, tooltip: { enabled: false } } };
 
-    const showYR1 = v1Ref.current.tempLAR || v1Ref.current.p50;
+    const showYR1 = v1Ref.current.tempLAR;
     if (zC1.current) { zC1.current.destroy(); zC1.current = null; }
     if (zCv1.current && zCt1.current) {
       const pw = zCt1.current.clientWidth || 340;
@@ -588,9 +588,8 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
               )}
 
               <ToggleBar show={visC1} onToggle={k => setVisC1(p => ({ ...p, [k]: !p[k] }))} items={[
-                { key: 'tempRound', label: 'Temp round length', color: '#c47a12' },
                 { key: 'tempLAR',   label: 'Temp LAR',          color: '#3a6b1a' },
-                { key: 'p50',       label: 'P50 average',       color: '#4aa8d8' },
+                { key: 'tempRound', label: 'Temp round length', color: '#c47a12' },
               ]} />
 
               <div style={{ fontSize: 10, color: '#5a6f48', marginTop: 10, fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
