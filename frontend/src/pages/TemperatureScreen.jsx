@@ -572,6 +572,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
           {fRL && (
             <FormulaBox
               lines={`Rising (${pasture?.baseTemp ?? 5}–${pasture?.optimumTemp ?? 22}°C):  Temp LAR = (T_mean − base) / phyllochron\nFalling (${pasture?.optimumTemp ?? 22}–${pasture?.ceilingTemp ?? 35}°C): Temp LAR = maxLAR × (ceiling − T_mean) / (ceiling − optimum)\nOutside range: Temp LAR = 0\nTemp round length = cumulative backward sum of daily Temp LAR`}
+              varsTitle={pasture?.name}
               vars={[
                 { label: 'Base temp',      value: `${pasture?.baseTemp ?? 5}°C`,                                  desc: 'minimum temperature for any growth' },
                 { label: 'Optimum temp',   value: `${pasture?.optimumTemp ?? 22}°C`,                              desc: 'temperature where LAR peaks' },

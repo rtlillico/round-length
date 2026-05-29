@@ -225,7 +225,7 @@ export function FormulaBtn({ open, onToggle }) {
   );
 }
 
-export function FormulaBox({ lines, vars }) {
+export function FormulaBox({ lines, vars, varsTitle }) {
   return (
     <div style={{
       background: '#f0f8e8', borderRadius: 8, padding: 10, marginBottom: 10,
@@ -236,6 +236,7 @@ export function FormulaBox({ lines, vars }) {
       </pre>
       {vars && (
         <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px solid rgba(90,140,42,0.15)' }}>
+          {varsTitle && <div style={{ fontSize: 10, color: '#7a9a5a', fontStyle: 'italic', marginBottom: 5 }}>Values below are specific to {varsTitle}</div>}
           {vars.map(({ label, value, desc }) => (
             <div key={label} style={{ fontSize: 11, color: '#4a6a2a', marginBottom: 3 }}>
               {label} = <strong style={{ color: '#2d4a1e' }}>{value}</strong>
