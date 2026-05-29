@@ -573,10 +573,10 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
             <FormulaBox
               lines={`Rising (${pasture?.baseTemp ?? 5}–${pasture?.optimumTemp ?? 22}°C):  Temp LAR = (T_mean − base) / phyllochron\nFalling (${pasture?.optimumTemp ?? 22}–${pasture?.ceilingTemp ?? 35}°C): Temp LAR = maxLAR × (ceiling − T_mean) / (ceiling − optimum)\nOutside range: Temp LAR = 0\nTemp round length = cumulative backward sum of daily Temp LAR`}
               vars={[
-                { label: 'Base temp',      value: `${pasture?.baseTemp ?? 5}°C` },
-                { label: 'Optimum temp',   value: `${pasture?.optimumTemp ?? 22}°C` },
-                { label: 'Ceiling temp',   value: `${pasture?.ceilingTemp ?? 35}°C` },
-                { label: 'Phyllochron',    value: pasture ? `${pasture.phyllochron} degree-days/leaf` : '—' },
+                { label: 'Base temp',      value: `${pasture?.baseTemp ?? 5}°C`,                                  desc: 'minimum temperature for any growth' },
+                { label: 'Optimum temp',   value: `${pasture?.optimumTemp ?? 22}°C`,                              desc: 'temperature where LAR peaks' },
+                { label: 'Ceiling temp',   value: `${pasture?.ceilingTemp ?? 35}°C`,                              desc: 'above this, LAR drops to zero' },
+                { label: 'Phyllochron',    value: pasture ? `${pasture.phyllochron} degree-days/leaf` : '—',      desc: 'degree-days to produce one leaf' },
                 { label: 'T_mean today',   value: tMean != null ? `${tMean.toFixed(1)}°C` : '—' },
                 { label: 'Temp LAR today', value: tLAR  != null ? `${tLAR.toFixed(4)} leaves/day` : '—' },
               ]}

@@ -236,9 +236,10 @@ export function FormulaBox({ lines, vars }) {
       </pre>
       {vars && (
         <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px solid rgba(90,140,42,0.15)' }}>
-          {vars.map(({ label, value }) => (
+          {vars.map(({ label, value, desc }) => (
             <div key={label} style={{ fontSize: 11, color: '#4a6a2a', marginBottom: 3 }}>
               {label} = <strong style={{ color: '#2d4a1e' }}>{value}</strong>
+              {desc && <span style={{ color: '#7a9a5a', fontStyle: 'italic' }}> — {desc}</span>}
             </div>
           ))}
         </div>
