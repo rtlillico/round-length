@@ -567,12 +567,12 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
         {/* ── Card 1: Temp round length & Temp LAR ──────────────────────────── */}
         <div style={styles.card}>
           <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3, display: 'flex', alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
-            <span style={{ color: '#c47a12' }}>Temp round length</span>
-            <button onClick={() => { setInfoRL(v => !v); setInfoLAR(false); }} style={{ marginLeft: 4, marginRight: 8, background: 'none', border: 'none', cursor: 'pointer', color: '#c47a12', fontSize: 13, opacity: 0.75, padding: 0, lineHeight: 1 }}>ⓘ</button>
+            <span style={{ color: '#4aa8d8' }}>Temp LAR</span>
+            <button onClick={() => { setInfoLAR(v => !v); setInfoRL(false); }} style={{ marginLeft: 4, marginRight: 8, background: 'none', border: 'none', cursor: 'pointer', color: '#4aa8d8', fontSize: 13, opacity: 0.75, padding: 0, lineHeight: 1 }}>ⓘ</button>
             <span style={{ color: '#9aab85', fontWeight: 400 }}>&amp;</span>
             {' '}
-            <span style={{ color: '#4aa8d8' }}>Temp LAR</span>
-            <button onClick={() => { setInfoLAR(v => !v); setInfoRL(false); }} style={{ marginLeft: 4, background: 'none', border: 'none', cursor: 'pointer', color: '#4aa8d8', fontSize: 13, opacity: 0.75, padding: 0, lineHeight: 1 }}>ⓘ</button>
+            <span style={{ color: '#c47a12' }}>Temp round length</span>
+            <button onClick={() => { setInfoRL(v => !v); setInfoLAR(false); }} style={{ marginLeft: 4, background: 'none', border: 'none', cursor: 'pointer', color: '#c47a12', fontSize: 13, opacity: 0.75, padding: 0, lineHeight: 1 }}>ⓘ</button>
           </div>
           {infoRL && (
             <div style={{ background: '#fff8ed', border: '1px solid rgba(196,122,18,0.3)', borderRadius: 8, padding: '10px 12px', marginBottom: 10, fontSize: 12, color: '#6b4a10', lineHeight: 1.6 }}>
