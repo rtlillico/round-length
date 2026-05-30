@@ -569,7 +569,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
 
         {/* ── Card 1: Temp round length & Temp LAR ──────────────────────────── */}
         <div style={styles.card}>
-          <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3, display: 'flex', alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
+          <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3, display: 'flex', alignItems: 'center', flexWrap: 'wrap', marginBottom: 4 }}>
             <span style={{ color: '#4aa8d8' }}>Temp LAR</span>
             <button onClick={() => { setInfoLAR(v => !v); setInfoRL(false); }} style={{ marginLeft: 4, marginRight: 8, background: 'none', border: 'none', cursor: 'pointer', color: '#4aa8d8', fontSize: 13, opacity: 0.75, padding: 0, lineHeight: 1 }}>ⓘ</button>
             <span style={{ color: '#9aab85', fontWeight: 400 }}>&amp;</span>
@@ -605,6 +605,22 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
               ))}
             </div>
           )}
+          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 8 }}>
+            {[
+              { color: '#4aa8d8', label: 'Temp LAR (actual)',        dashed: false },
+              { color: '#4aa8d8', label: 'Temp LAR (average)',       dashed: true  },
+              { color: '#c47a12', label: 'Temp round length (actual)',  dashed: false },
+              { color: '#c47a12', label: 'Temp round length (average)', dashed: true  },
+            ].map(({ color, label, dashed }) => (
+              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <svg width="22" height="8" style={{ flexShrink: 0 }}>
+                  <line x1="0" y1="4" x2="22" y2="4" stroke={color} strokeWidth="2"
+                    strokeDasharray={dashed ? '5 3' : 'none'} />
+                </svg>
+                <span style={{ fontSize: 10, color: '#5a6f48' }}>{label}</span>
+              </div>
+            ))}
+          </div>
           {pillRow}
 
           {loading && <p style={{ color: C.muted, textAlign: 'center' }}>Loading…</p>}
