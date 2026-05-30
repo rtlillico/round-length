@@ -567,8 +567,8 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
 
         {/* ── Card 1: Temp round length & Temp LAR ──────────────────────────── */}
         <div style={styles.card}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.3, display: 'flex', alignItems: 'center', flexWrap: 'wrap', padding: '6px 0' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.3, display: 'flex', alignItems: 'center', flexWrap: 'wrap', padding: '7px 0' }}>
               <span style={{ color: '#c47a12' }}>Temp round length</span>
               <button onClick={() => { setInfoRL(v => !v); setInfoLAR(false); }} style={{ marginLeft: 4, marginRight: 6, background: 'none', border: 'none', cursor: 'pointer', color: '#c47a12', fontSize: 12, opacity: 0.75, verticalAlign: 'middle', padding: 0, lineHeight: 1 }}>ⓘ</button>
               <span style={{ color: '#9aab85', fontWeight: 400 }}>&amp;</span>
