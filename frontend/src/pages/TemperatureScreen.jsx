@@ -149,7 +149,6 @@ const S = {
 
 // ── TemperatureScreen ──────────────────────────────────────────────────────────
 export default function TemperatureScreen({ scenario, chartData, loading, onNavigate, onGoToScenarios }) {
-  const [fRL,     setFRL]    = useState(false);
   const [fTemp,   setFTemp]  = useState(false);
   const [infoRL,  setInfoRL]  = useState(false);
   const [infoLAR, setInfoLAR] = useState(false);
@@ -567,40 +566,41 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
 
         {/* ── Card 1: Temp round length & Temp LAR ──────────────────────────── */}
         <div style={styles.card}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2 }}>
-            <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3, display: 'flex', alignItems: 'center', flexWrap: 'wrap', padding: '2px 0' }}>
-              <span style={{ color: '#c47a12' }}>Temp round length</span>
-              <button onClick={() => { setInfoRL(v => !v); setInfoLAR(false); }} style={{ marginLeft: 4, marginRight: 6, background: 'none', border: 'none', cursor: 'pointer', color: '#c47a12', fontSize: 12, opacity: 0.75, verticalAlign: 'middle', padding: 0, lineHeight: 1 }}>ⓘ</button>
-              <span style={{ color: '#9aab85', fontWeight: 400 }}>&amp;</span>
-              {' '}
-              <span style={{ color: '#4aa8d8' }}>Temp LAR</span>
-              <button onClick={() => { setInfoLAR(v => !v); setInfoRL(false); }} style={{ marginLeft: 4, background: 'none', border: 'none', cursor: 'pointer', color: '#4aa8d8', fontSize: 12, opacity: 0.75, verticalAlign: 'middle', padding: 0, lineHeight: 1 }}>ⓘ</button>
-            </div>
-            <FormulaBtn open={fRL} onToggle={() => setFRL(v => !v)} />
+          <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3, display: 'flex', alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
+            <span style={{ color: '#c47a12' }}>Temp round length</span>
+            <button onClick={() => { setInfoRL(v => !v); setInfoLAR(false); }} style={{ marginLeft: 4, marginRight: 8, background: 'none', border: 'none', cursor: 'pointer', color: '#c47a12', fontSize: 13, opacity: 0.75, padding: 0, lineHeight: 1 }}>ⓘ</button>
+            <span style={{ color: '#9aab85', fontWeight: 400 }}>&amp;</span>
+            {' '}
+            <span style={{ color: '#4aa8d8' }}>Temp LAR</span>
+            <button onClick={() => { setInfoLAR(v => !v); setInfoRL(false); }} style={{ marginLeft: 4, background: 'none', border: 'none', cursor: 'pointer', color: '#4aa8d8', fontSize: 13, opacity: 0.75, padding: 0, lineHeight: 1 }}>ⓘ</button>
           </div>
           {infoRL && (
-            <div style={{ background: '#fff8ed', border: '1px solid rgba(196,122,18,0.25)', borderRadius: 8, padding: '8px 10px', marginBottom: 8, fontSize: 12, color: '#6b4a10', lineHeight: 1.5 }}>
-              <strong style={{ color: '#c47a12' }}>Temp round length</strong> is how many days it would take to complete one grazing round based on temperature-driven growth alone. It's calculated by summing daily Temp LAR values backward from today until the target number of leaves is reached.
+            <div style={{ background: '#fff8ed', border: '1px solid rgba(196,122,18,0.3)', borderRadius: 8, padding: '10px 12px', marginBottom: 10, fontSize: 12, color: '#6b4a10', lineHeight: 1.6 }}>
+              <div style={{ fontWeight: 600, color: '#c47a12', marginBottom: 6 }}>Temp round length</div>
+              <div style={{ marginBottom: 8 }}>How many days it would take to complete one grazing round based on temperature-driven leaf growth alone. Calculated by summing daily Temp LAR backward from today until the target leaf stage is reached.</div>
+              <pre style={{ fontSize: 10, background: 'rgba(196,122,18,0.08)', borderRadius: 6, padding: '6px 8px', margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'monospace', color: '#7a4a08' }}>{`Temp round length = backward sum of daily Temp LAR\n  until sum ≥ target leaves (${scenario.target_leaves} leaves)`}</pre>
             </div>
           )}
           {infoLAR && (
-            <div style={{ background: '#eef7fd', border: '1px solid rgba(74,168,216,0.25)', borderRadius: 8, padding: '8px 10px', marginBottom: 8, fontSize: 12, color: '#1a4a6b', lineHeight: 1.5 }}>
-              <strong style={{ color: '#4aa8d8' }}>Temp LAR</strong> (Leaf Appearance Rate) measures how many leaves the grass produces per day, driven by temperature alone. It rises from zero at the base temperature, peaks at the optimum, then falls back to zero at the ceiling temperature.
+            <div style={{ background: '#eef7fd', border: '1px solid rgba(74,168,216,0.3)', borderRadius: 8, padding: '10px 12px', marginBottom: 10, fontSize: 12, color: '#1a4a6b', lineHeight: 1.6 }}>
+              <div style={{ fontWeight: 600, color: '#4aa8d8', marginBottom: 6 }}>Temp LAR — Leaf Appearance Rate</div>
+              <div style={{ marginBottom: 8 }}>How many leaves the grass produces per day, driven by temperature alone. Rises from zero at the base temp, peaks at the optimum, then falls back to zero at the ceiling.</div>
+              <pre style={{ fontSize: 10, background: 'rgba(74,168,216,0.08)', borderRadius: 6, padding: '6px 8px', margin: '0 0 8px', whiteSpace: 'pre-wrap', fontFamily: 'monospace', color: '#1a3a5a' }}>{`Rising  (${pasture?.baseTemp ?? 5}–${pasture?.optimumTemp ?? 22}°C): LAR = (T_mean − base) / phyllochron\nFalling (${pasture?.optimumTemp ?? 22}–${pasture?.ceilingTemp ?? 35}°C): LAR = maxLAR × (ceiling − T_mean) / (ceiling − optimum)\nOutside range: LAR = 0`}</pre>
+              <div style={{ fontSize: 11, color: '#2a5a7a', fontStyle: 'italic', marginBottom: 4 }}>Values for {pasture?.name}</div>
+              {[
+                { label: 'Base temp',      value: `${pasture?.baseTemp ?? 5}°C`,                             desc: 'minimum for any growth' },
+                { label: 'Optimum temp',   value: `${pasture?.optimumTemp ?? 22}°C`,                         desc: 'where LAR peaks' },
+                { label: 'Ceiling temp',   value: `${pasture?.ceilingTemp ?? 35}°C`,                         desc: 'above this, LAR = 0' },
+                { label: 'Phyllochron',    value: pasture ? `${pasture.phyllochron} dd/leaf` : '—',          desc: 'degree-days per leaf' },
+                { label: 'T_mean today',   value: tMean != null ? `${tMean.toFixed(1)}°C` : '—',            desc: null },
+                { label: 'Temp LAR today', value: tLAR  != null ? `${tLAR.toFixed(4)} leaves/day` : '—',   desc: null },
+              ].map(({ label, value, desc }) => (
+                <div key={label} style={{ fontSize: 11, color: '#1a4a6b', marginBottom: 2 }}>
+                  {label} = <strong style={{ color: '#0a2a4b' }}>{value}</strong>
+                  {desc && <span style={{ color: '#5a8aaa', fontStyle: 'italic' }}> — {desc}</span>}
+                </div>
+              ))}
             </div>
-          )}
-          {fRL && (
-            <FormulaBox
-              lines={`Rising (${pasture?.baseTemp ?? 5}–${pasture?.optimumTemp ?? 22}°C):  Temp LAR = (T_mean − base) / phyllochron\nFalling (${pasture?.optimumTemp ?? 22}–${pasture?.ceilingTemp ?? 35}°C): Temp LAR = maxLAR × (ceiling − T_mean) / (ceiling − optimum)\nOutside range: Temp LAR = 0\nTemp round length = cumulative backward sum of daily Temp LAR`}
-              varsTitle={pasture?.name}
-              vars={[
-                { label: 'Base temp',      value: `${pasture?.baseTemp ?? 5}°C`,                                  desc: 'minimum temperature for any growth' },
-                { label: 'Optimum temp',   value: `${pasture?.optimumTemp ?? 22}°C`,                              desc: 'temperature where LAR peaks' },
-                { label: 'Ceiling temp',   value: `${pasture?.ceilingTemp ?? 35}°C`,                              desc: 'above this, LAR drops to zero' },
-                { label: 'Phyllochron',    value: pasture ? `${pasture.phyllochron} degree-days/leaf` : '—',      desc: 'degree-days to produce one leaf' },
-                { label: 'T_mean today',   value: tMean != null ? `${tMean.toFixed(1)}°C` : '—' },
-                { label: 'Temp LAR today', value: tLAR  != null ? `${tLAR.toFixed(4)} leaves/day` : '—' },
-              ]}
-            />
           )}
           {pillRow}
 
