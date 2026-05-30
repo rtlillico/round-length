@@ -151,6 +151,8 @@ const S = {
 export default function TemperatureScreen({ scenario, chartData, loading, onNavigate, onGoToScenarios }) {
   const [fRL,     setFRL]    = useState(false);
   const [fTemp,   setFTemp]  = useState(false);
+  const [infoRL,  setInfoRL]  = useState(false);
+  const [infoLAR, setInfoLAR] = useState(false);
   const [visC1,   setVisC1]  = useState({ tempLAR: true, tempRound: true });
   const [visC2,   setVisC2]  = useState({ tMax: true, tMean: true, tMin: true });
   const [pill,    setPill]   = useState(120);
@@ -566,9 +568,26 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
         {/* ── Card 1: Temp round length & Temp LAR ──────────────────────────── */}
         <div style={styles.card}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#1e3a12' }}>Temp round length & Temp LAR</div>
+            <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.3 }}>
+              <span style={{ color: '#c47a12' }}>Temp round length</span>
+              <button onClick={() => { setInfoRL(v => !v); setInfoLAR(false); }} style={{ marginLeft: 4, marginRight: 6, background: 'none', border: 'none', cursor: 'pointer', color: '#c47a12', fontSize: 12, opacity: 0.75, verticalAlign: 'middle', padding: 0, lineHeight: 1 }}>ⓘ</button>
+              <span style={{ color: '#9aab85', fontWeight: 400 }}>&amp;</span>
+              {' '}
+              <span style={{ color: '#4aa8d8' }}>Temp LAR</span>
+              <button onClick={() => { setInfoLAR(v => !v); setInfoRL(false); }} style={{ marginLeft: 4, background: 'none', border: 'none', cursor: 'pointer', color: '#4aa8d8', fontSize: 12, opacity: 0.75, verticalAlign: 'middle', padding: 0, lineHeight: 1 }}>ⓘ</button>
+            </div>
             <FormulaBtn open={fRL} onToggle={() => setFRL(v => !v)} />
           </div>
+          {infoRL && (
+            <div style={{ background: '#fff8ed', border: '1px solid rgba(196,122,18,0.25)', borderRadius: 8, padding: '8px 10px', marginBottom: 8, fontSize: 12, color: '#6b4a10', lineHeight: 1.5 }}>
+              <strong style={{ color: '#c47a12' }}>Temp round length</strong> is how many days it would take to complete one grazing round based on temperature-driven growth alone. It's calculated by summing daily Temp LAR values backward from today until the target number of leaves is reached.
+            </div>
+          )}
+          {infoLAR && (
+            <div style={{ background: '#eef7fd', border: '1px solid rgba(74,168,216,0.25)', borderRadius: 8, padding: '8px 10px', marginBottom: 8, fontSize: 12, color: '#1a4a6b', lineHeight: 1.5 }}>
+              <strong style={{ color: '#4aa8d8' }}>Temp LAR</strong> (Leaf Appearance Rate) measures how many leaves the grass produces per day, driven by temperature alone. It rises from zero at the base temperature, peaks at the optimum, then falls back to zero at the ceiling temperature.
+            </div>
+          )}
           {fRL && (
             <FormulaBox
               lines={`Rising (${pasture?.baseTemp ?? 5}–${pasture?.optimumTemp ?? 22}°C):  Temp LAR = (T_mean − base) / phyllochron\nFalling (${pasture?.optimumTemp ?? 22}–${pasture?.ceilingTemp ?? 35}°C): Temp LAR = maxLAR × (ceiling − T_mean) / (ceiling − optimum)\nOutside range: Temp LAR = 0\nTemp round length = cumulative backward sum of daily Temp LAR`}
