@@ -216,11 +216,11 @@ export function NavLinks({ onNavigate, current }) {
 export function FormulaBtn({ open, onToggle }) {
   return (
     <button onClick={onToggle} style={{
-      display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color: '#fff',
-      cursor: 'pointer', marginBottom: 8, fontWeight: 500, background: '#3a6b1a',
-      border: 'none', borderRadius: 16, padding: '6px 12px',
+      display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: '#5a7a3a',
+      cursor: 'pointer', marginBottom: 8, fontWeight: 500, background: 'transparent',
+      border: '1.5px solid #5a7a3a', borderRadius: 12, padding: '4px 10px',
     }}>
-      {open ? '▼ Hide formula' : '▶ Show formula'}
+      {open ? '▼ Hide formula' : '▶ Formula'}
     </button>
   );
 }
