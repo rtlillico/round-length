@@ -159,6 +159,8 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   const [ctr1,    setCtr1]   = useState(null);
   const [ctr2,    setCtr2]   = useState(null);
 
+  useEffect(() => { window.scrollTo(0, 0); }, []);
+
   const pasture = PASTURE_PARAMS[scenario.pasture_key];
   const target  = Number(scenario.target_leaves);
   const st      = scenario.todayState;
@@ -381,9 +383,15 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     if (zC2.current && tLZ2.current) tLZ2.current.style.left = zC2.current.scales.x.getPixelForValue(TODAY) + 'px';
 
     // update React state for readouts / window label
-    const { dates, larData, roundData, tMeanData } = arrRef.current;
+    const { dates, larData, larP50, roundData, roundP50, tMeanData } = arrRef.current;
     const ds = dates[cDay] || '';
-    setCtr1(ds ? { dl: fmtDayFull(ds), round: roundData[cDay] != null ? roundData[cDay].toFixed(0) + ' days' : '—', lar: larData[cDay] != null ? larData[cDay].toFixed(4) : '—' } : null);
+    setCtr1(ds ? {
+      dl:        fmtDayFull(ds),
+      lar:       larData[cDay]   != null ? larData[cDay].toFixed(4)        : '—',
+      larAvg:    larP50[cDay]    != null ? larP50[cDay].toFixed(4)         : '—',
+      round:     roundData[cDay] != null ? roundData[cDay].toFixed(0) + ' days' : '—',
+      roundAvg:  roundP50[cDay]  != null ? roundP50[cDay].toFixed(0) + ' days'  : '—',
+    } : null);
     setCtr2(ds ? { dl: fmtDayFull(ds), tMean: tMeanData[cDay] != null ? tMeanData[cDay].toFixed(1) + '°C' : '—' } : null);
     setWinInfo({ start: win.start, end: win.end });
   }
@@ -646,9 +654,15 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
               <div style={{ fontSize: 10, color: '#5a6f48', textAlign: 'center', marginTop: 6, fontWeight: 500 }}>{winLabel}</div>
 
               {ctr1 && (
-                <div style={{ fontSize: 11, color: '#2d4a1e', textAlign: 'center', marginTop: 6, background: '#f5fae8', border: '1px solid #cfe2b3', borderRadius: 6, padding: '6px 9px', lineHeight: 1.5 }}>
-                  <strong>{ctr1.dl}</strong> · RL <strong>{ctr1.round}</strong> · LAR <strong>{ctr1.lar}</strong>
-                  <div style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic', marginTop: 2 }}>centre of window — pan to explore</div>
+                <div style={{ fontSize: 11, color: '#2d4a1e', marginTop: 6, background: '#f5fae8', border: '1px solid #cfe2b3', borderRadius: 6, padding: '8px 10px', lineHeight: 1.7 }}>
+                  <div style={{ fontWeight: 600, marginBottom: 4, textAlign: 'center' }}>{ctr1.dl}</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 10px' }}>
+                    <div><span style={{ color: '#4aa8d8' }}>Temp LAR</span> <strong>{ctr1.lar}</strong></div>
+                    <div><span style={{ color: '#4aa8d8', opacity: 0.7 }}>LAR avg</span> <strong>{ctr1.larAvg}</strong></div>
+                    <div><span style={{ color: '#c47a12' }}>Round length</span> <strong>{ctr1.round}</strong></div>
+                    <div><span style={{ color: '#c47a12', opacity: 0.7 }}>RL avg</span> <strong>{ctr1.roundAvg}</strong></div>
+                  </div>
+                  <div style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic', marginTop: 4, textAlign: 'center' }}>centre of window — pan to explore</div>
                 </div>
               )}
 
