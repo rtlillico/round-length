@@ -22,6 +22,7 @@ const {
 } = require('../db/queries');
 const { processHistoricalData, calcProjectedRoundLength, dateToDayOfYear } = require('../lib/formula');
 const { farmProgress } = require('../lib/progress');
+const { updateScenario } = require('../cron/nightly');
 
 // GET /api/scenarios?farmId=1 — list all scenarios for a farm
 router.get('/', async (req, res) => {
@@ -56,9 +57,36 @@ router.patch('/:id', async (req, res) => {
     return res.status(400).json({ error: 'name, pastureKey and targetLeaves are required' });
   }
   try {
+    const existing = await getScenario(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Scenario not found' });
+
+    const heavyChanged = (
+      pastureKey !== existing.pasture_key ||
+      Number(targetLeaves) !== Number(existing.target_leaves) ||
+      (soilType || 'sandyLoam') !== (existing.soil_type || 'sandyLoam')
+    );
+
     const updated = await updateScenarioMeta(req.params.id, { name, pastureKey, targetLeaves, soilType, description });
-    if (!updated) return res.status(404).json({ error: 'Scenario not found' });
-    res.json(updated);
+
+    res.json({ ...updated, recomputing: heavyChanged });
+
+    if (heavyChanged) {
+      const farmId = Number(updated.farm_id);
+      farmProgress.set(farmId, { phase: 'computing', pct: 0 });
+      (async () => {
+        try {
+          console.log(`[scenarios] Recomputing scenario ${updated.id} after heavy edit`);
+          const farm = await getFarm(updated.farm_id);
+          const allSILO = await getAllSILORows(updated.farm_id);
+          await updateScenario(updated, allSILO, farm?.ifd_data || null);
+          farmProgress.delete(farmId);
+          console.log(`[scenarios] Scenario ${updated.id} recomputed`);
+        } catch (err) {
+          farmProgress.set(farmId, { phase: 'error', error: err.message });
+          console.error(`[scenarios] Recompute failed for scenario ${updated.id}:`, err.message);
+        }
+      })();
+    }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

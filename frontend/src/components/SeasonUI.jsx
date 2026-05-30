@@ -16,7 +16,6 @@ export function ScenarioInfoSheet({ scenario, onClose, onSaved }) {
   });
   const [saving, setSaving]   = useState(false);
   const [saveErr, setSaveErr] = useState(null);
-  const [needsReload, setNeedsReload] = useState(false);
 
   const heavy = form.pastureKey !== scenario.pasture_key ||
                 Number(form.targetLeaves) !== Number(scenario.target_leaves) ||
@@ -34,7 +33,6 @@ export function ScenarioInfoSheet({ scenario, onClose, onSaved }) {
       });
       onSaved(updated);
       setEditing(false);
-      if (heavy) setNeedsReload(true);
     } catch (e) {
       setSaveErr(e.message);
     } finally {
@@ -82,13 +80,6 @@ export function ScenarioInfoSheet({ scenario, onClose, onSaved }) {
 
         {/* body */}
         <div style={{ overflowY: 'auto', flex: 1, padding: '0 16px 24px' }}>
-          {needsReload && (
-            <div style={{ background: '#f0f8e8', border: '1px solid #a8c48a', borderRadius: 8, padding: '10px 12px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-              <span style={{ fontSize: 12, color: '#3a6b1a' }}>Saved. Reload to recompute charts.</span>
-              <button onClick={() => window.location.reload()} style={{ background: '#3a6b1a', color: '#fff', border: 'none', borderRadius: 8, padding: '5px 10px', fontSize: 12, cursor: 'pointer', flexShrink: 0 }}>Reload</button>
-            </div>
-          )}
-
           {editing ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 4 }}>
               <div>
@@ -123,7 +114,7 @@ export function ScenarioInfoSheet({ scenario, onClose, onSaved }) {
               </div>
               {heavy && (
                 <div style={{ fontSize: 11, color: '#c47a12', background: '#fdf6e8', border: '1px solid #e8c87a', borderRadius: 8, padding: '8px 10px' }}>
-                  ⚠ Changing grass type, leaf stage or soil type requires recomputing historical charts — you'll be prompted to reload after saving.
+                  ⚠ Changing grass type, leaf stage or soil type will recompute historical charts in the background — charts will update automatically after saving.
                 </div>
               )}
               {saveErr && <div style={{ fontSize: 12, color: '#c43a2a' }}>{saveErr}</div>}

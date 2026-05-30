@@ -113,6 +113,7 @@ export default function Dashboard({ farmId, onSelectScenario, onAdd, forceTable,
   const [error, setError]         = useState(null);
   const [downloadProgress, setDownloadProgress] = useState(null);
   const [editingScenario, setEditingScenario] = useState(null);
+  const [reloadTick, setReloadTick] = useState(0);
 
   const today = new Date().toLocaleDateString('en-AU', {
     weekday: 'long', day: 'numeric', month: 'long'
@@ -164,7 +165,7 @@ export default function Dashboard({ farmId, onSelectScenario, onAdd, forceTable,
 
     load();
     return () => clearTimeout(timer);
-  }, [farmId]);
+  }, [farmId, reloadTick]);
 
   if (loading) return (
     <div style={styles.screen}>
@@ -260,6 +261,7 @@ export default function Dashboard({ farmId, onSelectScenario, onAdd, forceTable,
           onSaved={(updated) => {
             setScenarios(prev => prev.map(s => s.id === updated.id ? { ...s, ...updated } : s));
             setEditingScenario(null);
+            if (updated.recomputing) setReloadTick(t => t + 1);
           }}
         />
       )}
