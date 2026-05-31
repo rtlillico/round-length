@@ -159,6 +159,8 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   const [ctr1,    setCtr1]   = useState(null);
   const [ctr2,    setCtr2]   = useState(null);
   const [expandCtr1, setExpandCtr1] = useState(false);
+  const [showPct, setShowPct] = useState(false);
+  const showPctRef = useRef(false);
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
@@ -186,6 +188,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   useEffect(() => { tlRef.current  = tLabels; }, [tLabels]);
   useEffect(() => { v1Ref.current  = visC1;   }, [visC1]);
   useEffect(() => { v2Ref.current  = visC2;   }, [visC2]);
+  useEffect(() => { showPctRef.current = showPct; }, [showPct]);
 
   // chart instances
   const mC1 = useRef(null), zC1 = useRef(null);
@@ -211,6 +214,15 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   const scM2 = useRef(null), scZ2 = useRef(null);
   const tL2  = useRef(null), tP2  = useRef(null);
   const tLZ1 = useRef(null), tLZ2 = useRef(null);
+
+  // percentile card refs
+  const pcZC1 = useRef(null), pcMC1 = useRef(null);
+  const pcZCv1 = useRef(null), pcMCv1 = useRef(null);
+  const pcZCt1 = useRef(null), pcMCt1 = useRef(null);
+  const pcSdl1 = useRef(null), pcSb1 = useRef(null), pcSdr1 = useRef(null);
+  const pcSeL1 = useRef(null), pcSeR1 = useRef(null);
+  const pcScM1 = useRef(null), pcScZ1 = useRef(null);
+  const pcTL1  = useRef(null), pcTLZ1 = useRef(null);
 
   // ── x-scale configs ───────────────────────────────────────────────────────────
   function xMain() {
@@ -383,6 +395,13 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     if (zC1.current && tLZ1.current) tLZ1.current.style.left = zC1.current.scales.x.getPixelForValue(TODAY) + 'px';
     if (zC2.current && tLZ2.current) tLZ2.current.style.left = zC2.current.scales.x.getPixelForValue(TODAY) + 'px';
 
+    if (showPctRef.current) {
+      applySpot(pcMC1.current, pcSdl1, pcSb1, pcSdr1, pcSeL1, pcSeR1, pcScM1);
+      applyToday(pcMC1.current, pcTL1, { current: null });
+      if (pcZC1.current && pcScZ1.current) pcScZ1.current.style.left = pcZC1.current.scales.x.getPixelForValue(cDay) + 'px';
+      if (pcZC1.current && pcTLZ1.current) pcTLZ1.current.style.left = pcZC1.current.scales.x.getPixelForValue(TODAY) + 'px';
+    }
+
     // update React state for readouts / window label
     const { dates, larData, larP50, roundData, roundP50, tMeanData } = arrRef.current;
     const ds = dates[cDay] || '';
@@ -401,7 +420,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   function createAll() {
     const win = clampWin(winRef.current.start, winRef.current.width);
     const ic = (cv, ct, h) => { if (!cv || !ct) return; cv.width = ct.clientWidth || 340; cv.height = h; };
-    [mC1, zC1, mC2, zC2].forEach(r => { if (r.current) { r.current.destroy(); r.current = null; } });
+    [mC1, zC1, mC2, zC2, pcMC1, pcZC1].forEach(r => { if (r.current) { r.current.destroy(); r.current = null; } });
     ic(mCv1.current, mCt1.current, 120);
     ic(zCv1.current, zCt1.current, 180);
     ic(mCv2.current, mCt2.current, 120);
@@ -417,6 +436,11 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     const pw2 = zCt2.current?.clientWidth || 340;
     if (zCv1.current) zC1.current = new Chart(zCv1.current, { type: 'line', data: { datasets: ds1zoom(win, pw1) }, options: { ...base, scales: { x: xZoom(win.start, win.end), ...(showYL1 ? { yL: mkYL() } : {}), ...(showYR1 ? { yR: mkYRZoom() } : {}) } } });
     if (zCv2.current) zC2.current = new Chart(zCv2.current, { type: 'line', data: { datasets: ds2zoom(win, pw2) }, options: { ...base, scales: { x: xZoom(win.start, win.end), y: mkYS() } } });
+
+    if (showPctRef.current) {
+      if (pcMCv1.current && pcMCt1.current) { ic(pcMCv1.current, pcMCt1.current, 120); pcMC1.current = new Chart(pcMCv1.current, { type: 'line', data: { datasets: ds1main() }, options: { ...base, scales: { x: xMain(), ...(showYL1 ? { yL: mkYL() } : {}), ...(showYR1 ? { yR: mkYR() } : {}) } } }); }
+      if (pcZCv1.current && pcZCt1.current) { ic(pcZCv1.current, pcZCt1.current, 180); const pcpw = pcZCt1.current.clientWidth || 340; pcZC1.current = new Chart(pcZCv1.current, { type: 'line', data: { datasets: ds1zoom(win, pcpw) }, options: { ...base, scales: { x: xZoom(win.start, win.end), ...(showYL1 ? { yL: mkYL() } : {}), ...(showYR1 ? { yR: mkYRZoom() } : {}) } } }); }
+    }
 
     posOverlays();
   }
@@ -440,6 +464,14 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
       zCv2.current.width = pw; zCv2.current.height = 180;
       zC2.current = new Chart(zCv2.current, { type: 'line', data: { datasets: ds2zoom(win, pw) }, options: { ...base, scales: { x: xZoom(win.start, win.end), y: mkYS() } } });
     }
+    if (showPctRef.current) {
+      if (pcZC1.current) { pcZC1.current.destroy(); pcZC1.current = null; }
+      if (pcZCv1.current && pcZCt1.current) {
+        const pw = pcZCt1.current.clientWidth || 340;
+        pcZCv1.current.width = pw; pcZCv1.current.height = 180;
+        pcZC1.current = new Chart(pcZCv1.current, { type: 'line', data: { datasets: ds1zoom(win, pw) }, options: { ...base, scales: { x: xZoom(win.start, win.end), ...(showYL1 ? { yL: mkYL() } : {}), ...(showYR1 ? { yR: mkYRZoom() } : {}) } } });
+      }
+    }
     posOverlays();
   }
 
@@ -447,9 +479,29 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   useEffect(() => {
     if (loading || !chartData) return;
     const t = setTimeout(createAll, 50);
-    return () => { clearTimeout(t); [mC1, zC1, mC2, zC2].forEach(r => { if (r.current) { r.current.destroy(); r.current = null; } }); };
+    return () => { clearTimeout(t); [mC1, zC1, mC2, zC2, pcMC1, pcZC1].forEach(r => { if (r.current) { r.current.destroy(); r.current = null; } }); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [arrays, tLabels]);
+
+  useEffect(() => {
+    if (!showPct) {
+      [pcMC1, pcZC1].forEach(r => { if (r.current) { r.current.destroy(); r.current = null; } });
+      return;
+    }
+    const t = setTimeout(() => {
+      const win = clampWin(winRef.current.start, winRef.current.width);
+      const base = { responsive: false, animation: false, plugins: { legend: { display: false }, tooltip: { enabled: false } } };
+      const showYL1 = v1Ref.current.tempRound;
+      const showYR1 = v1Ref.current.tempLAR;
+      const ic = (cv, ct, h) => { if (!cv || !ct) return; cv.width = ct.clientWidth || 340; cv.height = h; };
+      [pcMC1, pcZC1].forEach(r => { if (r.current) { r.current.destroy(); r.current = null; } });
+      if (pcMCv1.current && pcMCt1.current) { ic(pcMCv1.current, pcMCt1.current, 120); pcMC1.current = new Chart(pcMCv1.current, { type: 'line', data: { datasets: ds1main() }, options: { ...base, scales: { x: xMain(), ...(showYL1 ? { yL: mkYL() } : {}), ...(showYR1 ? { yR: mkYR() } : {}) } } }); }
+      if (pcZCv1.current && pcZCt1.current) { ic(pcZCv1.current, pcZCt1.current, 180); const pw = pcZCt1.current.clientWidth || 340; pcZC1.current = new Chart(pcZCv1.current, { type: 'line', data: { datasets: ds1zoom(win, pw) }, options: { ...base, scales: { x: xZoom(win.start, win.end), ...(showYL1 ? { yL: mkYL() } : {}), ...(showYR1 ? { yR: mkYRZoom() } : {}) } } }); }
+      posOverlays();
+    }, 50);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showPct]);
 
   useEffect(() => {
     if (loading || !chartData) return;
@@ -717,6 +769,55 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
               </div>
 
               {gestureCard}
+
+              {/* ── Percentile comparison (collapsible) ──────────────────── */}
+              <div style={{ marginTop: 12, border: '1px solid #e0d8cc', borderRadius: 8, overflow: 'hidden' }}>
+                <div onClick={() => setShowPct(v => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', cursor: 'pointer', background: '#f5f0e8' }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#3a6b1a' }}>Percentiles comparison</span>
+                  <span style={{ fontSize: 11, color: '#9aab85' }}>{showPct ? '▲' : '▼'}</span>
+                </div>
+                {showPct && (
+                  <div>
+                    <div style={{ fontSize: 10, color: '#5a6f48', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0 4px' }}>
+                      <span>Expanded view · selected period</span>
+                      <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to pan</span>
+                      <button onClick={centerOnToday} style={{ background: 'transparent', border: '1.5px solid #3a6b1a', borderRadius: 10, color: '#3a6b1a', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}>↩ Today</button>
+                    </div>
+                    <div ref={pcZCt1}
+                      style={{ position: 'relative', height: 180, touchAction: 'none', userSelect: 'none', overflow: 'hidden', borderRadius: 6, cursor: 'grab', border: '2px solid #3a6b1a' }}
+                      onPointerDown={onZoomDown} onPointerMove={onZoomMove} onPointerUp={onZoomUp} onPointerCancel={onZoomUp}
+                    >
+                      <canvas ref={pcZCv1} style={{ display: 'block' }} />
+                      <div ref={pcTLZ1} style={{ position: 'absolute', top: 0, bottom: 0, pointerEvents: 'none', zIndex: 4 }}>
+                        <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: '1.5px', background: '#3a6b1a', opacity: 0.7 }} />
+                        <div style={{ position: 'absolute', top: 4, left: 3, fontSize: 8, color: '#3a6b1a', fontWeight: 700, whiteSpace: 'nowrap', background: 'rgba(240,248,232,0.88)', padding: '1px 4px', borderRadius: 3 }}>Today</div>
+                      </div>
+                      <div ref={pcScZ1} style={S.scrub}><div style={S.sDot} /></div>
+                    </div>
+
+                    <div style={{ fontSize: 10, color: '#5a6f48', marginTop: 10, fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>Full season overview <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to move selection</span></span>
+                      <button onClick={centerOnToday} style={{ background: 'transparent', border: '1.5px solid #3a6b1a', borderRadius: 10, color: '#3a6b1a', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}>↩ Today</button>
+                    </div>
+                    <div ref={pcMCt1}
+                      style={{ position: 'relative', height: 120, marginTop: 5, touchAction: 'none', userSelect: 'none', overflow: 'hidden' }}
+                      onPointerDown={onMainDown} onPointerMove={onMainMove} onPointerUp={onMainUp} onPointerCancel={onMainUp}
+                    >
+                      <canvas ref={pcMCv1} style={{ display: 'block' }} />
+                      <div ref={pcSdl1} style={S.dim} />
+                      <div ref={pcSb1}  style={S.band} />
+                      <div ref={pcSdr1} style={S.dim} />
+                      {edgeDiv(pcSeL1, 'l')}
+                      {edgeDiv(pcSeR1, 'r')}
+                      <div ref={pcScM1} style={S.scrub}><div style={S.sDot} /></div>
+                      <div ref={pcTL1} style={{ position: 'absolute', top: 0, bottom: 0, pointerEvents: 'none', zIndex: 4 }}>
+                        <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: '1.5px', background: '#3a6b1a', opacity: 0.7 }} />
+                        <div style={{ position: 'absolute', top: 2, left: 3, fontSize: 7, color: '#3a6b1a', fontWeight: 700, whiteSpace: 'nowrap', background: 'rgba(240,248,232,0.85)', padding: '1px 3px', borderRadius: 3 }}>Today</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </>
           )}
         </div>
