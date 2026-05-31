@@ -613,22 +613,6 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
               ))}
             </div>
           )}
-          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 8 }}>
-            {[
-              { color: '#4aa8d8', label: 'Temp LAR (actual)',        dashed: false },
-              { color: '#4aa8d8', label: 'Temp LAR (average)',       dashed: true  },
-              { color: '#c47a12', label: 'Temp round length (actual)',  dashed: false },
-              { color: '#c47a12', label: 'Temp round length (average)', dashed: true  },
-            ].map(({ color, label, dashed }) => (
-              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <svg width="22" height="8" style={{ flexShrink: 0 }}>
-                  <line x1="0" y1="4" x2="22" y2="4" stroke={color} strokeWidth="2"
-                    strokeDasharray={dashed ? '5 3' : 'none'} />
-                </svg>
-                <span style={{ fontSize: 10, color: '#5a6f48' }}>{label}</span>
-              </div>
-            ))}
-          </div>
           {pillRow}
 
           {loading && <p style={{ color: C.muted, textAlign: 'center' }}>Loading…</p>}
@@ -653,18 +637,29 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
 
               <div style={{ fontSize: 10, color: '#5a6f48', textAlign: 'center', marginTop: 6, fontWeight: 500 }}>{winLabel}</div>
 
-              {ctr1 && (
-                <div style={{ fontSize: 11, color: '#2d4a1e', marginTop: 6, background: '#f5fae8', border: '1px solid #cfe2b3', borderRadius: 6, padding: '8px 10px', lineHeight: 1.7 }}>
-                  <div style={{ fontWeight: 600, marginBottom: 4, textAlign: 'center' }}>{ctr1.dl}</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 10px' }}>
-                    <div><span style={{ color: '#4aa8d8' }}>Temp LAR</span> <strong>{ctr1.lar}</strong></div>
-                    <div><span style={{ color: '#4aa8d8', opacity: 0.7 }}>LAR avg</span> <strong>{ctr1.larAvg}</strong></div>
-                    <div><span style={{ color: '#c47a12' }}>Round length</span> <strong>{ctr1.round}</strong></div>
-                    <div><span style={{ color: '#c47a12', opacity: 0.7 }}>RL avg</span> <strong>{ctr1.roundAvg}</strong></div>
-                  </div>
-                  <div style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic', marginTop: 4, textAlign: 'center' }}>centre of window — pan to explore</div>
+              <div style={{ fontSize: 11, color: '#2d4a1e', marginTop: 6, background: '#f5fae8', border: '1px solid #cfe2b3', borderRadius: 6, padding: '8px 10px', lineHeight: 1.7 }}>
+                {ctr1 && <div style={{ fontWeight: 600, marginBottom: 4, textAlign: 'center' }}>{ctr1.dl}</div>}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 10px' }}>
+                  {[
+                    { color: '#4aa8d8', dashed: false, label: 'Temp LAR',    value: ctr1?.lar },
+                    { color: '#4aa8d8', dashed: true,  label: 'LAR avg',     value: ctr1?.larAvg },
+                    { color: '#c47a12', dashed: false, label: 'Round length', value: ctr1?.round },
+                    { color: '#c47a12', dashed: true,  label: 'RL avg',      value: ctr1?.roundAvg },
+                  ].map(({ color, dashed, label, value }) => (
+                    <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'nowrap' }}>
+                      <svg width="16" height="8" style={{ flexShrink: 0 }}>
+                        <line x1="0" y1="4" x2="16" y2="4" stroke={color} strokeWidth={dashed ? 1.5 : 2} strokeDasharray={dashed ? '4 3' : 'none'} />
+                      </svg>
+                      <span style={{ color, whiteSpace: 'nowrap' }}>{label}</span>
+                      {' '}
+                      <strong>{value ?? '—'}</strong>
+                    </div>
+                  ))}
                 </div>
-              )}
+                <div style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic', marginTop: 4, textAlign: 'center' }}>
+                  {ctr1 ? 'centre of window — pan to explore' : 'pan to explore values'}
+                </div>
+              </div>
 
               <ToggleBar show={visC1} onToggle={k => setVisC1(p => ({ ...p, [k]: !p[k] }))} items={[
                 { key: 'tempLAR',   label: 'Temp LAR',          color: '#4aa8d8' },
