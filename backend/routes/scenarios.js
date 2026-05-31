@@ -20,9 +20,10 @@ const {
   upsertDailyStateBulk,
   getFarm,
 } = require('../db/queries');
+const path = require('path');
+const { fork } = require('child_process');
 const { processHistoricalData, calcProjectedRoundLength, dateToDayOfYear } = require('../lib/formula');
 const { farmProgress } = require('../lib/progress');
-const { updateScenario } = require('../cron/nightly');
 
 // GET /api/scenarios?farmId=1 — list all scenarios for a farm
 router.get('/', async (req, res) => {
@@ -73,19 +74,19 @@ router.patch('/:id', async (req, res) => {
     if (heavyChanged) {
       const farmId = Number(updated.farm_id);
       farmProgress.set(farmId, { phase: 'computing', pct: 0 });
-      (async () => {
-        try {
-          console.log(`[scenarios] Recomputing scenario ${updated.id} after heavy edit`);
-          const farm = await getFarm(updated.farm_id);
-          const allSILO = await getAllSILORows(updated.farm_id);
-          await updateScenario(updated, allSILO, farm?.ifd_data || null);
+      const child = fork(
+        path.join(__dirname, '../lib/recompute-worker.js'),
+        [String(updated.id), String(updated.farm_id)],
+      );
+      child.on('exit', (code) => {
+        if (code === 0) {
           farmProgress.delete(farmId);
           console.log(`[scenarios] Scenario ${updated.id} recomputed`);
-        } catch (err) {
-          farmProgress.set(farmId, { phase: 'error', error: err.message });
-          console.error(`[scenarios] Recompute failed for scenario ${updated.id}:`, err.message);
+        } else {
+          farmProgress.set(farmId, { phase: 'error', error: 'Recompute failed — check backend logs' });
+          console.error(`[scenarios] Recompute child process exited with code ${code} for scenario ${updated.id}`);
         }
-      })();
+      });
     }
   } catch (err) {
     res.status(500).json({ error: err.message });
