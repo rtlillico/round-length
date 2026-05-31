@@ -158,7 +158,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   const [winInfo, setWinInfo] = useState(null);  // { start, end }
   const [ctr1,    setCtr1]   = useState(null);
   const [ctr2,    setCtr2]   = useState(null);
-  const [expandCtr1, setExpandCtr1] = useState(true);
+  const [expandCtr1, setExpandCtr1] = useState(false);
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
