@@ -865,8 +865,9 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                   <span style={{ fontSize: 11, color: '#9aab85' }}>{showPct ? '▲' : '▼'}</span>
                 </div>
                 {showPct && (
-                  <div>
-                    <div style={{ fontSize: 10, color: '#5a6f48', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0 4px' }}>
+                  <div style={{ padding: '0 12px' }}>
+                    {pillRow}
+                    <div style={{ fontSize: 10, color: '#5a6f48', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 4 }}>
                       <span>Expanded view · selected period</span>
                       <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to pan</span>
                       <button onClick={centerOnToday} style={{ background: 'transparent', border: '1.5px solid #3a6b1a', borderRadius: 10, color: '#3a6b1a', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}>↩ Today</button>
