@@ -360,6 +360,22 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     if (v.tempRound) ds.push({ type: 'line', data: toXY(smooth(roundP50, 30).map((v, i) => i <= TODAY ? v : null)), borderColor: '#c47a12', borderWidth: 0.8, pointRadius: 0, borderDash: [6, 3], yAxisID: 'yL' });
     return ds;
   }
+  function ds1pcZoom(win, pw) {
+    const pcEnd = Math.min(win.end, TODAY);
+    const { larData, larP50, roundData, roundP50, lastActual } = arrRef.current;
+    const clip = lastActual >= 0 ? Math.min(lastActual, TODAY) : TODAY;
+    const span = pcEnd - win.start + 1; const bars = span < 60;
+    const bt = Math.max(2, Math.floor((pw / span) * 0.82));
+    const sw = Math.min(60, Math.max(14, Math.round(span / 6)));
+    const v = v1Ref.current; const ds = [];
+    if (v.tempLAR) ds.push(bars
+      ? { type: 'bar',  data: toXYWin(larData, win.start, pcEnd), backgroundColor: 'rgba(74,168,216,0.45)', borderWidth: 0, barThickness: bt, yAxisID: 'yR' }
+      : { type: 'line', data: toXYWin(smooth(larData, sw).map((v, i) => i <= clip ? v : null), win.start, pcEnd), borderColor: '#4aa8d8', borderWidth: 2, pointRadius: 0, tension: 0, yAxisID: 'yR' });
+    if (v.tempLAR) ds.push({ type: 'line', data: toXYWin(smooth(larP50, sw).map((v, i) => i <= TODAY ? v : null), win.start, pcEnd), borderColor: '#4aa8d8', borderWidth: 1, pointRadius: 0, borderDash: [10, 5], yAxisID: 'yR' });
+    if (v.tempRound) ds.push({ type: 'line', data: toXYWin(smooth(roundData, sw).map((v, i) => i <= clip ? v : null), win.start, pcEnd), borderColor: '#c47a12', borderWidth: 2.5, pointRadius: 0, tension: 0, yAxisID: 'yL' });
+    if (v.tempRound) ds.push({ type: 'line', data: toXYWin(smooth(roundP50, sw).map((v, i) => i <= TODAY ? v : null), win.start, pcEnd), borderColor: '#c47a12', borderWidth: 1, pointRadius: 0, borderDash: [6, 3], yAxisID: 'yL' });
+    return ds;
+  }
   function ds2main() {
     const { tMaxData, tMeanData, tMinData } = arrRef.current;
     const v = v2Ref.current; const ds = [];
@@ -484,7 +500,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
 
     if (showPctRef.current) {
       if (pcMCv1.current && pcMCt1.current) { ic(pcMCv1.current, pcMCt1.current, 120); pcMC1.current = new Chart(pcMCv1.current, { type: 'line', data: { datasets: ds1pcMain() }, options: { ...base, scales: { x: xMainPast(), ...(showYL1 ? { yL: mkYL() } : {}), ...(showYR1 ? { yR: mkYR() } : {}) } } }); }
-      if (pcZCv1.current && pcZCt1.current) { ic(pcZCv1.current, pcZCt1.current, 180); const pcpw = pcZCt1.current.clientWidth || 340; pcZC1.current = new Chart(pcZCv1.current, { type: 'line', data: { datasets: ds1zoom(win, pcpw) }, options: { ...base, scales: { x: xZoom(win.start, win.end), ...(showYL1 ? { yL: mkYL() } : {}), ...(showYR1 ? { yR: mkYRZoom() } : {}) } } }); }
+      if (pcZCv1.current && pcZCt1.current) { ic(pcZCv1.current, pcZCt1.current, 180); const pcpw = pcZCt1.current.clientWidth || 340; pcZC1.current = new Chart(pcZCv1.current, { type: 'line', data: { datasets: ds1pcZoom(win, pcpw) }, options: { ...base, scales: { x: xZoom(win.start, Math.min(win.end, TODAY)), ...(showYL1 ? { yL: mkYL() } : {}), ...(showYR1 ? { yR: mkYRZoom() } : {}) } } }); }
     }
 
     posOverlays();
@@ -514,7 +530,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
       if (pcZCv1.current && pcZCt1.current) {
         const pw = pcZCt1.current.clientWidth || 340;
         pcZCv1.current.width = pw; pcZCv1.current.height = 180;
-        pcZC1.current = new Chart(pcZCv1.current, { type: 'line', data: { datasets: ds1zoom(win, pw) }, options: { ...base, scales: { x: xZoom(win.start, win.end), ...(showYL1 ? { yL: mkYL() } : {}), ...(showYR1 ? { yR: mkYRZoom() } : {}) } } });
+        pcZC1.current = new Chart(pcZCv1.current, { type: 'line', data: { datasets: ds1pcZoom(win, pw) }, options: { ...base, scales: { x: xZoom(win.start, Math.min(win.end, TODAY)), ...(showYL1 ? { yL: mkYL() } : {}), ...(showYR1 ? { yR: mkYRZoom() } : {}) } } });
       }
     }
     posOverlays();
@@ -534,15 +550,17 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
       return;
     }
     const t = setTimeout(() => {
-      const win = clampWin(winRef.current.start, winRef.current.width);
+      // Clamp window so it never extends past today in the pc section
+      const maxStart = Math.max(0, TODAY - winRef.current.width + 1);
+      if (winRef.current.start > maxStart) winRef.current.start = maxStart;
       const base = { responsive: false, animation: false, plugins: { legend: { display: false }, tooltip: { enabled: false } } };
       const showYL1 = v1Ref.current.tempRound;
       const showYR1 = v1Ref.current.tempLAR;
       const ic = (cv, ct, h) => { if (!cv || !ct) return; cv.width = ct.clientWidth || 340; cv.height = h; };
       [pcMC1, pcZC1].forEach(r => { if (r.current) { r.current.destroy(); r.current = null; } });
       if (pcMCv1.current && pcMCt1.current) { ic(pcMCv1.current, pcMCt1.current, 120); pcMC1.current = new Chart(pcMCv1.current, { type: 'line', data: { datasets: ds1pcMain() }, options: { ...base, scales: { x: xMainPast(), ...(showYL1 ? { yL: mkYL() } : {}), ...(showYR1 ? { yR: mkYR() } : {}) } } }); }
-      if (pcZCv1.current && pcZCt1.current) { ic(pcZCv1.current, pcZCt1.current, 180); const pw = pcZCt1.current.clientWidth || 340; pcZC1.current = new Chart(pcZCv1.current, { type: 'line', data: { datasets: ds1zoom(win, pw) }, options: { ...base, scales: { x: xZoom(win.start, win.end), ...(showYL1 ? { yL: mkYL() } : {}), ...(showYR1 ? { yR: mkYRZoom() } : {}) } } }); }
-      posOverlays();
+      // pcZC1 is built by refreshZoom (which also syncs the main card zoom charts to the new window)
+      refreshZoom();
     }, 50);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -587,6 +605,31 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     refreshZoom();
   }
   function onZoomUp() { panZ.current = null; }
+
+  function onPcZoomDown(e) {
+    panZ.current = { startX: e.clientX, snap: winRef.current.start };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+  function onPcZoomMove(e) {
+    const p = panZ.current; if (!p) return;
+    const newStart = Math.round(p.snap - (e.clientX - p.startX) / ((pcZCt1.current?.clientWidth || 340) / winRef.current.width));
+    winRef.current.start = Math.min(newStart, Math.max(0, TODAY - winRef.current.width + 1));
+    refreshZoom();
+  }
+  function onPcZoomUp() { panZ.current = null; }
+
+  function onPcMainDown(e) {
+    if (e.target.dataset.edge) return;
+    panM.current = { startX: e.clientX, snap: winRef.current.start };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+  function onPcMainMove(e) {
+    const p = panM.current; if (!p) return;
+    const newStart = Math.round(p.snap - (e.clientX - p.startX) / ((pcMCt1.current?.clientWidth || 340) / TODAY));
+    winRef.current.start = Math.min(newStart, Math.max(0, TODAY - winRef.current.width + 1));
+    refreshZoom();
+  }
+  function onPcMainUp() { panM.current = null; }
 
   function onEdgeDown(e, side) {
     e.stopPropagation();
@@ -830,7 +873,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                     </div>
                     <div ref={pcZCt1}
                       style={{ position: 'relative', height: 180, touchAction: 'none', userSelect: 'none', overflow: 'hidden', borderRadius: 6, cursor: 'grab', border: '2px solid #3a6b1a' }}
-                      onPointerDown={onZoomDown} onPointerMove={onZoomMove} onPointerUp={onZoomUp} onPointerCancel={onZoomUp}
+                      onPointerDown={onPcZoomDown} onPointerMove={onPcZoomMove} onPointerUp={onPcZoomUp} onPointerCancel={onPcZoomUp}
                     >
                       <canvas ref={pcZCv1} style={{ display: 'block' }} />
                       <div ref={pcTLZ1} style={{ position: 'absolute', top: 0, bottom: 0, pointerEvents: 'none', zIndex: 4 }}>
@@ -846,7 +889,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                     </div>
                     <div ref={pcMCt1}
                       style={{ position: 'relative', height: 120, marginTop: 5, touchAction: 'none', userSelect: 'none', overflow: 'hidden' }}
-                      onPointerDown={onMainDown} onPointerMove={onMainMove} onPointerUp={onMainUp} onPointerCancel={onMainUp}
+                      onPointerDown={onPcMainDown} onPointerMove={onPcMainMove} onPointerUp={onPcMainUp} onPointerCancel={onPcMainUp}
                     >
                       <canvas ref={pcMCv1} style={{ display: 'block' }} />
                       <div ref={pcSdl1} style={S.dim} />
