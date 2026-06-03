@@ -245,7 +245,7 @@ export function ToggleBar({ items, show, onToggle }) {
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 10, paddingTop: 9, borderTop: '1px solid #f0ead8' }}>
       {items.map(({ key, label, color }) => (
         <button key={key} onClick={() => onToggle(key)} style={{
-          padding: '8px 9px', borderRadius: 14, fontSize: 10, fontWeight: 500, lineHeight: 1,
+          padding: '5px 9px', borderRadius: 14, fontSize: 10, fontWeight: 500, lineHeight: 1,
           cursor: 'pointer', border: `1.5px solid ${color}`,
           background: show[key] ? color : '#fff',
           color: show[key] ? '#fff' : color,
