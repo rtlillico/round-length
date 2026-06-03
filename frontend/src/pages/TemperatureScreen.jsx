@@ -670,7 +670,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
       {PILLS.map(({ label, w }) => (
         <button key={w} onClick={() => handlePill(w)} style={{
-          flex: 1, padding: '8px 0', borderRadius: 13, fontSize: 10, fontWeight: 600,
+          flex: 1, padding: '8px 0', borderRadius: 13, fontSize: 10, fontWeight: 600, lineHeight: 1,
           cursor: 'pointer', border: '1.5px solid #3a6b1a',
           background: pill === w ? '#3a6b1a' : '#fff',
           color:      pill === w ? '#fff'     : '#3a6b1a',
