@@ -911,6 +911,22 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                       <div ref={pcScZ1} style={S.scrub}><div style={S.sDot} /></div>
                     </div>
 
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 10 }}>
+                      {[
+                        { key: 'p1090', label: 'P10–P90' },
+                        { key: 'p2575', label: 'P25–P75' },
+                        { key: 'p50',   label: 'P50 median' },
+                      ].map(({ key, label }) => (
+                        <button key={key} onClick={() => setVisPcBands(p => ({ ...p, [key]: !p[key] }))} style={{
+                          padding: '5px 9px', borderRadius: 14, fontSize: 10, fontWeight: 500, lineHeight: 1,
+                          cursor: 'pointer', border: '1.5px solid #4aa8d8',
+                          background: visPcBands[key] ? '#4aa8d8' : '#fff',
+                          color: visPcBands[key] ? '#fff' : '#4aa8d8',
+                          whiteSpace: 'nowrap',
+                        }}>{label}</button>
+                      ))}
+                    </div>
+
                     <div style={{ fontSize: 10, color: '#5a6f48', marginTop: 10, fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span>Full season overview <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to move selection</span></span>
                       <button onClick={centerOnToday} style={{ background: 'transparent', border: '1.5px solid #3a6b1a', borderRadius: 10, color: '#3a6b1a', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}>↩ Today</button>
@@ -930,22 +946,6 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                         <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: '1.5px', background: '#3a6b1a', opacity: 0.7 }} />
                         <div style={{ position: 'absolute', top: 2, left: 3, fontSize: 7, color: '#3a6b1a', fontWeight: 700, whiteSpace: 'nowrap', background: 'rgba(240,248,232,0.85)', padding: '1px 3px', borderRadius: 3 }}>Today</div>
                       </div>
-                    </div>
-
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 10 }}>
-                      {[
-                        { key: 'p1090', label: 'P10–P90' },
-                        { key: 'p2575', label: 'P25–P75' },
-                        { key: 'p50',   label: 'P50 median' },
-                      ].map(({ key, label }) => (
-                        <button key={key} onClick={() => setVisPcBands(p => ({ ...p, [key]: !p[key] }))} style={{
-                          padding: '5px 9px', borderRadius: 14, fontSize: 10, fontWeight: 500, lineHeight: 1,
-                          cursor: 'pointer', border: '1.5px solid #4aa8d8',
-                          background: visPcBands[key] ? '#4aa8d8' : '#fff',
-                          color: visPcBands[key] ? '#fff' : '#4aa8d8',
-                          whiteSpace: 'nowrap',
-                        }}>{label}</button>
-                      ))}
                     </div>
                   </div>
                 )}
