@@ -50,14 +50,18 @@ function buildArrays(chartData, targetLeaves, pastureKey) {
   }
 
   const larData   = new Array(N).fill(null);
+  const larP10    = new Array(N).fill(null);
+  const larP25    = new Array(N).fill(null);
   const larP50    = new Array(N).fill(null);
+  const larP75    = new Array(N).fill(null);
+  const larP90    = new Array(N).fill(null);
   const roundData = new Array(N).fill(null);
   const roundP50  = new Array(N).fill(null);
   const tMaxData  = new Array(N).fill(null);
   const tMeanData = new Array(N).fill(null);
   const tMinData  = new Array(N).fill(null);
 
-  if (!chartData) return { dates, larData, larP50, roundData, roundP50, tMaxData, tMeanData, tMinData, lastActual: -1 };
+  if (!chartData) return { dates, larData, larP10, larP25, larP50, larP75, larP90, roundData, roundP50, tMaxData, tMeanData, tMinData, lastActual: -1 };
 
   const percByDoy = {};
   for (const p of (chartData.percentiles || [])) percByDoy[p.day_of_year] = p;
@@ -89,14 +93,22 @@ function buildArrays(chartData, targetLeaves, pastureKey) {
 
     const doy  = dateToDayOfYear(new Date(ds + 'T00:00:00Z'));
     const perc = percByDoy[doy] || {};
+    larP10[i]   = perc.temp_p10  != null ? calcTempLAR(Number(perc.temp_p10), pastureKey) : null;
+    larP25[i]   = perc.temp_p25  != null ? calcTempLAR(Number(perc.temp_p25), pastureKey) : null;
     larP50[i]   = perc.temp_p50  != null ? calcTempLAR(Number(perc.temp_p50), pastureKey) : null;
+    larP75[i]   = perc.temp_p75  != null ? calcTempLAR(Number(perc.temp_p75), pastureKey) : null;
+    larP90[i]   = perc.temp_p90  != null ? calcTempLAR(Number(perc.temp_p90), pastureKey) : null;
   }
 
   for (let i = TODAY + 1; i < N; i++) {
     const ds   = dates[i];
     const doy  = dateToDayOfYear(new Date(ds + 'T00:00:00Z'));
     const perc = percByDoy[doy] || {};
+    larP10[i]   = perc.temp_p10 != null ? calcTempLAR(Number(perc.temp_p10), pastureKey) : null;
+    larP25[i]   = perc.temp_p25 != null ? calcTempLAR(Number(perc.temp_p25), pastureKey) : null;
     larP50[i]   = perc.temp_p50 != null ? calcTempLAR(Number(perc.temp_p50), pastureKey) : null;
+    larP75[i]   = perc.temp_p75 != null ? calcTempLAR(Number(perc.temp_p75), pastureKey) : null;
+    larP90[i]   = perc.temp_p90 != null ? calcTempLAR(Number(perc.temp_p90), pastureKey) : null;
   }
 
   // Compute roundP50 from larP50 (temp-only P50 LAR) using same backward-accumulation as roundData
@@ -111,7 +123,7 @@ function buildArrays(chartData, targetLeaves, pastureKey) {
     if (roundP50[i] == null) roundP50[i] = days || null;
   }
 
-  return { dates, larData, larP50, roundData, roundP50, tMaxData, tMeanData, tMinData, lastActual };
+  return { dates, larData, larP10, larP25, larP50, larP75, larP90, roundData, roundP50, tMaxData, tMeanData, tMinData, lastActual };
 }
 
 const toXY = (arr) => arr.map((v, i) => v != null ? { x: i, y: v } : null).filter(Boolean);
@@ -161,6 +173,8 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   const [expandCtr1, setExpandCtr1] = useState(false);
   const [showPct, setShowPct] = useState(false);
   const showPctRef = useRef(false);
+  const [visPcBands, setVisPcBands] = useState({ p50: true, p2575: true, p1090: true });
+  const vPcRef = useRef({ p50: true, p2575: true, p1090: true });
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
@@ -189,6 +203,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   useEffect(() => { v1Ref.current  = visC1;   }, [visC1]);
   useEffect(() => { v2Ref.current  = visC2;   }, [visC2]);
   useEffect(() => { showPctRef.current = showPct; }, [showPct]);
+  useEffect(() => { vPcRef.current = visPcBands; }, [visPcBands]);
 
   // chart instances
   const mC1 = useRef(null), zC1 = useRef(null);
@@ -337,6 +352,13 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     const max = Math.ceil(rawMax * 20) / 20;
     return { type: 'linear', position: 'right', min: 0, max, ticks: { color: '#4aa8d8', font: { size: 9 }, maxTicksLimit: 3, callback: withUnit('LAR') }, grid: { display: false }, border: { display: false } };
   }
+  function mkYRpc() {
+    const { larData, larP90 } = arrRef.current;
+    const vals = [...larData, ...(larP90 || [])].filter(v => v != null && isFinite(v) && v > 0);
+    const rawMax = vals.length ? Math.max(...vals) : 0.15;
+    const max = Math.ceil(rawMax * 20) / 20;
+    return { type: 'linear', position: 'right', min: 0, max, ticks: { color: '#4aa8d8', font: { size: 9 }, maxTicksLimit: 4, callback: withUnit('LAR') }, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false } };
+  }
 
   // ── dataset builders ─────────────────────────────────────────────────────────
   function ds1main() {
@@ -350,30 +372,37 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     if (v.tempRound) ds.push({ type: 'line', data: toXY(smooth(roundP50, 30)),                                      borderColor: '#c47a12', borderWidth: 0.8, pointRadius: 0, borderDash: [6, 3], yAxisID: 'yL' });
     return ds;
   }
-  function ds1pcMain() {
-    const { larData, larP50, roundData, roundP50, lastActual } = arrRef.current;
-    const clip = lastActual >= 0 ? lastActual : TODAY;
-    const v = v1Ref.current; const ds = [];
-    if (v.tempLAR)   ds.push({ type: 'line', data: toXY(smooth(larData, 60).map((v, i) => i <= clip ? v : null)), borderColor: '#4aa8d8', borderWidth: 1.4, pointRadius: 0, tension: 0, yAxisID: 'yR' });
-    if (v.tempLAR)   ds.push({ type: 'line', data: toXY(smooth(larP50, 30).map((v, i) => i <= TODAY ? v : null)), borderColor: '#4aa8d8', borderWidth: 0.8, pointRadius: 0, borderDash: [8, 4], yAxisID: 'yR' });
-    if (v.tempRound) ds.push({ type: 'line', data: toXY(smooth(roundData, 60).map((v, i) => i <= clip ? v : null)), borderColor: '#c47a12', borderWidth: 1.4, pointRadius: 0, tension: 0, yAxisID: 'yL' });
-    if (v.tempRound) ds.push({ type: 'line', data: toXY(smooth(roundP50, 30).map((v, i) => i <= TODAY ? v : null)), borderColor: '#c47a12', borderWidth: 0.8, pointRadius: 0, borderDash: [6, 3], yAxisID: 'yL' });
-    return ds;
-  }
-  function ds1pcZoom(win, pw) {
-    const pcEnd = Math.min(win.end, TODAY);
-    const { larData, larP50, roundData, roundP50, lastActual } = arrRef.current;
+  function buildPcBandDatasets({ isMain, win }) {
+    const { larData, larP10, larP25, larP50, larP75, larP90, lastActual } = arrRef.current;
     const clip = lastActual >= 0 ? Math.min(lastActual, TODAY) : TODAY;
-    const span = pcEnd - win.start + 1; const bars = span < 60;
-    const bt = Math.max(2, Math.floor((pw / span) * 0.82));
-    const sw = Math.min(60, Math.max(14, Math.round(span / 6)));
-    const v = v1Ref.current; const ds = [];
-    if (v.tempLAR) ds.push(bars
-      ? { type: 'bar',  data: toXYWin(larData, win.start, pcEnd), backgroundColor: 'rgba(74,168,216,0.45)', borderWidth: 0, barThickness: bt, yAxisID: 'yR' }
-      : { type: 'line', data: toXYWin(smooth(larData, sw).map((v, i) => i <= clip ? v : null), win.start, pcEnd), borderColor: '#4aa8d8', borderWidth: 2, pointRadius: 0, tension: 0, yAxisID: 'yR' });
-    if (v.tempLAR) ds.push({ type: 'line', data: toXYWin(smooth(larP50, sw).map((v, i) => i <= TODAY ? v : null), win.start, pcEnd), borderColor: '#4aa8d8', borderWidth: 1, pointRadius: 0, borderDash: [10, 5], yAxisID: 'yR' });
-    if (v.tempRound) ds.push({ type: 'line', data: toXYWin(smooth(roundData, sw).map((v, i) => i <= clip ? v : null), win.start, pcEnd), borderColor: '#c47a12', borderWidth: 2.5, pointRadius: 0, tension: 0, yAxisID: 'yL' });
-    if (v.tempRound) ds.push({ type: 'line', data: toXYWin(smooth(roundP50, sw).map((v, i) => i <= TODAY ? v : null), win.start, pcEnd), borderColor: '#c47a12', borderWidth: 1, pointRadius: 0, borderDash: [6, 3], yAxisID: 'yL' });
+    const v = vPcRef.current;
+    let toData, toActual;
+    if (isMain) {
+      const sw = 30;
+      toData   = arr => toXY(smooth(arr, sw).map((x, i) => i <= TODAY ? x : null));
+      toActual = arr => toXY(smooth(arr, 60).map((x, i) => i <= clip ? x : null));
+    } else {
+      const pcEnd = Math.min(win.end, TODAY);
+      const span = pcEnd - win.start + 1;
+      const sw = Math.min(60, Math.max(14, Math.round(span / 6)));
+      toData   = arr => toXYWin(smooth(arr, sw).map((x, i) => i <= TODAY ? x : null), win.start, pcEnd);
+      toActual = arr => toXYWin(smooth(arr, sw).map((x, i) => i <= clip ? x : null), win.start, pcEnd);
+    }
+    const ds = [];
+    if (v.p1090) {
+      const i0 = ds.length;
+      ds.push({ type: 'line', data: toData(larP10), borderWidth: 0, pointRadius: 0, fill: false, yAxisID: 'yR' });
+      ds.push({ type: 'line', data: toData(larP90), borderWidth: 0, pointRadius: 0, fill: { target: i0 }, backgroundColor: 'rgba(74,168,216,0.12)', yAxisID: 'yR' });
+    }
+    if (v.p2575) {
+      const i0 = ds.length;
+      ds.push({ type: 'line', data: toData(larP25), borderWidth: 0, pointRadius: 0, fill: false, yAxisID: 'yR' });
+      ds.push({ type: 'line', data: toData(larP75), borderWidth: 0, pointRadius: 0, fill: { target: i0 }, backgroundColor: 'rgba(74,168,216,0.25)', yAxisID: 'yR' });
+    }
+    if (v.p50) {
+      ds.push({ type: 'line', data: toData(larP50), borderColor: '#4aa8d8', borderWidth: 1.5, borderDash: [6, 3], pointRadius: 0, fill: false, yAxisID: 'yR' });
+    }
+    ds.push({ type: 'line', data: toActual(larData), borderColor: '#1a4a7a', borderWidth: 2, pointRadius: 0, fill: false, yAxisID: 'yR' });
     return ds;
   }
   function ds2main() {
@@ -499,8 +528,8 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     if (zCv2.current) zC2.current = new Chart(zCv2.current, { type: 'line', data: { datasets: ds2zoom(win, pw2) }, options: { ...base, scales: { x: xZoom(win.start, win.end), y: mkYS() } } });
 
     if (showPctRef.current) {
-      if (pcMCv1.current && pcMCt1.current) { ic(pcMCv1.current, pcMCt1.current, 120); pcMC1.current = new Chart(pcMCv1.current, { type: 'line', data: { datasets: ds1pcMain() }, options: { ...base, scales: { x: xMainPast(), ...(showYL1 ? { yL: mkYL() } : {}), ...(showYR1 ? { yR: mkYR() } : {}) } } }); }
-      if (pcZCv1.current && pcZCt1.current) { ic(pcZCv1.current, pcZCt1.current, 180); const pcpw = pcZCt1.current.clientWidth || 340; pcZC1.current = new Chart(pcZCv1.current, { type: 'line', data: { datasets: ds1pcZoom(win, pcpw) }, options: { ...base, scales: { x: xZoom(win.start, Math.min(win.end, TODAY)), ...(showYL1 ? { yL: mkYL() } : {}), ...(showYR1 ? { yR: mkYRZoom() } : {}) } } }); }
+      if (pcMCv1.current && pcMCt1.current) { ic(pcMCv1.current, pcMCt1.current, 120); pcMC1.current = new Chart(pcMCv1.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: true }) }, options: { ...base, scales: { x: xMainPast(), yR: mkYRpc() } } }); }
+      if (pcZCv1.current && pcZCt1.current) { ic(pcZCv1.current, pcZCt1.current, 180); const pcpw = pcZCt1.current.clientWidth || 340; pcZC1.current = new Chart(pcZCv1.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: false, win }) }, options: { ...base, scales: { x: xZoom(win.start, Math.min(win.end, TODAY)), yR: mkYRpc() } } }); }
     }
 
     posOverlays();
@@ -530,7 +559,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
       if (pcZCv1.current && pcZCt1.current) {
         const pw = pcZCt1.current.clientWidth || 340;
         pcZCv1.current.width = pw; pcZCv1.current.height = 180;
-        pcZC1.current = new Chart(pcZCv1.current, { type: 'line', data: { datasets: ds1pcZoom(win, pw) }, options: { ...base, scales: { x: xZoom(win.start, Math.min(win.end, TODAY)), ...(showYL1 ? { yL: mkYL() } : {}), ...(showYR1 ? { yR: mkYRZoom() } : {}) } } });
+        pcZC1.current = new Chart(pcZCv1.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: false, win }) }, options: { ...base, scales: { x: xZoom(win.start, Math.min(win.end, TODAY)), yR: mkYRpc() } } });
       }
     }
     posOverlays();
@@ -554,11 +583,9 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
       const maxStart = Math.max(0, TODAY - winRef.current.width + 1);
       if (winRef.current.start > maxStart) winRef.current.start = maxStart;
       const base = { responsive: false, animation: false, plugins: { legend: { display: false }, tooltip: { enabled: false } } };
-      const showYL1 = v1Ref.current.tempRound;
-      const showYR1 = v1Ref.current.tempLAR;
       const ic = (cv, ct, h) => { if (!cv || !ct) return; cv.width = ct.clientWidth || 340; cv.height = h; };
       [pcMC1, pcZC1].forEach(r => { if (r.current) { r.current.destroy(); r.current = null; } });
-      if (pcMCv1.current && pcMCt1.current) { ic(pcMCv1.current, pcMCt1.current, 120); pcMC1.current = new Chart(pcMCv1.current, { type: 'line', data: { datasets: ds1pcMain() }, options: { ...base, scales: { x: xMainPast(), ...(showYL1 ? { yL: mkYL() } : {}), ...(showYR1 ? { yR: mkYR() } : {}) } } }); }
+      if (pcMCv1.current && pcMCt1.current) { ic(pcMCv1.current, pcMCt1.current, 120); pcMC1.current = new Chart(pcMCv1.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: true }) }, options: { ...base, scales: { x: xMainPast(), yR: mkYRpc() } } }); }
       // pcZC1 is built by refreshZoom (which also syncs the main card zoom charts to the new window)
       refreshZoom();
     }, 50);
@@ -571,7 +598,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     const t = setTimeout(createAll, 10);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visC1, visC2]);
+  }, [visC1, visC2, visPcBands]);
 
   useEffect(() => {
     if (!mCt1.current) return;
@@ -903,6 +930,22 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                         <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: '1.5px', background: '#3a6b1a', opacity: 0.7 }} />
                         <div style={{ position: 'absolute', top: 2, left: 3, fontSize: 7, color: '#3a6b1a', fontWeight: 700, whiteSpace: 'nowrap', background: 'rgba(240,248,232,0.85)', padding: '1px 3px', borderRadius: 3 }}>Today</div>
                       </div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 10 }}>
+                      {[
+                        { key: 'p1090', label: 'P10–P90' },
+                        { key: 'p2575', label: 'P25–P75' },
+                        { key: 'p50',   label: 'P50 median' },
+                      ].map(({ key, label }) => (
+                        <button key={key} onClick={() => setVisPcBands(p => ({ ...p, [key]: !p[key] }))} style={{
+                          padding: '5px 9px', borderRadius: 14, fontSize: 10, fontWeight: 500, lineHeight: 1,
+                          cursor: 'pointer', border: '1.5px solid #4aa8d8',
+                          background: visPcBands[key] ? '#4aa8d8' : '#fff',
+                          color: visPcBands[key] ? '#fff' : '#4aa8d8',
+                          whiteSpace: 'nowrap',
+                        }}>{label}</button>
+                      ))}
                     </div>
                   </div>
                 )}
