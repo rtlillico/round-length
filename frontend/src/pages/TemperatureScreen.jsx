@@ -171,6 +171,8 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   const [ctr1,    setCtr1]   = useState(null);
   const [ctr2,    setCtr2]   = useState(null);
   const [expandCtr1, setExpandCtr1] = useState(false);
+  const [ctrPc, setCtrPc] = useState(null);
+  const [expandCtrPc, setExpandCtrPc] = useState(false);
   const [showPct, setShowPct] = useState(false);
   const showPctRef = useRef(false);
   const [visPcBands, setVisPcBands] = useState({ p50: true, p2575: true, p1090: true });
@@ -490,6 +492,18 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
       }
       if (pcZC1.current && pcScZ1.current) pcScZ1.current.style.left = pcZC1.current.scales.x.getPixelForValue(cDay) + 'px';
       if (pcZC1.current && pcTLZ1.current) pcTLZ1.current.style.left = pcZC1.current.scales.x.getPixelForValue(TODAY) + 'px';
+      const pcDay = Math.min(cDay, TODAY);
+      const { larData: ld, larP10: lp10, larP25: lp25, larP50: lp50, larP75: lp75, larP90: lp90, dates: dts } = arrRef.current;
+      const pds = dts[pcDay] || '';
+      setCtrPc(pds ? {
+        dl:  fmtDayFull(pds),
+        lar: ld[pcDay]   != null ? ld[pcDay].toFixed(4)   : '—',
+        p10: lp10[pcDay] != null ? lp10[pcDay].toFixed(4) : '—',
+        p25: lp25[pcDay] != null ? lp25[pcDay].toFixed(4) : '—',
+        p50: lp50[pcDay] != null ? lp50[pcDay].toFixed(4) : '—',
+        p75: lp75[pcDay] != null ? lp75[pcDay].toFixed(4) : '—',
+        p90: lp90[pcDay] != null ? lp90[pcDay].toFixed(4) : '—',
+      } : null);
     }
 
     // update React state for readouts / window label
@@ -909,6 +923,57 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                         <div style={{ position: 'absolute', top: 4, left: 3, fontSize: 8, color: '#3a6b1a', fontWeight: 700, whiteSpace: 'nowrap', background: 'rgba(240,248,232,0.88)', padding: '1px 4px', borderRadius: 3 }}>Today</div>
                       </div>
                       <div ref={pcScZ1} style={S.scrub}><div style={S.sDot} /></div>
+                    </div>
+
+                    <div style={{ fontSize: 11, color: '#2d4a1e', marginTop: 6, background: '#f0f7fd', border: '1px solid #c0daf0', borderRadius: 6, overflow: 'hidden' }}>
+                      <div onClick={() => setExpandCtrPc(v => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', cursor: 'pointer', gap: 8 }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px 12px' }}>
+                          {[
+                            { color: '#1a4a7a', dashed: false, fill: null,                       label: 'Actual LAR' },
+                            { color: '#4aa8d8', dashed: true,  fill: null,                       label: 'P50' },
+                            { color: '#4aa8d8', dashed: false, fill: 'rgba(74,168,216,0.25)',    label: 'P25–P75' },
+                            { color: '#4aa8d8', dashed: false, fill: 'rgba(74,168,216,0.12)',    label: 'P10–P90' },
+                          ].map(({ color, dashed, fill, label }) => (
+                            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <svg width="16" height="8" style={{ flexShrink: 0 }}>
+                                {fill
+                                  ? <rect x="0" y="1" width="16" height="6" fill={fill} rx="1" />
+                                  : <line x1="0" y1="4" x2="16" y2="4" stroke={color} strokeWidth={dashed ? 1.5 : 2} strokeDasharray={dashed ? '4 3' : 'none'} />}
+                              </svg>
+                              <span style={{ color, whiteSpace: 'nowrap' }}>{label}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <span style={{ fontSize: 10, color: '#9aab85', flexShrink: 0 }}>{expandCtrPc ? '▲' : '▼'}</span>
+                      </div>
+                      {expandCtrPc && (
+                        <div style={{ padding: '0 10px 8px', borderTop: '1px solid #c0daf0', lineHeight: 1.7 }}>
+                          {ctrPc && <div style={{ fontWeight: 600, marginBottom: 2, textAlign: 'center', paddingTop: 6 }}>{ctrPc.dl}</div>}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 10px' }}>
+                            {[
+                              { color: '#1a4a7a', dashed: false, fill: null,                    label: 'Actual LAR', value: ctrPc?.lar },
+                              { color: '#4aa8d8', dashed: true,  fill: null,                    label: 'P50',        value: ctrPc?.p50 },
+                              { color: '#4aa8d8', dashed: false, fill: 'rgba(74,168,216,0.25)', label: 'P25',        value: ctrPc?.p25 },
+                              { color: '#4aa8d8', dashed: false, fill: 'rgba(74,168,216,0.25)', label: 'P75',        value: ctrPc?.p75 },
+                              { color: '#4aa8d8', dashed: false, fill: 'rgba(74,168,216,0.12)', label: 'P10',        value: ctrPc?.p10 },
+                              { color: '#4aa8d8', dashed: false, fill: 'rgba(74,168,216,0.12)', label: 'P90',        value: ctrPc?.p90 },
+                            ].map(({ color, dashed, fill, label, value }) => (
+                              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'nowrap' }}>
+                                <svg width="16" height="8" style={{ flexShrink: 0 }}>
+                                  {fill
+                                    ? <rect x="0" y="1" width="16" height="6" fill={fill} rx="1" />
+                                    : <line x1="0" y1="4" x2="16" y2="4" stroke={color} strokeWidth={dashed ? 1.5 : 2} strokeDasharray={dashed ? '4 3' : 'none'} />}
+                                </svg>
+                                <span style={{ color, whiteSpace: 'nowrap' }}>{label}</span>
+                                {' '}<strong>{value ?? '—'}</strong>
+                              </div>
+                            ))}
+                          </div>
+                          <div style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic', marginTop: 4, textAlign: 'center' }}>
+                            {ctrPc ? 'centre of window — pan to explore' : 'pan to explore values'}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 10 }}>
