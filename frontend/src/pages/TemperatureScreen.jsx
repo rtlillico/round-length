@@ -585,6 +585,8 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
       return;
     }
     const t = setTimeout(() => {
+      // Default to today: centre the window on TODAY so the scrub starts at today
+      winRef.current.start = Math.round(TODAY - winRef.current.width / 2);
       const base = { responsive: false, animation: false, plugins: { legend: { display: false }, tooltip: { enabled: false } } };
       const ic = (cv, ct, h) => { if (!cv || !ct) return; cv.width = ct.clientWidth || 340; cv.height = h; };
       [pcMC1, pcZC1].forEach(r => { if (r.current) { r.current.destroy(); r.current = null; } });
