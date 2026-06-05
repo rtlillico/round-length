@@ -74,6 +74,17 @@ function buildArrays(chartData, targetLeaves, pastureKey) {
   const actualIdx      = {};
   for (let i = 0; i < allActual.length; i++) actualIdx[allActual[i].date?.slice(0, 10)] = i;
 
+  // Populate percentile bands for ALL days (independent of SILO data availability)
+  for (let i = 0; i < N; i++) {
+    const doy  = dateToDayOfYear(new Date(dates[i] + 'T00:00:00Z'));
+    const perc = percByDoy[doy] || {};
+    larP10[i] = perc.temp_p10 != null ? calcTempLAR(Number(perc.temp_p10), pastureKey) : null;
+    larP25[i] = perc.temp_p25 != null ? calcTempLAR(Number(perc.temp_p25), pastureKey) : null;
+    larP50[i] = perc.temp_p50 != null ? calcTempLAR(Number(perc.temp_p50), pastureKey) : null;
+    larP75[i] = perc.temp_p75 != null ? calcTempLAR(Number(perc.temp_p75), pastureKey) : null;
+    larP90[i] = perc.temp_p90 != null ? calcTempLAR(Number(perc.temp_p90), pastureKey) : null;
+  }
+
   let lastActual = -1;
   for (let i = 0; i <= TODAY; i++) {
     const ds  = dates[i];
@@ -90,25 +101,6 @@ function buildArrays(chartData, targetLeaves, pastureKey) {
     let sum = 0, days = 0;
     for (let j = ai; j >= 0; j--) { sum += actualTempLARs[j]; days++; if (sum >= targetLeaves) { roundData[i] = days; break; } }
     if (roundData[i] == null) roundData[i] = days;
-
-    const doy  = dateToDayOfYear(new Date(ds + 'T00:00:00Z'));
-    const perc = percByDoy[doy] || {};
-    larP10[i]   = perc.temp_p10  != null ? calcTempLAR(Number(perc.temp_p10), pastureKey) : null;
-    larP25[i]   = perc.temp_p25  != null ? calcTempLAR(Number(perc.temp_p25), pastureKey) : null;
-    larP50[i]   = perc.temp_p50  != null ? calcTempLAR(Number(perc.temp_p50), pastureKey) : null;
-    larP75[i]   = perc.temp_p75  != null ? calcTempLAR(Number(perc.temp_p75), pastureKey) : null;
-    larP90[i]   = perc.temp_p90  != null ? calcTempLAR(Number(perc.temp_p90), pastureKey) : null;
-  }
-
-  for (let i = TODAY + 1; i < N; i++) {
-    const ds   = dates[i];
-    const doy  = dateToDayOfYear(new Date(ds + 'T00:00:00Z'));
-    const perc = percByDoy[doy] || {};
-    larP10[i]   = perc.temp_p10 != null ? calcTempLAR(Number(perc.temp_p10), pastureKey) : null;
-    larP25[i]   = perc.temp_p25 != null ? calcTempLAR(Number(perc.temp_p25), pastureKey) : null;
-    larP50[i]   = perc.temp_p50 != null ? calcTempLAR(Number(perc.temp_p50), pastureKey) : null;
-    larP75[i]   = perc.temp_p75 != null ? calcTempLAR(Number(perc.temp_p75), pastureKey) : null;
-    larP90[i]   = perc.temp_p90 != null ? calcTempLAR(Number(perc.temp_p90), pastureKey) : null;
   }
 
   // Compute roundP50 from larP50 (temp-only P50 LAR) using same backward-accumulation as roundData
