@@ -482,7 +482,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
         const pxT = ch.scales.x.getPixelForValue(TODAY);
         if (pcTL1.current) pcTL1.current.style.left = pxT + 'px';
       }
-      if (pcZC1.current && pcScZ1.current) pcScZ1.current.style.left = pcZC1.current.scales.x.getPixelForValue(cDay) + 'px';
+      if (pcZC1.current && pcScZ1.current) pcScZ1.current.style.left = pcZC1.current.scales.x.getPixelForValue(Math.min(cDay, TODAY)) + 'px';
       if (pcZC1.current && pcTLZ1.current) pcTLZ1.current.style.left = pcZC1.current.scales.x.getPixelForValue(TODAY) + 'px';
       const pcDay = Math.min(cDay, TODAY);
       const { larData: ld, larP10: lp10, larP25: lp25, larP50: lp50, larP75: lp75, larP90: lp90, dates: dts } = arrRef.current;
@@ -585,9 +585,6 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
       return;
     }
     const t = setTimeout(() => {
-      // Clamp window so it never extends past today in the pc section
-      const maxStart = Math.max(0, TODAY - winRef.current.width + 1);
-      if (winRef.current.start > maxStart) winRef.current.start = maxStart;
       const base = { responsive: false, animation: false, plugins: { legend: { display: false }, tooltip: { enabled: false } } };
       const ic = (cv, ct, h) => { if (!cv || !ct) return; cv.width = ct.clientWidth || 340; cv.height = h; };
       [pcMC1, pcZC1].forEach(r => { if (r.current) { r.current.destroy(); r.current = null; } });
@@ -646,7 +643,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   function onPcZoomMove(e) {
     const p = panZ.current; if (!p) return;
     const newStart = Math.round(p.snap - (e.clientX - p.startX) / ((pcZCt1.current?.clientWidth || 340) / winRef.current.width));
-    winRef.current.start = Math.min(newStart, Math.max(0, TODAY - winRef.current.width + 1));
+    winRef.current.start = newStart;
     refreshZoom();
   }
   function onPcZoomUp() { panZ.current = null; }
@@ -659,7 +656,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   function onPcMainMove(e) {
     const p = panM.current; if (!p) return;
     const newStart = Math.round(p.snap - (e.clientX - p.startX) / ((pcMCt1.current?.clientWidth || 340) / TODAY));
-    winRef.current.start = Math.min(newStart, Math.max(0, TODAY - winRef.current.width + 1));
+    winRef.current.start = newStart;
     refreshZoom();
   }
   function onPcMainUp() { panM.current = null; }
