@@ -134,8 +134,9 @@ const smooth = (arr, w) => {
 
 function clampWin(start, width) {
   let end = start + width - 1;
-  if (start < 0) { start = 0; end = width - 1; }
-  if (end > N - 1) { end = N - 1; start = Math.max(0, end - width + 1); }
+  const minStart = -Math.floor(width / 2); // allow centre to reach index 0
+  if (start < minStart) { start = minStart; end = start + width - 1; }
+  if (end > N - 1) { end = N - 1; start = Math.max(minStart, end - width + 1); }
   return { start, end };
 }
 
