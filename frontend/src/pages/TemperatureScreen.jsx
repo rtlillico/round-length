@@ -170,6 +170,10 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   const showPctRef = useRef(false);
   const [visPcBands, setVisPcBands] = useState({ p50: true, p2575: true, p1090: true });
   const vPcRef = useRef({ p50: true, p2575: true, p1090: true });
+  const [ctrPc2, setCtrPc2] = useState(null);
+  const [expandCtrPc2, setExpandCtrPc2] = useState(false);
+  const [visPcBands2, setVisPcBands2] = useState({ p50: true, p2575: true, p1090: true });
+  const vPcRef2 = useRef({ p50: true, p2575: true, p1090: true });
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
@@ -199,6 +203,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   useEffect(() => { v2Ref.current  = visC2;   }, [visC2]);
   useEffect(() => { showPctRef.current = showPct; }, [showPct]);
   useEffect(() => { vPcRef.current = visPcBands; }, [visPcBands]);
+  useEffect(() => { vPcRef2.current = visPcBands2; }, [visPcBands2]);
 
   // chart instances
   const mC1 = useRef(null), zC1 = useRef(null);
@@ -225,7 +230,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   const tL2  = useRef(null), tP2  = useRef(null);
   const tLZ1 = useRef(null), tLZ2 = useRef(null);
 
-  // percentile card refs
+  // percentile card refs — chart 1 (Temp LAR)
   const pcZC1 = useRef(null), pcMC1 = useRef(null);
   const pcZCv1 = useRef(null), pcMCv1 = useRef(null);
   const pcZCt1 = useRef(null), pcMCt1 = useRef(null);
@@ -233,6 +238,15 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   const pcSeL1 = useRef(null), pcSeR1 = useRef(null);
   const pcScM1 = useRef(null), pcScZ1 = useRef(null);
   const pcTL1  = useRef(null), pcTLZ1 = useRef(null);
+
+  // percentile card refs — chart 2 (Temp Round Length)
+  const pcZC2 = useRef(null), pcMC2 = useRef(null);
+  const pcZCv2 = useRef(null), pcMCv2 = useRef(null);
+  const pcZCt2 = useRef(null), pcMCt2 = useRef(null);
+  const pcSdl2 = useRef(null), pcSb2 = useRef(null), pcSdr2 = useRef(null);
+  const pcSeL2 = useRef(null), pcSeR2 = useRef(null);
+  const pcScM2 = useRef(null), pcScZ2 = useRef(null);
+  const pcTL2  = useRef(null), pcTLZ2 = useRef(null);
 
   // ── x-scale configs ───────────────────────────────────────────────────────────
   function xMain() {
@@ -367,10 +381,10 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     if (v.tempRound) ds.push({ type: 'line', data: toXY(smooth(roundP50, 30)),                                      borderColor: '#c47a12', borderWidth: 0.8, pointRadius: 0, borderDash: [6, 3], yAxisID: 'yL' });
     return ds;
   }
-  function buildPcBandDatasets({ isMain, win }) {
+  function buildPcBandDatasets({ isMain, win, vRef = vPcRef }) {
     const { larData, larP10, larP25, larP50, larP75, larP90, lastActual } = arrRef.current;
     const clip = lastActual >= 0 ? lastActual : TODAY;
-    const v = vPcRef.current;
+    const v = vRef.current;
     let toData, toActual;
     if (isMain) {
       const sw = 60;
@@ -475,10 +489,17 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
       }
       if (pcZC1.current && pcScZ1.current) pcScZ1.current.style.left = pcZC1.current.scales.x.getPixelForValue(cDay) + 'px';
       if (pcZC1.current && pcTLZ1.current) pcTLZ1.current.style.left = pcZC1.current.scales.x.getPixelForValue(TODAY) + 'px';
+      applySpot(pcMC2.current, pcSdl2, pcSb2, pcSdr2, pcSeL2, pcSeR2, pcScM2);
+      if (pcMC2.current) {
+        const pxT = pcMC2.current.scales.x.getPixelForValue(TODAY);
+        if (pcTL2.current) pcTL2.current.style.left = pxT + 'px';
+      }
+      if (pcZC2.current && pcScZ2.current) pcScZ2.current.style.left = pcZC2.current.scales.x.getPixelForValue(cDay) + 'px';
+      if (pcZC2.current && pcTLZ2.current) pcTLZ2.current.style.left = pcZC2.current.scales.x.getPixelForValue(TODAY) + 'px';
       const pcDay = cDay;
       const { larData: ld, larP10: lp10, larP25: lp25, larP50: lp50, larP75: lp75, larP90: lp90, dates: dts } = arrRef.current;
       const pds = dts[pcDay] || '';
-      setCtrPc(pds ? {
+      const pcVal = pds ? {
         dl:  fmtDayFull(pds),
         lar: ld[pcDay]   != null ? ld[pcDay].toFixed(4)   : '—',
         p10: lp10[pcDay] != null ? lp10[pcDay].toFixed(4) : '—',
@@ -486,7 +507,9 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
         p50: lp50[pcDay] != null ? lp50[pcDay].toFixed(4) : '—',
         p75: lp75[pcDay] != null ? lp75[pcDay].toFixed(4) : '—',
         p90: lp90[pcDay] != null ? lp90[pcDay].toFixed(4) : '—',
-      } : null);
+      } : null;
+      setCtrPc(pcVal);
+      setCtrPc2(pcVal);
     }
 
     // update React state for readouts / window label
@@ -527,6 +550,8 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     if (showPctRef.current) {
       if (pcMCv1.current && pcMCt1.current) { ic(pcMCv1.current, pcMCt1.current, 120); pcMC1.current = new Chart(pcMCv1.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: true }) }, options: { ...base, scales: { x: xMain(), yR: mkYRpc() } } }); }
       if (pcZCv1.current && pcZCt1.current) { ic(pcZCv1.current, pcZCt1.current, 180); const pcpw = pcZCt1.current.clientWidth || 340; pcZC1.current = new Chart(pcZCv1.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: false, win }) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yR: mkYRpc() } } }); }
+      if (pcMCv2.current && pcMCt2.current) { ic(pcMCv2.current, pcMCt2.current, 120); pcMC2.current = new Chart(pcMCv2.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: true, vRef: vPcRef2 }) }, options: { ...base, scales: { x: xMain(), yR: mkYRpc() } } }); }
+      if (pcZCv2.current && pcZCt2.current) { ic(pcZCv2.current, pcZCt2.current, 180); const pcpw2 = pcZCt2.current.clientWidth || 340; pcZC2.current = new Chart(pcZCv2.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: false, win, vRef: vPcRef2 }) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yR: mkYRpc() } } }); }
     }
 
     posOverlays();
@@ -558,6 +583,12 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
         pcZCv1.current.width = pw; pcZCv1.current.height = 180;
         pcZC1.current = new Chart(pcZCv1.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: false, win }) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yR: mkYRpc() } } });
       }
+      if (pcZC2.current) { pcZC2.current.destroy(); pcZC2.current = null; }
+      if (pcZCv2.current && pcZCt2.current) {
+        const pw = pcZCt2.current.clientWidth || 340;
+        pcZCv2.current.width = pw; pcZCv2.current.height = 180;
+        pcZC2.current = new Chart(pcZCv2.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: false, win, vRef: vPcRef2 }) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yR: mkYRpc() } } });
+      }
     }
     posOverlays();
   }
@@ -566,13 +597,13 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   useEffect(() => {
     if (loading || !chartData) return;
     const t = setTimeout(createAll, 50);
-    return () => { clearTimeout(t); [mC1, zC1, mC2, zC2, pcMC1, pcZC1].forEach(r => { if (r.current) { r.current.destroy(); r.current = null; } }); };
+    return () => { clearTimeout(t); [mC1, zC1, mC2, zC2, pcMC1, pcZC1, pcMC2, pcZC2].forEach(r => { if (r.current) { r.current.destroy(); r.current = null; } }); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [arrays, tLabels]);
 
   useEffect(() => {
     if (!showPct) {
-      [pcMC1, pcZC1].forEach(r => { if (r.current) { r.current.destroy(); r.current = null; } });
+      [pcMC1, pcZC1, pcMC2, pcZC2].forEach(r => { if (r.current) { r.current.destroy(); r.current = null; } });
       return;
     }
     const t = setTimeout(() => {
@@ -580,9 +611,10 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
       winRef.current.start = Math.round(TODAY - winRef.current.width / 2);
       const base = { responsive: false, animation: false, plugins: { legend: { display: false }, tooltip: { enabled: false } } };
       const ic = (cv, ct, h) => { if (!cv || !ct) return; cv.width = ct.clientWidth || 340; cv.height = h; };
-      [pcMC1, pcZC1].forEach(r => { if (r.current) { r.current.destroy(); r.current = null; } });
+      [pcMC1, pcZC1, pcMC2, pcZC2].forEach(r => { if (r.current) { r.current.destroy(); r.current = null; } });
       if (pcMCv1.current && pcMCt1.current) { ic(pcMCv1.current, pcMCt1.current, 120); pcMC1.current = new Chart(pcMCv1.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: true }) }, options: { ...base, scales: { x: xMain(), yR: mkYRpc() } } }); }
-      // pcZC1 is built by refreshZoom (which also syncs the main card zoom charts to the new window)
+      if (pcMCv2.current && pcMCt2.current) { ic(pcMCv2.current, pcMCt2.current, 120); pcMC2.current = new Chart(pcMCv2.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: true, vRef: vPcRef2 }) }, options: { ...base, scales: { x: xMain(), yR: mkYRpc() } } }); }
+      // pcZC1/pcZC2 built by refreshZoom
       refreshZoom();
     }, 50);
     return () => clearTimeout(t);
@@ -594,7 +626,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     const t = setTimeout(createAll, 10);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visC1, visC2, visPcBands]);
+  }, [visC1, visC2, visPcBands, visPcBands2]);
 
   useEffect(() => {
     if (!mCt1.current) return;
@@ -653,6 +685,29 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     refreshZoom();
   }
   function onPcMainUp() { panM.current = null; }
+
+  function onPcZoom2Down(e) {
+    panZ.current = { startX: e.clientX, snap: winRef.current.start };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+  function onPcZoom2Move(e) {
+    const p = panZ.current; if (!p) return;
+    winRef.current.start = Math.round(p.snap - (e.clientX - p.startX) / ((pcZCt2.current?.clientWidth || 340) / winRef.current.width));
+    refreshZoom();
+  }
+  function onPcZoom2Up() { panZ.current = null; }
+
+  function onPcMain2Down(e) {
+    if (e.target.dataset.edge) return;
+    panM.current = { startX: e.clientX, snap: winRef.current.start };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+  function onPcMain2Move(e) {
+    const p = panM.current; if (!p) return;
+    winRef.current.start = Math.round(p.snap - (e.clientX - p.startX) / ((pcMCt2.current?.clientWidth || 340) / N));
+    refreshZoom();
+  }
+  function onPcMain2Up() { panM.current = null; }
 
   function onEdgeDown(e, side) {
     e.stopPropagation();
@@ -992,6 +1047,110 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                       <div ref={pcTL1} style={{ position: 'absolute', top: 0, bottom: 0, pointerEvents: 'none', zIndex: 4 }}>
                         <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: '1.5px', background: '#3a6b1a', opacity: 0.7 }} />
                         <div style={{ position: 'absolute', top: 2, left: 3, fontSize: 7, color: '#3a6b1a', fontWeight: 700, whiteSpace: 'nowrap', background: 'rgba(240,248,232,0.85)', padding: '1px 3px', borderRadius: 3 }}>Today</div>
+                      </div>
+                    </div>
+
+                    {/* ── pc chart 2: Temp Round Length (copy) ── */}
+                    <div style={{ marginTop: 16, borderTop: '1px solid #e0d8cc', paddingTop: 12 }}>
+                      <div style={{ fontSize: 10, color: '#5a6f48', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 4 }}>
+                        <span>Expanded view · selected period</span>
+                        <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to pan</span>
+                        <button onClick={centerOnToday} style={{ background: 'transparent', border: '1.5px solid #3a6b1a', borderRadius: 10, color: '#3a6b1a', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}>↩ Today</button>
+                      </div>
+                      <div ref={pcZCt2}
+                        style={{ position: 'relative', height: 180, touchAction: 'none', userSelect: 'none', overflow: 'hidden', borderRadius: 6, cursor: 'grab', border: '2px solid #3a6b1a' }}
+                        onPointerDown={onPcZoom2Down} onPointerMove={onPcZoom2Move} onPointerUp={onPcZoom2Up} onPointerCancel={onPcZoom2Up}
+                      >
+                        <canvas ref={pcZCv2} style={{ display: 'block' }} />
+                        <div ref={pcTLZ2} style={{ position: 'absolute', top: 0, bottom: 0, pointerEvents: 'none', zIndex: 4 }}>
+                          <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: '1.5px', background: '#3a6b1a', opacity: 0.7 }} />
+                          <div style={{ position: 'absolute', top: 4, left: 3, fontSize: 8, color: '#3a6b1a', fontWeight: 700, whiteSpace: 'nowrap', background: 'rgba(240,248,232,0.88)', padding: '1px 4px', borderRadius: 3 }}>Today</div>
+                        </div>
+                        <div ref={pcScZ2} style={S.scrub}><div style={S.sDot} /></div>
+                      </div>
+
+                      <div style={{ fontSize: 11, color: '#2d4a1e', marginTop: 6, background: '#f0f7fd', border: '1px solid #c0daf0', borderRadius: 6, overflow: 'hidden' }}>
+                        <div onClick={() => setExpandCtrPc2(v => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', cursor: 'pointer', gap: 8 }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px 12px' }}>
+                            {[
+                              { color: '#1a4a7a', dashed: false, fill: null,                       label: 'Actual LAR' },
+                              { color: '#4aa8d8', dashed: true,  fill: null,                       label: 'P50' },
+                              { color: '#4aa8d8', dashed: false, fill: 'rgba(74,168,216,0.25)',    label: 'P25–P75' },
+                              { color: '#4aa8d8', dashed: false, fill: 'rgba(74,168,216,0.12)',    label: 'P10–P90' },
+                            ].map(({ color, dashed, fill, label }) => (
+                              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <svg width="16" height="8" style={{ flexShrink: 0 }}>
+                                  {fill ? <rect x="0" y="1" width="16" height="6" fill={fill} rx="1" /> : <line x1="0" y1="4" x2="16" y2="4" stroke={color} strokeWidth={dashed ? 1.5 : 2} strokeDasharray={dashed ? '4 3' : 'none'} />}
+                                </svg>
+                                <span style={{ color, whiteSpace: 'nowrap' }}>{label}</span>
+                              </div>
+                            ))}
+                          </div>
+                          <span style={{ fontSize: 10, color: '#9aab85', flexShrink: 0 }}>{expandCtrPc2 ? '▲' : '▼'}</span>
+                        </div>
+                        {expandCtrPc2 && (
+                          <div style={{ padding: '0 10px 8px', borderTop: '1px solid #c0daf0', lineHeight: 1.7 }}>
+                            {ctrPc2 && <div style={{ fontWeight: 600, marginBottom: 2, textAlign: 'center', paddingTop: 6 }}>{ctrPc2.dl}</div>}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 10px' }}>
+                              {[
+                                { color: '#1a4a7a', dashed: false, fill: null,                    label: 'Actual LAR', value: ctrPc2?.lar },
+                                { color: '#4aa8d8', dashed: true,  fill: null,                    label: 'P50',        value: ctrPc2?.p50 },
+                                { color: '#4aa8d8', dashed: false, fill: 'rgba(74,168,216,0.25)', label: 'P25',        value: ctrPc2?.p25 },
+                                { color: '#4aa8d8', dashed: false, fill: 'rgba(74,168,216,0.25)', label: 'P75',        value: ctrPc2?.p75 },
+                                { color: '#4aa8d8', dashed: false, fill: 'rgba(74,168,216,0.12)', label: 'P10',        value: ctrPc2?.p10 },
+                                { color: '#4aa8d8', dashed: false, fill: 'rgba(74,168,216,0.12)', label: 'P90',        value: ctrPc2?.p90 },
+                              ].map(({ color, dashed, fill, label, value }) => (
+                                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'nowrap' }}>
+                                  <svg width="16" height="8" style={{ flexShrink: 0 }}>
+                                    {fill ? <rect x="0" y="1" width="16" height="6" fill={fill} rx="1" /> : <line x1="0" y1="4" x2="16" y2="4" stroke={color} strokeWidth={dashed ? 1.5 : 2} strokeDasharray={dashed ? '4 3' : 'none'} />}
+                                  </svg>
+                                  <span style={{ color, whiteSpace: 'nowrap' }}>{label}</span>
+                                  {' '}<strong>{value ?? '—'}</strong>
+                                </div>
+                              ))}
+                            </div>
+                            <div style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic', marginTop: 4, textAlign: 'center' }}>
+                              {ctrPc2 ? 'centre of window — pan to explore' : 'pan to explore values'}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 10 }}>
+                        {[
+                          { key: 'p1090', label: 'P10–P90' },
+                          { key: 'p2575', label: 'P25–P75' },
+                          { key: 'p50',   label: 'P50 median' },
+                        ].map(({ key, label }) => (
+                          <button key={key} onClick={() => setVisPcBands2(p => ({ ...p, [key]: !p[key] }))} style={{
+                            padding: '5px 9px', borderRadius: 14, fontSize: 10, fontWeight: 500, lineHeight: 1,
+                            cursor: 'pointer', border: '1.5px solid #4aa8d8',
+                            background: visPcBands2[key] ? '#4aa8d8' : '#fff',
+                            color: visPcBands2[key] ? '#fff' : '#4aa8d8',
+                            whiteSpace: 'nowrap',
+                          }}>{label}</button>
+                        ))}
+                      </div>
+
+                      <div style={{ fontSize: 10, color: '#5a6f48', marginTop: 10, fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>Full season overview <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to move selection</span></span>
+                        <button onClick={centerOnToday} style={{ background: 'transparent', border: '1.5px solid #3a6b1a', borderRadius: 10, color: '#3a6b1a', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}>↩ Today</button>
+                      </div>
+                      <div ref={pcMCt2}
+                        style={{ position: 'relative', height: 120, marginTop: 5, touchAction: 'none', userSelect: 'none', overflow: 'hidden' }}
+                        onPointerDown={onPcMain2Down} onPointerMove={onPcMain2Move} onPointerUp={onPcMain2Up} onPointerCancel={onPcMain2Up}
+                      >
+                        <canvas ref={pcMCv2} style={{ display: 'block' }} />
+                        <div ref={pcSdl2} style={S.dim} />
+                        <div ref={pcSb2}  style={S.band} />
+                        <div ref={pcSdr2} style={S.dim} />
+                        {edgeDiv(pcSeL2, 'l')}
+                        {edgeDiv(pcSeR2, 'r')}
+                        <div ref={pcScM2} style={S.scrub}><div style={S.sDot} /></div>
+                        <div ref={pcTL2} style={{ position: 'absolute', top: 0, bottom: 0, pointerEvents: 'none', zIndex: 4 }}>
+                          <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: '1.5px', background: '#3a6b1a', opacity: 0.7 }} />
+                          <div style={{ position: 'absolute', top: 2, left: 3, fontSize: 7, color: '#3a6b1a', fontWeight: 700, whiteSpace: 'nowrap', background: 'rgba(240,248,232,0.85)', padding: '1px 3px', borderRadius: 3 }}>Today</div>
+                        </div>
                       </div>
                     </div>
                   </div>
