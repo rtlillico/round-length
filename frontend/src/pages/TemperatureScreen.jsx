@@ -535,7 +535,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
 
     if (showPctRef.current) {
       if (pcMCv1.current && pcMCt1.current) { ic(pcMCv1.current, pcMCt1.current, 120); pcMC1.current = new Chart(pcMCv1.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: true }) }, options: { ...base, scales: { x: xMainPast(), yR: mkYRpc() } } }); }
-      if (pcZCv1.current && pcZCt1.current) { ic(pcZCv1.current, pcZCt1.current, 180); const pcpw = pcZCt1.current.clientWidth || 340; pcZC1.current = new Chart(pcZCv1.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: false, win }) }, options: { ...base, scales: { x: xZoom(win.start, Math.min(win.end, TODAY)), yR: mkYRpc() } } }); }
+      if (pcZCv1.current && pcZCt1.current) { ic(pcZCv1.current, pcZCt1.current, 180); const pcpw = pcZCt1.current.clientWidth || 340; pcZC1.current = new Chart(pcZCv1.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: false, win }) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yR: mkYRpc() } } }); }
     }
 
     posOverlays();
@@ -565,7 +565,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
       if (pcZCv1.current && pcZCt1.current) {
         const pw = pcZCt1.current.clientWidth || 340;
         pcZCv1.current.width = pw; pcZCv1.current.height = 180;
-        pcZC1.current = new Chart(pcZCv1.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: false, win }) }, options: { ...base, scales: { x: xZoom(win.start, Math.min(win.end, TODAY)), yR: mkYRpc() } } });
+        pcZC1.current = new Chart(pcZCv1.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: false, win }) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yR: mkYRpc() } } });
       }
     }
     posOverlays();
