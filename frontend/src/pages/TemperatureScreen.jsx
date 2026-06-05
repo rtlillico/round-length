@@ -372,9 +372,9 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     const v = vPcRef.current;
     let toData, toActual;
     if (isMain) {
-      const sw = 30;
+      const sw = 60;
       toData   = arr => toXY(smooth(arr, sw));
-      toActual = arr => toXY(smooth(arr, 60).map((x, i) => i <= clip ? x : null));
+      toActual = arr => toXY(smooth(arr, 90).map((x, i) => i <= clip ? x : null));
     } else {
       const span = win.end - win.start + 1;
       const sw = Math.min(60, Math.max(14, Math.round(span / 6)));
