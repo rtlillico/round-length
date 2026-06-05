@@ -368,19 +368,18 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   }
   function buildPcBandDatasets({ isMain, win }) {
     const { larData, larP10, larP25, larP50, larP75, larP90, lastActual } = arrRef.current;
-    const clip = lastActual >= 0 ? Math.min(lastActual, TODAY) : TODAY;
+    const clip = lastActual >= 0 ? lastActual : TODAY;
     const v = vPcRef.current;
     let toData, toActual;
     if (isMain) {
       const sw = 30;
-      toData   = arr => toXY(smooth(arr, sw).map((x, i) => i <= TODAY ? x : null));
+      toData   = arr => toXY(smooth(arr, sw));
       toActual = arr => toXY(smooth(arr, 60).map((x, i) => i <= clip ? x : null));
     } else {
-      const pcEnd = Math.min(win.end, TODAY);
-      const span = pcEnd - win.start + 1;
+      const span = win.end - win.start + 1;
       const sw = Math.min(60, Math.max(14, Math.round(span / 6)));
-      toData   = arr => toXYWin(smooth(arr, sw).map((x, i) => i <= TODAY ? x : null), win.start, pcEnd);
-      toActual = arr => toXYWin(smooth(arr, sw).map((x, i) => i <= clip ? x : null), win.start, pcEnd);
+      toData   = arr => toXYWin(smooth(arr, sw), win.start, win.end);
+      toActual = arr => toXYWin(smooth(arr, sw).map((x, i) => i <= clip ? x : null), win.start, win.end);
     }
     const ds = [];
     if (v.p1090) {
@@ -468,23 +467,14 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     if (zC2.current && tLZ2.current) tLZ2.current.style.left = zC2.current.scales.x.getPixelForValue(TODAY) + 'px';
 
     if (showPctRef.current) {
-      // Clamp band to 0–TODAY since the percentile main chart only covers the past year
+      applySpot(pcMC1.current, pcSdl1, pcSb1, pcSdr1, pcSeL1, pcSeR1, pcScM1);
       if (pcMC1.current) {
-        const ch = pcMC1.current;
-        const ps = Math.min(win.start, TODAY), pe = Math.min(win.end, TODAY);
-        const px1 = ch.scales.x.getPixelForValue(ps), px2 = ch.scales.x.getPixelForValue(pe);
-        if (pcSdl1.current) { pcSdl1.current.style.left = '0'; pcSdl1.current.style.width = px1 + 'px'; }
-        if (pcSb1.current)  { pcSb1.current.style.left = px1 + 'px'; pcSb1.current.style.width = (px2 - px1) + 'px'; }
-        if (pcSdr1.current) { pcSdr1.current.style.left = px2 + 'px'; pcSdr1.current.style.right = '0'; }
-        if (pcSeL1.current) pcSeL1.current.style.left = px1 + 'px';
-        if (pcSeR1.current) pcSeR1.current.style.left = px2 + 'px';
-        if (pcScM1.current) pcScM1.current.style.left = ch.scales.x.getPixelForValue(Math.min(cDay, TODAY)) + 'px';
-        const pxT = ch.scales.x.getPixelForValue(TODAY);
+        const pxT = pcMC1.current.scales.x.getPixelForValue(TODAY);
         if (pcTL1.current) pcTL1.current.style.left = pxT + 'px';
       }
-      if (pcZC1.current && pcScZ1.current) pcScZ1.current.style.left = pcZC1.current.scales.x.getPixelForValue(Math.min(cDay, TODAY)) + 'px';
+      if (pcZC1.current && pcScZ1.current) pcScZ1.current.style.left = pcZC1.current.scales.x.getPixelForValue(cDay) + 'px';
       if (pcZC1.current && pcTLZ1.current) pcTLZ1.current.style.left = pcZC1.current.scales.x.getPixelForValue(TODAY) + 'px';
-      const pcDay = Math.min(cDay, TODAY);
+      const pcDay = cDay;
       const { larData: ld, larP10: lp10, larP25: lp25, larP50: lp50, larP75: lp75, larP90: lp90, dates: dts } = arrRef.current;
       const pds = dts[pcDay] || '';
       setCtrPc(pds ? {
@@ -534,7 +524,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     if (zCv2.current) zC2.current = new Chart(zCv2.current, { type: 'line', data: { datasets: ds2zoom(win, pw2) }, options: { ...base, scales: { x: xZoom(win.start, win.end), y: mkYS() } } });
 
     if (showPctRef.current) {
-      if (pcMCv1.current && pcMCt1.current) { ic(pcMCv1.current, pcMCt1.current, 120); pcMC1.current = new Chart(pcMCv1.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: true }) }, options: { ...base, scales: { x: xMainPast(), yR: mkYRpc() } } }); }
+      if (pcMCv1.current && pcMCt1.current) { ic(pcMCv1.current, pcMCt1.current, 120); pcMC1.current = new Chart(pcMCv1.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: true }) }, options: { ...base, scales: { x: xMain(), yR: mkYRpc() } } }); }
       if (pcZCv1.current && pcZCt1.current) { ic(pcZCv1.current, pcZCt1.current, 180); const pcpw = pcZCt1.current.clientWidth || 340; pcZC1.current = new Chart(pcZCv1.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: false, win }) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yR: mkYRpc() } } }); }
     }
 
@@ -585,12 +575,12 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
       return;
     }
     const t = setTimeout(() => {
-      // Default to today: centre the window on TODAY so the scrub starts at today
+      // Centre window on today (same as centerOnToday)
       winRef.current.start = Math.round(TODAY - winRef.current.width / 2);
       const base = { responsive: false, animation: false, plugins: { legend: { display: false }, tooltip: { enabled: false } } };
       const ic = (cv, ct, h) => { if (!cv || !ct) return; cv.width = ct.clientWidth || 340; cv.height = h; };
       [pcMC1, pcZC1].forEach(r => { if (r.current) { r.current.destroy(); r.current = null; } });
-      if (pcMCv1.current && pcMCt1.current) { ic(pcMCv1.current, pcMCt1.current, 120); pcMC1.current = new Chart(pcMCv1.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: true }) }, options: { ...base, scales: { x: xMainPast(), yR: mkYRpc() } } }); }
+      if (pcMCv1.current && pcMCt1.current) { ic(pcMCv1.current, pcMCt1.current, 120); pcMC1.current = new Chart(pcMCv1.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: true }) }, options: { ...base, scales: { x: xMain(), yR: mkYRpc() } } }); }
       // pcZC1 is built by refreshZoom (which also syncs the main card zoom charts to the new window)
       refreshZoom();
     }, 50);
