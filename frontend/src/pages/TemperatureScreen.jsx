@@ -167,6 +167,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   const [ctrPc, setCtrPc] = useState(null);
   const [expandCtrPc, setExpandCtrPc] = useState(false);
   const [showPct, setShowPct] = useState(false);
+  const [infoPc, setInfoPc] = useState(false);
   const showPctRef = useRef(false);
   const [visPcBands, setVisPcBands] = useState({ p50: true, p2575: true, p1090: true });
   const vPcRef = useRef({ p50: true, p2575: true, p1090: true });
@@ -944,6 +945,18 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                 </div>
                 {showPct && (
                   <div style={{ padding: '0 12px' }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.3, display: 'flex', alignItems: 'center', paddingTop: 10 }}>
+                      <span style={{ color: '#4aa8d8' }}>Temp LAR</span>
+                      <button onClick={() => setInfoPc(v => !v)} style={{ marginLeft: 4, background: 'none', border: 'none', cursor: 'pointer', color: '#4aa8d8', fontSize: 13, opacity: 0.75, padding: 0, lineHeight: 1 }}>ⓘ</button>
+                    </div>
+                    {infoPc && (
+                      <div style={{ background: '#eef7fd', border: '1px solid rgba(74,168,216,0.3)', borderRadius: 8, padding: '10px 12px', margin: '8px 0 4px', fontSize: 12, color: '#1a4a6b', lineHeight: 1.6 }}>
+                        <div style={{ fontWeight: 600, color: '#4aa8d8', marginBottom: 6 }}>Temp LAR — Leaf Appearance Rate</div>
+                        <div style={{ marginBottom: 8 }}>How many leaves the grass produces per day, driven by temperature alone. Rises from zero at the base temp, peaks at the optimum, then falls back to zero at the ceiling.</div>
+                        <div style={{ fontWeight: 600, color: '#4aa8d8', marginBottom: 6 }}>Percentiles comparison</div>
+                        <div>This chart plots the current season's <strong style={{ color: '#0a2a4b' }}>Actual LAR</strong> against the distribution of historical LAR for the same time of year. The dashed line is the <strong style={{ color: '#0a2a4b' }}>P50 (median)</strong> — a typical year. The shaded bands show the spread of past years: <strong style={{ color: '#0a2a4b' }}>P25–P75</strong> (the middle half of years) and <strong style={{ color: '#0a2a4b' }}>P10–P90</strong> (all but the most extreme years). When the solid line sits above the median, this season is growing faster than usual; below it, slower.</div>
+                      </div>
+                    )}
                     {pillRow}
                     <div style={{ fontSize: 10, color: '#5a6f48', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 4 }}>
                       <span>Expanded view · selected period</span>
