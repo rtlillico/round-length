@@ -158,6 +158,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   const [infoRL,  setInfoRL]  = useState(false);
   const [infoLAR, setInfoLAR] = useState(false);
   const [visC1,   setVisC1]  = useState({ tempLAR: true, tempRound: true });
+  const [rawC1,   setRawC1]  = useState({ lar: false, round: false }); // actual lines: false = smoothed, true = raw daily
   const [visC2,   setVisC2]  = useState({ tMax: true, tMean: true, tMin: true });
   const [pill,    setPill]   = useState(120);
   const [winInfo, setWinInfo] = useState(null);  // { start, end }
@@ -198,9 +199,11 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   const tlRef   = useRef(tLabels);
   const v1Ref   = useRef(visC1);
   const v2Ref   = useRef(visC2);
+  const rawRef  = useRef(rawC1);
   useEffect(() => { arrRef.current = arrays;  }, [arrays]);
   useEffect(() => { tlRef.current  = tLabels; }, [tLabels]);
   useEffect(() => { v1Ref.current  = visC1;   }, [visC1]);
+  useEffect(() => { rawRef.current = rawC1;   }, [rawC1]);
   useEffect(() => { v2Ref.current  = visC2;   }, [visC2]);
   useEffect(() => { showPctRef.current = showPct; }, [showPct]);
   useEffect(() => { vPcRef.current = visPcBands; }, [visPcBands]);
@@ -429,12 +432,14 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     const bt = Math.max(2, Math.floor((pw / span) * 0.82));
     // Scale smoothing window to the visible span so wider views stay smooth
     const sw = Math.min(60, Math.max(14, Math.round(span / 6)));
-    const v = v1Ref.current; const ds = [];
+    const v = v1Ref.current; const raw = rawRef.current; const ds = [];
+    const larActual   = (raw.lar   ? larData   : smooth(larData, sw)).map((x, i) => i <= clip ? x : null);
+    const roundActual = (raw.round ? roundData : smooth(roundData, sw)).map((x, i) => i <= clip ? x : null);
     if (v.tempLAR) ds.push(bars
       ? { type: 'bar',  data: toXYWin(larData, win.start, win.end), backgroundColor: 'rgba(74,168,216,0.45)', borderWidth: 0, barThickness: bt, yAxisID: 'yR' }
-      : { type: 'line', data: toXYWin(smooth(larData, sw).map((v, i) => i <= clip ? v : null), win.start, win.end), borderColor: '#4aa8d8', borderWidth: 2, pointRadius: 0, tension: 0, yAxisID: 'yR' });
+      : { type: 'line', data: toXYWin(larActual, win.start, win.end), borderColor: '#4aa8d8', borderWidth: 2, pointRadius: 0, tension: 0, yAxisID: 'yR' });
     if (v.tempLAR) ds.push({ type: 'line', data: toXYWin(smooth(larP50, sw), win.start, win.end), borderColor: '#4aa8d8', borderWidth: 1, pointRadius: 0, borderDash: [10, 5], yAxisID: 'yR' });
-    if (v.tempRound) ds.push({ type: 'line', data: toXYWin(smooth(roundData, sw).map((v, i) => i <= clip ? v : null), win.start, win.end), borderColor: '#c47a12', borderWidth: 2.5, pointRadius: 0, tension: 0, yAxisID: 'yL' });
+    if (v.tempRound) ds.push({ type: 'line', data: toXYWin(roundActual, win.start, win.end), borderColor: '#c47a12', borderWidth: 2.5, pointRadius: 0, tension: 0, yAxisID: 'yL' });
     if (v.tempRound) ds.push({ type: 'line', data: toXYWin(smooth(roundP50, sw), win.start, win.end), borderColor: '#c47a12', borderWidth: 1, pointRadius: 0, borderDash: [6, 3], yAxisID: 'yL' });
     return ds;
   }
@@ -627,7 +632,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     const t = setTimeout(createAll, 10);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visC1, visC2, visPcBands, visPcBands2]);
+  }, [visC1, visC2, visPcBands, visPcBands2, rawC1]);
 
   useEffect(() => {
     if (!mCt1.current) return;
@@ -842,6 +847,17 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                 <span>Expanded view · selected period</span>
                 <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to pan</span>
                 <button onClick={centerOnToday} style={{ background: 'transparent', border: '1.5px solid #3a6b1a', borderRadius: 10, color: '#3a6b1a', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}>↩ Today</button>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                <span style={{ fontSize: 9, color: '#9aab85', fontWeight: 600 }}>Actual:</span>
+                <button
+                  onClick={() => setRawC1(p => ({ ...p, lar: !p.lar }))}
+                  style={{ background: rawC1.lar ? '#4aa8d8' : 'transparent', border: '1.5px solid #4aa8d8', borderRadius: 10, color: rawC1.lar ? '#fff' : '#4aa8d8', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}
+                >LAR: {rawC1.lar ? 'Raw' : 'Smoothed'}</button>
+                <button
+                  onClick={() => setRawC1(p => ({ ...p, round: !p.round }))}
+                  style={{ background: rawC1.round ? '#c47a12' : 'transparent', border: '1.5px solid #c47a12', borderRadius: 10, color: rawC1.round ? '#fff' : '#c47a12', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}
+                >Round: {rawC1.round ? 'Raw' : 'Smoothed'}</button>
               </div>
               <div ref={zCt1}
                 style={{ position: 'relative', height: 180, marginTop: 5, touchAction: 'none', userSelect: 'none', overflow: 'hidden', borderRadius: 6, cursor: 'grab', border: '2px solid #3a6b1a' }}
