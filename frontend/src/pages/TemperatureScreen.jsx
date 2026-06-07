@@ -159,6 +159,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   const [infoLAR, setInfoLAR] = useState(false);
   const [visC1,   setVisC1]  = useState({ tempLAR: true, tempRound: true });
   const [rawC1,   setRawC1]  = useState({ lar: false, round: false }); // actual lines: false = smoothed, true = raw daily
+  const [showRaw1, setShowRaw1] = useState(false); // expander for the raw/smoothed toggles
   const [visC2,   setVisC2]  = useState({ tMax: true, tMean: true, tMin: true });
   const [pill,    setPill]   = useState(120);
   const [winInfo, setWinInfo] = useState(null);  // { start, end }
@@ -845,20 +846,27 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
             <>
               <div style={{ fontSize: 10, color: '#5a6f48', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span>Expanded view · selected period</span>
-                <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to pan</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to pan</span>
+                  <button
+                    onClick={() => setShowRaw1(v => !v)}
+                    style={{ background: 'transparent', border: '1.5px solid #9aab85', borderRadius: 10, color: '#5a6f48', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}
+                  >Actual {showRaw1 ? '▲' : '▾'}</button>
+                </div>
                 <button onClick={centerOnToday} style={{ background: 'transparent', border: '1.5px solid #3a6b1a', borderRadius: 10, color: '#3a6b1a', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}>↩ Today</button>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                <span style={{ fontSize: 9, color: '#9aab85', fontWeight: 600 }}>Actual:</span>
-                <button
-                  onClick={() => setRawC1(p => ({ ...p, lar: !p.lar }))}
-                  style={{ background: rawC1.lar ? '#4aa8d8' : 'transparent', border: '1.5px solid #4aa8d8', borderRadius: 10, color: rawC1.lar ? '#fff' : '#4aa8d8', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}
-                >LAR: {rawC1.lar ? 'Raw' : 'Smoothed'}</button>
-                <button
-                  onClick={() => setRawC1(p => ({ ...p, round: !p.round }))}
-                  style={{ background: rawC1.round ? '#c47a12' : 'transparent', border: '1.5px solid #c47a12', borderRadius: 10, color: rawC1.round ? '#fff' : '#c47a12', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}
-                >Round: {rawC1.round ? 'Raw' : 'Smoothed'}</button>
-              </div>
+              {showRaw1 && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, marginTop: 4 }}>
+                  <button
+                    onClick={() => setRawC1(p => ({ ...p, lar: !p.lar }))}
+                    style={{ background: rawC1.lar ? '#4aa8d8' : 'transparent', border: '1.5px solid #4aa8d8', borderRadius: 10, color: rawC1.lar ? '#fff' : '#4aa8d8', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}
+                  >LAR: {rawC1.lar ? 'Raw' : 'Smoothed'}</button>
+                  <button
+                    onClick={() => setRawC1(p => ({ ...p, round: !p.round }))}
+                    style={{ background: rawC1.round ? '#c47a12' : 'transparent', border: '1.5px solid #c47a12', borderRadius: 10, color: rawC1.round ? '#fff' : '#c47a12', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}
+                  >Round: {rawC1.round ? 'Raw' : 'Smoothed'}</button>
+                </div>
+              )}
               <div ref={zCt1}
                 style={{ position: 'relative', height: 180, marginTop: 5, touchAction: 'none', userSelect: 'none', overflow: 'hidden', borderRadius: 6, cursor: 'grab', border: '2px solid #3a6b1a' }}
                 onPointerDown={onZoomDown} onPointerMove={onZoomMove} onPointerUp={onZoomUp} onPointerCancel={onZoomUp}
