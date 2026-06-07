@@ -955,9 +955,9 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
 
               {/* ── Percentile comparison (collapsible) ──────────────────── */}
               <div style={{ marginTop: 12, border: '1px solid #e0d8cc', borderRadius: 8, overflow: 'hidden' }}>
-                <div onClick={() => setShowPct(v => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', cursor: 'pointer', background: '#f5f0e8' }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#3a6b1a' }}>Percentiles comparison</span>
-                  <span style={{ fontSize: 11, color: '#9aab85' }}>{showPct ? '▲' : '▼'}</span>
+                <div onClick={() => setShowPct(v => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: showPct ? '12px 12px' : '8px 12px', cursor: 'pointer', background: showPct ? '#e9ecdf' : '#f5f0e8' }}>
+                  <span style={{ fontSize: showPct ? 17 : 12, fontWeight: 700, color: '#3a6b1a' }}>Percentiles comparison</span>
+                  <span style={{ fontSize: showPct ? 14 : 11, color: '#9aab85' }}>{showPct ? '▲' : '▼'}</span>
                 </div>
                 {showPct && (
                   <div style={{ padding: '0 12px' }}>
