@@ -848,13 +848,11 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
             <>
               <div style={{ fontSize: 10, color: '#5a6f48', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span>Expanded view · selected period</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to pan</span>
-                  <button
-                    onClick={() => setShowRaw1(v => !v)}
-                    style={{ background: 'transparent', border: '1.5px solid #9aab85', borderRadius: 10, color: '#5a6f48', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}
-                  >Actual {showRaw1 ? '▲' : '▾'}</button>
-                </div>
+                <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to pan</span>
+                <button
+                  onClick={() => setShowRaw1(v => !v)}
+                  style={{ background: 'transparent', border: '1.5px solid #9aab85', borderRadius: 10, color: '#5a6f48', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}
+                >Raw {showRaw1 ? '▲' : '▾'}</button>
                 <button onClick={centerOnToday} style={{ background: 'transparent', border: '1.5px solid #3a6b1a', borderRadius: 10, color: '#3a6b1a', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}>↩ Today</button>
               </div>
               {showRaw1 && (
