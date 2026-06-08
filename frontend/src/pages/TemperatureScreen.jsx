@@ -133,11 +133,12 @@ const smooth = (arr, w) => {
 };
 
 function clampWin(start, width) {
-  let end = start + width - 1;
-  const minStart = -Math.floor(width / 2); // allow centre to reach index 0
-  if (start < minStart) { start = minStart; end = start + width - 1; }
-  if (end > N - 1) { end = N - 1; start = Math.max(minStart, end - width + 1); }
-  return { start, end };
+  const half = Math.floor(width / 2);
+  const minStart = -half;            // allow centre to reach index 0 (left end)
+  const maxStart = (N - 1) - half;   // allow centre to reach index N-1 (right end)
+  if (start < minStart) start = minStart;
+  if (start > maxStart) start = maxStart;
+  return { start, end: start + width - 1 };
 }
 
 // ── static overlay styles ──────────────────────────────────────────────────────
