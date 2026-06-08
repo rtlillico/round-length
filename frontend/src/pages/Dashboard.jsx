@@ -257,6 +257,7 @@ export default function Dashboard({ farmId, onSelectScenario, onAdd, forceTable,
       {editingScenario && (
         <ScenarioInfoSheet
           scenario={editingScenario}
+          startEditing
           onClose={() => setEditingScenario(null)}
           onSaved={(updated) => {
             setScenarios(prev => prev.map(s => s.id === updated.id ? { ...s, ...updated } : s));

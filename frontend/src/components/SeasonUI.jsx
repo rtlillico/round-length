@@ -5,8 +5,8 @@ import { C } from '../App';
 import { api } from '../lib/api';
 import { PASTURE_PARAMS, SOIL_PARAMS } from '../lib/formula';
 
-export function ScenarioInfoSheet({ scenario, onClose, onSaved }) {
-  const [editing, setEditing] = useState(false);
+export function ScenarioInfoSheet({ scenario, onClose, onSaved, startEditing = false }) {
+  const [editing, setEditing] = useState(startEditing);
   const [form, setForm] = useState({
     name:         scenario.name         || '',
     pastureKey:   scenario.pasture_key  || 'perennialRyegrass',
@@ -119,7 +119,7 @@ export function ScenarioInfoSheet({ scenario, onClose, onSaved }) {
               )}
               {saveErr && <div style={{ fontSize: 12, color: '#c43a2a' }}>{saveErr}</div>}
               <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => { setEditing(false); setSaveErr(null); }} style={{ flex: 1, padding: '11px', border: '1.5px solid #c8dab0', borderRadius: 10, background: '#fff', color: '#3a6b1a', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+                <button onClick={() => { if (startEditing) { onClose(); } else { setEditing(false); setSaveErr(null); } }} style={{ flex: 1, padding: '11px', border: '1.5px solid #c8dab0', borderRadius: 10, background: '#fff', color: '#3a6b1a', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
                 <button onClick={save} disabled={saving} style={{ flex: 2, padding: '11px', border: 'none', borderRadius: 10, background: '#3a6b1a', color: '#fff', fontSize: 13, fontWeight: 600, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1 }}>
                   {saving ? 'Saving…' : 'Save changes'}
                 </button>
