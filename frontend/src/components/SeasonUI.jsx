@@ -10,7 +10,7 @@ export function ScenarioInfoSheet({ scenario, onClose, onSaved }) {
   const [form, setForm] = useState({
     name:         scenario.name         || '',
     pastureKey:   scenario.pasture_key  || 'perennialRyegrass',
-    targetLeaves: scenario.target_leaves || 3,
+    targetLeaves: Number(scenario.target_leaves) || 3, // DECIMAL comes back as a string ("3.0"); coerce so it matches the numeric <option> values
     soilType:     scenario.soil_type    || 'sandyLoam',
     description:  scenario.description  || '',
   });
