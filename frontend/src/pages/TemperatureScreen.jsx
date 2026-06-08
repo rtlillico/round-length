@@ -423,12 +423,15 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     return ds;
   }
   function ds2main() {
-    const { tMaxData, tMeanData, tMinData } = arrRef.current;
+    const { tMaxData, tMeanData, tMinData, lastActual } = arrRef.current;
+    const clip = lastActual >= 0 ? lastActual : TODAY;
     const v = v2Ref.current; const ds = [];
-    // Always smoothed on the full-season navigator (30-day window) to calm daily noise
-    if (v.tMax)  ds.push({ type: 'line', data: toXY(smooth(tMaxData, 30)),  borderColor: '#c43a2a', borderWidth: 1.2, pointRadius: 0, tension: 0.2 });
-    if (v.tMean) ds.push({ type: 'line', data: toXY(smooth(tMeanData, 30)), borderColor: '#c47a12', borderWidth: 1.5, pointRadius: 0, tension: 0.2 });
-    if (v.tMin)  ds.push({ type: 'line', data: toXY(smooth(tMinData, 30)),  borderColor: '#2a6a9e', borderWidth: 1.2, pointRadius: 0, tension: 0.2 });
+    // Always smoothed on the full-season navigator (30-day window) to calm daily noise;
+    // clip to last actual day so the smoothing window doesn't draw a tail past Today
+    const clipArr = (arr) => smooth(arr, 30).map((x, i) => i <= clip ? x : null);
+    if (v.tMax)  ds.push({ type: 'line', data: toXY(clipArr(tMaxData)),  borderColor: '#c43a2a', borderWidth: 1.2, pointRadius: 0, tension: 0.2 });
+    if (v.tMean) ds.push({ type: 'line', data: toXY(clipArr(tMeanData)), borderColor: '#c47a12', borderWidth: 1.5, pointRadius: 0, tension: 0.2 });
+    if (v.tMin)  ds.push({ type: 'line', data: toXY(clipArr(tMinData)),  borderColor: '#2a6a9e', borderWidth: 1.2, pointRadius: 0, tension: 0.2 });
     return ds;
   }
   function ds1zoom(win, pw) {
@@ -450,15 +453,17 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     return ds;
   }
   function ds2zoom(win, pw) {
-    const { tMaxData, tMeanData, tMinData } = arrRef.current;
+    const { tMaxData, tMeanData, tMinData, lastActual } = arrRef.current;
+    const clip = lastActual >= 0 ? lastActual : TODAY;
     const span = win.end - win.start + 1; const bars = span < 60;
     const bt = Math.max(2, Math.floor((pw / span) * 0.82));
     // Scale smoothing window to the visible span so wider views stay smooth (matches ds1zoom)
     const sw = Math.min(60, Math.max(14, Math.round(span / 6)));
     const v = v2Ref.current; const raw = raw2Ref.current; const ds = [];
-    const minLine  = raw.tMin  ? tMinData  : smooth(tMinData, sw);
-    const meanLine = raw.tMean ? tMeanData : smooth(tMeanData, sw);
-    const maxLine  = raw.tMax  ? tMaxData  : smooth(tMaxData, sw);
+    // Clip to the last actual day so the smoothing window doesn't draw a tail past Today
+    const minLine  = (raw.tMin  ? tMinData  : smooth(tMinData, sw)).map((x, i) => i <= clip ? x : null);
+    const meanLine = (raw.tMean ? tMeanData : smooth(tMeanData, sw)).map((x, i) => i <= clip ? x : null);
+    const maxLine  = (raw.tMax  ? tMaxData  : smooth(tMaxData, sw)).map((x, i) => i <= clip ? x : null);
     // Bars overlap (linear x-axis). In this chart the FIRST dataset draws in front,
     // so push T_min first (front), T_mean middle, T_max last (back). Bars stay raw daily.
     if (v.tMin)  ds.push(bars ? { type: 'bar', data: toXYWin(tMinData,  win.start, win.end), backgroundColor: 'rgba(42,106,158,0.95)', borderWidth: 0, barThickness: bt } : { type: 'line', data: toXYWin(minLine,  win.start, win.end), borderColor: '#2a6a9e', borderWidth: 2,   pointRadius: 0, tension: 0.2 });
