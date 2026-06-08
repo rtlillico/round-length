@@ -161,6 +161,8 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   const [rawC1,   setRawC1]  = useState({ lar: false, round: false }); // actual lines: false = smoothed, true = raw daily
   const [showRaw1, setShowRaw1] = useState(false); // expander for the raw/smoothed toggles
   const [visC2,   setVisC2]  = useState({ tMax: true, tMean: true, tMin: true });
+  const [rawC2,   setRawC2]  = useState({ tMax: false, tMean: false, tMin: false }); // temp lines: false = smoothed, true = raw daily
+  const [showRaw2, setShowRaw2] = useState(false); // expander for the temp raw/smoothed toggles
   const [pill,    setPill]   = useState(120);
   const [winInfo, setWinInfo] = useState(null);  // { start, end }
   const [ctr1,    setCtr1]   = useState(null);
@@ -201,10 +203,12 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   const v1Ref   = useRef(visC1);
   const v2Ref   = useRef(visC2);
   const rawRef  = useRef(rawC1);
+  const raw2Ref = useRef(rawC2);
   useEffect(() => { arrRef.current = arrays;  }, [arrays]);
   useEffect(() => { tlRef.current  = tLabels; }, [tLabels]);
   useEffect(() => { v1Ref.current  = visC1;   }, [visC1]);
   useEffect(() => { rawRef.current = rawC1;   }, [rawC1]);
+  useEffect(() => { raw2Ref.current = rawC2;  }, [rawC2]);
   useEffect(() => { v2Ref.current  = visC2;   }, [visC2]);
   useEffect(() => { showPctRef.current = showPct; }, [showPct]);
   useEffect(() => { vPcRef.current = visPcBands; }, [visPcBands]);
@@ -421,9 +425,10 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   function ds2main() {
     const { tMaxData, tMeanData, tMinData } = arrRef.current;
     const v = v2Ref.current; const ds = [];
-    if (v.tMax)  ds.push({ type: 'line', data: toXY(tMaxData),  borderColor: '#c43a2a', borderWidth: 1.2, pointRadius: 0, tension: 0.2 });
-    if (v.tMean) ds.push({ type: 'line', data: toXY(tMeanData), borderColor: '#c47a12', borderWidth: 1.5, pointRadius: 0, tension: 0.2 });
-    if (v.tMin)  ds.push({ type: 'line', data: toXY(tMinData),  borderColor: '#2a6a9e', borderWidth: 1.2, pointRadius: 0, tension: 0.2 });
+    // Always smoothed on the full-season navigator (30-day window) to calm daily noise
+    if (v.tMax)  ds.push({ type: 'line', data: toXY(smooth(tMaxData, 30)),  borderColor: '#c43a2a', borderWidth: 1.2, pointRadius: 0, tension: 0.2 });
+    if (v.tMean) ds.push({ type: 'line', data: toXY(smooth(tMeanData, 30)), borderColor: '#c47a12', borderWidth: 1.5, pointRadius: 0, tension: 0.2 });
+    if (v.tMin)  ds.push({ type: 'line', data: toXY(smooth(tMinData, 30)),  borderColor: '#2a6a9e', borderWidth: 1.2, pointRadius: 0, tension: 0.2 });
     return ds;
   }
   function ds1zoom(win, pw) {
@@ -448,12 +453,17 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     const { tMaxData, tMeanData, tMinData } = arrRef.current;
     const span = win.end - win.start + 1; const bars = span < 60;
     const bt = Math.max(2, Math.floor((pw / span) * 0.82));
-    const v = v2Ref.current; const ds = [];
+    // Scale smoothing window to the visible span so wider views stay smooth (matches ds1zoom)
+    const sw = Math.min(60, Math.max(14, Math.round(span / 6)));
+    const v = v2Ref.current; const raw = raw2Ref.current; const ds = [];
+    const minLine  = raw.tMin  ? tMinData  : smooth(tMinData, sw);
+    const meanLine = raw.tMean ? tMeanData : smooth(tMeanData, sw);
+    const maxLine  = raw.tMax  ? tMaxData  : smooth(tMaxData, sw);
     // Bars overlap (linear x-axis). In this chart the FIRST dataset draws in front,
-    // so push T_min first (front), T_mean middle, T_max last (back).
-    if (v.tMin)  ds.push(bars ? { type: 'bar', data: toXYWin(tMinData,  win.start, win.end), backgroundColor: 'rgba(42,106,158,0.95)', borderWidth: 0, barThickness: bt } : { type: 'line', data: toXYWin(tMinData,  win.start, win.end), borderColor: '#2a6a9e', borderWidth: 2,   pointRadius: 0, tension: 0.2 });
-    if (v.tMean) ds.push(bars ? { type: 'bar', data: toXYWin(tMeanData, win.start, win.end), backgroundColor: 'rgba(196,122,18,0.9)',  borderWidth: 0, barThickness: bt } : { type: 'line', data: toXYWin(tMeanData, win.start, win.end), borderColor: '#c47a12', borderWidth: 2.5, pointRadius: 0, tension: 0.2 });
-    if (v.tMax)  ds.push(bars ? { type: 'bar', data: toXYWin(tMaxData,  win.start, win.end), backgroundColor: 'rgba(196,58,42,0.85)',  borderWidth: 0, barThickness: bt } : { type: 'line', data: toXYWin(tMaxData,  win.start, win.end), borderColor: '#c43a2a', borderWidth: 2,   pointRadius: 0, tension: 0.2 });
+    // so push T_min first (front), T_mean middle, T_max last (back). Bars stay raw daily.
+    if (v.tMin)  ds.push(bars ? { type: 'bar', data: toXYWin(tMinData,  win.start, win.end), backgroundColor: 'rgba(42,106,158,0.95)', borderWidth: 0, barThickness: bt } : { type: 'line', data: toXYWin(minLine,  win.start, win.end), borderColor: '#2a6a9e', borderWidth: 2,   pointRadius: 0, tension: 0.2 });
+    if (v.tMean) ds.push(bars ? { type: 'bar', data: toXYWin(tMeanData, win.start, win.end), backgroundColor: 'rgba(196,122,18,0.9)',  borderWidth: 0, barThickness: bt } : { type: 'line', data: toXYWin(meanLine, win.start, win.end), borderColor: '#c47a12', borderWidth: 2.5, pointRadius: 0, tension: 0.2 });
+    if (v.tMax)  ds.push(bars ? { type: 'bar', data: toXYWin(tMaxData,  win.start, win.end), backgroundColor: 'rgba(196,58,42,0.85)',  borderWidth: 0, barThickness: bt } : { type: 'line', data: toXYWin(maxLine,  win.start, win.end), borderColor: '#c43a2a', borderWidth: 2,   pointRadius: 0, tension: 0.2 });
     return ds;
   }
 
@@ -635,7 +645,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     const t = setTimeout(createAll, 10);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visC1, visC2, visPcBands, visPcBands2, rawC1]);
+  }, [visC1, visC2, visPcBands, visPcBands2, rawC1, rawC2]);
 
   useEffect(() => {
     if (!mCt1.current) return;
@@ -1220,8 +1230,26 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
               <div style={{ fontSize: 10, color: '#5a6f48', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span>Expanded view · selected period</span>
                 <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to pan</span>
+                <button
+                  onClick={() => setShowRaw2(v => !v)}
+                  style={{ background: 'transparent', border: '1.5px solid #9aab85', borderRadius: 10, color: '#5a6f48', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}
+                >Raw {showRaw2 ? '▲' : '▾'}</button>
                 <button onClick={centerOnToday} style={{ background: 'transparent', border: '1.5px solid #3a6b1a', borderRadius: 10, color: '#3a6b1a', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}>↩ Today</button>
               </div>
+              {showRaw2 && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6, marginTop: 4 }}>
+                  {[
+                    { key: 'tMax',  label: 'T_max',  color: '#c43a2a' },
+                    { key: 'tMean', label: 'T_mean', color: '#c47a12' },
+                    { key: 'tMin',  label: 'T_min',  color: '#2a6a9e' },
+                  ].map(({ key, label, color }) => (
+                    <button key={key}
+                      onClick={() => setRawC2(p => ({ ...p, [key]: !p[key] }))}
+                      style={{ background: rawC2[key] ? color : 'transparent', border: `1.5px solid ${color}`, borderRadius: 10, color: rawC2[key] ? '#fff' : color, fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}
+                    >{label}: {rawC2[key] ? 'Raw' : 'Smoothed'}</button>
+                  ))}
+                </div>
+              )}
               <div ref={zCt2}
                 style={{ position: 'relative', height: 180, marginTop: 5, touchAction: 'none', userSelect: 'none', overflow: 'hidden', borderRadius: 6, cursor: 'grab', border: '2px solid #3a6b1a' }}
                 onPointerDown={onZoomDown} onPointerMove={onZoomMove} onPointerUp={onZoomUp} onPointerCancel={onZoomUp}
