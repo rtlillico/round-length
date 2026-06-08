@@ -449,11 +449,11 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     const span = win.end - win.start + 1; const bars = span < 60;
     const bt = Math.max(2, Math.floor((pw / span) * 0.82));
     const v = v2Ref.current; const ds = [];
-    // Bars overlap (linear x-axis), so draw order = layering: T_max first (back),
-    // T_mean middle, T_min last (front). Opacity decreases back→front so the front reads clearly.
-    if (v.tMax)  ds.push(bars ? { type: 'bar', data: toXYWin(tMaxData,  win.start, win.end), backgroundColor: 'rgba(196,58,42,0.6)',   borderWidth: 0, barThickness: bt } : { type: 'line', data: toXYWin(tMaxData,  win.start, win.end), borderColor: '#c43a2a', borderWidth: 2,   pointRadius: 0, tension: 0.2 });
-    if (v.tMean) ds.push(bars ? { type: 'bar', data: toXYWin(tMeanData, win.start, win.end), backgroundColor: 'rgba(196,122,18,0.9)',  borderWidth: 0, barThickness: bt } : { type: 'line', data: toXYWin(tMeanData, win.start, win.end), borderColor: '#c47a12', borderWidth: 2.5, pointRadius: 0, tension: 0.2 });
+    // Bars overlap (linear x-axis). In this chart the FIRST dataset draws in front,
+    // so push T_min first (front), T_mean middle, T_max last (back).
     if (v.tMin)  ds.push(bars ? { type: 'bar', data: toXYWin(tMinData,  win.start, win.end), backgroundColor: 'rgba(42,106,158,0.95)', borderWidth: 0, barThickness: bt } : { type: 'line', data: toXYWin(tMinData,  win.start, win.end), borderColor: '#2a6a9e', borderWidth: 2,   pointRadius: 0, tension: 0.2 });
+    if (v.tMean) ds.push(bars ? { type: 'bar', data: toXYWin(tMeanData, win.start, win.end), backgroundColor: 'rgba(196,122,18,0.9)',  borderWidth: 0, barThickness: bt } : { type: 'line', data: toXYWin(tMeanData, win.start, win.end), borderColor: '#c47a12', borderWidth: 2.5, pointRadius: 0, tension: 0.2 });
+    if (v.tMax)  ds.push(bars ? { type: 'bar', data: toXYWin(tMaxData,  win.start, win.end), backgroundColor: 'rgba(196,58,42,0.85)',  borderWidth: 0, barThickness: bt } : { type: 'line', data: toXYWin(tMaxData,  win.start, win.end), borderColor: '#c43a2a', borderWidth: 2,   pointRadius: 0, tension: 0.2 });
     return ds;
   }
 
