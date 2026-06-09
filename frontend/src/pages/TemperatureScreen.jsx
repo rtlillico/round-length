@@ -313,7 +313,16 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
       type: 'linear', min: xMin, max: xMax, offset: false,
       ticks: {
         autoSkip: false, maxRotation: 0, padding: 2, color: '#5a6f48', font: { size: 10 },
-        callback(val) { const i = Math.round(val); return (i >= 0 && i < tl.length && tl[i]) ? tl[i] : null; },
+        callback(val, idx, ticks) {
+          const i = Math.round(val);
+          if (i < 0 || i >= tl.length || !tl[i]) return null;
+          // Show the year on the first and last labels so the graph's span is anchored
+          if (ticks && (idx === 0 || idx === ticks.length - 1)) {
+            const ds = arrRef.current.dates?.[i];
+            if (ds) { const d = new Date(ds + 'T00:00:00Z'); return `${MO[d.getUTCMonth()]} '${String(d.getUTCFullYear()).slice(-2)}`; }
+          }
+          return tl[i];
+        },
       },
       afterBuildTicks(sc) {
         const isYearStart  = l => l && l.includes("'");
