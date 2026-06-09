@@ -337,10 +337,16 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
           const step = Math.ceil(pool.length / target);
           chosen = pool.filter((_, idx) => idx % step === 0);
         }
-        // Always include year-boundary ticks regardless of thinning
-        const chosenSet = new Set(chosen);
-        yearTicks.forEach(i => chosenSet.add(i));
-        sc.ticks = [...chosenSet].sort((a, b) => a - b).map(v => ({ value: v }));
+        // Combine year-boundary ticks (always shown) with the thinned ticks,
+        // dropping any that sit too close to an already-accepted tick so adjacent
+        // labels (e.g. Dec next to Jan '26) never overlap. ~span/12 ≈ one label width.
+        const minGap = Math.max(1, Math.round(span / 12));
+        const accepted = [...yearTicks];
+        for (const i of chosen) {
+          if (accepted.some(a => Math.abs(a - i) < minGap)) continue;
+          accepted.push(i);
+        }
+        sc.ticks = accepted.sort((a, b) => a - b).map(v => ({ value: v }));
       },
       grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false },
     };
