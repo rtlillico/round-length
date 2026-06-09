@@ -176,10 +176,14 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   const showPctRef = useRef(false);
   const [visPcBands, setVisPcBands] = useState({ p50: true, p2575: true, p1090: true });
   const vPcRef = useRef({ p50: true, p2575: true, p1090: true });
+  const [rawPc, setRawPc] = useState(false); // actual line in pc chart 1: false = smoothed, true = raw daily
+  const rawPcRef = useRef(false);
   const [ctrPc2, setCtrPc2] = useState(null);
   const [expandCtrPc2, setExpandCtrPc2] = useState(false);
   const [visPcBands2, setVisPcBands2] = useState({ p50: true, p2575: true, p1090: true });
   const vPcRef2 = useRef({ p50: true, p2575: true, p1090: true });
+  const [rawPc2, setRawPc2] = useState(false); // actual line in pc chart 2
+  const rawPcRef2 = useRef(false);
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
@@ -214,6 +218,8 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   useEffect(() => { showPctRef.current = showPct; }, [showPct]);
   useEffect(() => { vPcRef.current = visPcBands; }, [visPcBands]);
   useEffect(() => { vPcRef2.current = visPcBands2; }, [visPcBands2]);
+  useEffect(() => { rawPcRef.current = rawPc; }, [rawPc]);
+  useEffect(() => { rawPcRef2.current = rawPc2; }, [rawPc2]);
 
   // chart instances
   const mC1 = useRef(null), zC1 = useRef(null);
@@ -406,20 +412,20 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     if (v.tempRound) ds.push({ type: 'line', data: toXY(smooth(roundP50, 30)),                                      borderColor: '#c47a12', borderWidth: 0.8, pointRadius: 0, borderDash: [6, 3], yAxisID: 'yL' });
     return ds;
   }
-  function buildPcBandDatasets({ isMain, win, vRef = vPcRef }) {
+  function buildPcBandDatasets({ isMain, win, vRef = vPcRef, rawRef = rawPcRef }) {
     const { larData, larP10, larP25, larP50, larP75, larP90, lastActual } = arrRef.current;
     const clip = lastActual >= 0 ? lastActual : TODAY;
-    const v = vRef.current;
+    const v = vRef.current; const raw = rawRef.current;
     let toData, toActual;
     if (isMain) {
       const sw = 60;
       toData   = arr => toXY(smooth(arr, sw));
-      toActual = arr => toXY(smooth(arr, 90).map((x, i) => i <= clip ? x : null));
+      toActual = arr => toXY((raw ? arr : smooth(arr, 90)).map((x, i) => i <= clip ? x : null));
     } else {
       const span = win.end - win.start + 1;
       const sw = Math.min(60, Math.max(14, Math.round(span / 6)));
       toData   = arr => toXYWin(smooth(arr, sw), win.start, win.end);
-      toActual = arr => toXYWin(smooth(arr, sw).map((x, i) => i <= clip ? x : null), win.start, win.end);
+      toActual = arr => toXYWin((raw ? arr : smooth(arr, sw)).map((x, i) => i <= clip ? x : null), win.start, win.end);
     }
     const ds = [];
     if (v.p1090) {
@@ -590,8 +596,8 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     if (showPctRef.current) {
       if (pcMCv1.current && pcMCt1.current) { ic(pcMCv1.current, pcMCt1.current, 120); pcMC1.current = new Chart(pcMCv1.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: true }) }, options: { ...base, scales: { x: xMain(), yR: mkYRpc() } } }); }
       if (pcZCv1.current && pcZCt1.current) { ic(pcZCv1.current, pcZCt1.current, 180); const pcpw = pcZCt1.current.clientWidth || 340; pcZC1.current = new Chart(pcZCv1.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: false, win }) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yR: mkYRpc() } } }); }
-      if (pcMCv2.current && pcMCt2.current) { ic(pcMCv2.current, pcMCt2.current, 120); pcMC2.current = new Chart(pcMCv2.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: true, vRef: vPcRef2 }) }, options: { ...base, scales: { x: xMain(), yR: mkYRpc() } } }); }
-      if (pcZCv2.current && pcZCt2.current) { ic(pcZCv2.current, pcZCt2.current, 180); const pcpw2 = pcZCt2.current.clientWidth || 340; pcZC2.current = new Chart(pcZCv2.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: false, win, vRef: vPcRef2 }) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yR: mkYRpc() } } }); }
+      if (pcMCv2.current && pcMCt2.current) { ic(pcMCv2.current, pcMCt2.current, 120); pcMC2.current = new Chart(pcMCv2.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: true, vRef: vPcRef2, rawRef: rawPcRef2 }) }, options: { ...base, scales: { x: xMain(), yR: mkYRpc() } } }); }
+      if (pcZCv2.current && pcZCt2.current) { ic(pcZCv2.current, pcZCt2.current, 180); const pcpw2 = pcZCt2.current.clientWidth || 340; pcZC2.current = new Chart(pcZCv2.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: false, win, vRef: vPcRef2, rawRef: rawPcRef2 }) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yR: mkYRpc() } } }); }
     }
 
     posOverlays();
@@ -627,7 +633,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
       if (pcZCv2.current && pcZCt2.current) {
         const pw = pcZCt2.current.clientWidth || 340;
         pcZCv2.current.width = pw; pcZCv2.current.height = 180;
-        pcZC2.current = new Chart(pcZCv2.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: false, win, vRef: vPcRef2 }) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yR: mkYRpc() } } });
+        pcZC2.current = new Chart(pcZCv2.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: false, win, vRef: vPcRef2, rawRef: rawPcRef2 }) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yR: mkYRpc() } } });
       }
     }
     posOverlays();
@@ -653,7 +659,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
       const ic = (cv, ct, h) => { if (!cv || !ct) return; cv.width = ct.clientWidth || 340; cv.height = h; };
       [pcMC1, pcZC1, pcMC2, pcZC2].forEach(r => { if (r.current) { r.current.destroy(); r.current = null; } });
       if (pcMCv1.current && pcMCt1.current) { ic(pcMCv1.current, pcMCt1.current, 120); pcMC1.current = new Chart(pcMCv1.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: true }) }, options: { ...base, scales: { x: xMain(), yR: mkYRpc() } } }); }
-      if (pcMCv2.current && pcMCt2.current) { ic(pcMCv2.current, pcMCt2.current, 120); pcMC2.current = new Chart(pcMCv2.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: true, vRef: vPcRef2 }) }, options: { ...base, scales: { x: xMain(), yR: mkYRpc() } } }); }
+      if (pcMCv2.current && pcMCt2.current) { ic(pcMCv2.current, pcMCt2.current, 120); pcMC2.current = new Chart(pcMCv2.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: true, vRef: vPcRef2, rawRef: rawPcRef2 }) }, options: { ...base, scales: { x: xMain(), yR: mkYRpc() } } }); }
       // pcZC1/pcZC2 built by refreshZoom
       refreshZoom();
     }, 50);
@@ -666,7 +672,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     const t = setTimeout(createAll, 10);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visC1, visC2, visPcBands, visPcBands2, rawC1, rawC2]);
+  }, [visC1, visC2, visPcBands, visPcBands2, rawC1, rawC2, rawPc, rawPc2]);
 
   useEffect(() => {
     if (!mCt1.current) return;
@@ -1016,6 +1022,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                     <div style={{ fontSize: 10, color: '#5a6f48', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 4 }}>
                       <span>Expanded view · selected period</span>
                       <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to pan</span>
+                      <button onClick={() => setRawPc(v => !v)} style={{ background: rawPc ? '#1a4a7a' : 'transparent', border: '1.5px solid #1a4a7a', borderRadius: 10, color: rawPc ? '#fff' : '#1a4a7a', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}>Actual: {rawPc ? 'Raw' : 'Smoothed'}</button>
                       <button onClick={centerOnToday} style={{ background: 'transparent', border: '1.5px solid #3a6b1a', borderRadius: 10, color: '#3a6b1a', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}>↩ Today</button>
                     </div>
                     <div ref={pcZCt1}
@@ -1123,6 +1130,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                       <div style={{ fontSize: 10, color: '#5a6f48', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 4 }}>
                         <span>Expanded view · selected period</span>
                         <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to pan</span>
+                        <button onClick={() => setRawPc2(v => !v)} style={{ background: rawPc2 ? '#1a4a7a' : 'transparent', border: '1.5px solid #1a4a7a', borderRadius: 10, color: rawPc2 ? '#fff' : '#1a4a7a', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}>Actual: {rawPc2 ? 'Raw' : 'Smoothed'}</button>
                         <button onClick={centerOnToday} style={{ background: 'transparent', border: '1.5px solid #3a6b1a', borderRadius: 10, color: '#3a6b1a', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}>↩ Today</button>
                       </div>
                       <div ref={pcZCt2}
