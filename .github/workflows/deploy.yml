@@ -14,6 +14,9 @@ jobs:
           host: 139.84.199.217
           username: root
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # Default command_timeout is 10m; the server's npm ci + vite build can
+          # exceed that and get killed mid-build (which empties dist → site 403s).
+          command_timeout: 25m
           script: |
             set -e
             cd /var/www/round-length
@@ -25,8 +28,15 @@ jobs:
             cd frontend
             npm ci
 
-            echo "==> Building frontend"
-            npm run build
+            echo "==> Building frontend (atomic — keep live dist until build succeeds)"
+            # Give node more headroom and build into a temp dir, then swap into
+            # place only on success. This way a failed/killed build never leaves
+            # the live dist empty and the site stays up.
+            export NODE_OPTIONS=--max-old-space-size=2048
+            rm -rf dist-tmp
+            npm run build -- --outDir dist-tmp
+            rm -rf dist
+            mv dist-tmp dist
 
             echo "==> Restarting backend"
             cd ..
