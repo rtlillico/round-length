@@ -3,6 +3,8 @@
 
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
 const { Pool } = require('pg');
 
 const pool = new Pool({
@@ -12,6 +14,16 @@ const pool = new Pool({
   user:     process.env.DB_USER     || 'roundlength',
   password: process.env.DB_PASSWORD,
 });
+
+/**
+ * Apply schema.sql on startup. Every statement is idempotent
+ * (IF NOT EXISTS), so this safely creates tables/columns/indexes that
+ * don't exist yet — acting as a lightweight auto-migration on each deploy.
+ */
+async function applySchema() {
+  const sql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
+  await pool.query(sql);
+}
 
 // ─── FARMS ────────────────────────────────────────────────────────────────────
 
@@ -195,8 +207,8 @@ async function deleteScenario(id) {
 async function upsertPercentiles(scenarioId, percentileRows) {
   if (percentileRows.length === 0) return;
 
-  // Single bulk INSERT for all 365 rows (365 * 30 = 10950 params, within pg limit)
-  const COLS = 30;
+  // Single bulk INSERT for all 365 rows (365 * 32 = 11680 params, within pg limit)
+  const COLS = 32;
   const values = [];
   const params = [];
   percentileRows.forEach((row, i) => {
@@ -205,7 +217,7 @@ async function upsertPercentiles(scenarioId, percentileRows) {
       `($${b+1},$${b+2},$${b+3},$${b+4},$${b+5},$${b+6},$${b+7},$${b+8},$${b+9},$${b+10}` +
       `,$${b+11},$${b+12},$${b+13},$${b+14},$${b+15},$${b+16},$${b+17},$${b+18},$${b+19}` +
       `,$${b+20},$${b+21},$${b+22},$${b+23},$${b+24},$${b+25},$${b+26},$${b+27},$${b+28}` +
-      `,$${b+29},$${b+30})`
+      `,$${b+29},$${b+30},$${b+31},$${b+32})`
     );
     params.push(
       scenarioId, row.dayOfYear,
@@ -216,6 +228,7 @@ async function upsertPercentiles(scenarioId, percentileRows) {
       row.solarHistoricalMax, row.solarHistoricalMin,
       row.moistureP10, row.moistureP25, row.moistureP50, row.moistureP75, row.moistureP90,
       row.yearsCount,
+      row.tminP50, row.tmaxP50,
     );
   });
 
@@ -228,7 +241,8 @@ async function upsertPercentiles(scenarioId, percentileRows) {
         solar_p10, solar_p25, solar_p50, solar_p75, solar_p90,
         solar_historical_max, solar_historical_min,
         moisture_p10, moisture_p25, moisture_p50, moisture_p75, moisture_p90,
-        years_counted)
+        years_counted,
+        tmin_p50, tmax_p50)
      VALUES ${values.join(',')}
      ON CONFLICT (scenario_id, day_of_year) DO UPDATE SET
        lar_p10=EXCLUDED.lar_p10, lar_p25=EXCLUDED.lar_p25, lar_p50=EXCLUDED.lar_p50,
@@ -244,7 +258,8 @@ async function upsertPercentiles(scenarioId, percentileRows) {
        moisture_p10=EXCLUDED.moisture_p10, moisture_p25=EXCLUDED.moisture_p25,
        moisture_p50=EXCLUDED.moisture_p50, moisture_p75=EXCLUDED.moisture_p75,
        moisture_p90=EXCLUDED.moisture_p90,
-       years_counted=EXCLUDED.years_counted`,
+       years_counted=EXCLUDED.years_counted,
+       tmin_p50=EXCLUDED.tmin_p50, tmax_p50=EXCLUDED.tmax_p50`,
     params
   );
 }
@@ -349,6 +364,7 @@ async function getDailyStateRange(scenarioId, startDate, endDate) {
 
 module.exports = {
   pool,
+  applySchema,
   createFarm, getFarm, getAllFarms, updateFarm, setFarmIFD,
   insertSILORows, getAllSILORows, getSILORange, getLatestSILODate,
   getNextShortCode, createScenario, getScenario, getScenariosForFarm, updateScenarioMeta, deleteScenario,

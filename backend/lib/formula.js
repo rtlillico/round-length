@@ -376,7 +376,7 @@ function processHistoricalData(siloData, pastureKey, targetLeaves, soilType = 's
   // Step 3: group by day-of-year and compute percentiles
   const buckets = {};
   for (let doy = 1; doy <= 365; doy++) {
-    buckets[doy] = { lars: [], rounds: [], temps: [], solars: [], moistures: [] };
+    buckets[doy] = { lars: [], rounds: [], temps: [], tmins: [], tmaxs: [], solars: [], moistures: [] };
   }
 
   for (const row of dailySeries) {
@@ -384,6 +384,8 @@ function processHistoricalData(siloData, pastureKey, targetLeaves, soilType = 's
     buckets[doy].lars.push(row.actualLAR);
     buckets[doy].rounds.push(row.trueRound);
     buckets[doy].temps.push(row.tMean);
+    if (row.tMin != null) buckets[doy].tmins.push(row.tMin);
+    if (row.tMax != null) buckets[doy].tmaxs.push(row.tMax);
     buckets[doy].moistures.push(row.moistureFactor);
     if (row.solarFactor != null) buckets[doy].solars.push(row.solarFactor);
   }
@@ -394,6 +396,8 @@ function processHistoricalData(siloData, pastureKey, targetLeaves, soilType = 's
     const sL = [...b.lars].sort((a, b) => a - b);
     const sR = [...b.rounds].sort((a, b) => a - b);
     const sT = [...b.temps].sort((a, b) => a - b);
+    const sTmin = [...b.tmins].sort((a, b) => a - b);
+    const sTmax = [...b.tmaxs].sort((a, b) => a - b);
     const sS = [...b.solars].sort((a, b) => a - b);
     const sM = [...b.moistures].sort((a, b) => a - b);
 
@@ -405,6 +409,7 @@ function processHistoricalData(siloData, pastureKey, targetLeaves, soilType = 's
       roundP75: percentile(sR, 75), roundP90: percentile(sR, 90),
       tempP10: percentile(sT, 10), tempP25: percentile(sT, 25), tempP50: percentile(sT, 50),
       tempP75: percentile(sT, 75), tempP90: percentile(sT, 90),
+      tminP50: percentile(sTmin, 50), tmaxP50: percentile(sTmax, 50),
       solarP10: percentile(sS, 10), solarP25: percentile(sS, 25), solarP50: percentile(sS, 50),
       solarP75: percentile(sS, 75), solarP90: percentile(sS, 90),
       solarHistoricalMax: sS.length > 0 ? sS[sS.length - 1] : null,

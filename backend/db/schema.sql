@@ -127,6 +127,10 @@ ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS round_p75 DECIMAL(6,1)
 ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS temp_p25  DECIMAL(5,1);
 ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS temp_p75  DECIMAL(5,1);
 
+-- Min/max temperature median (°C) — for average T_min / T_max chart lines
+ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS tmin_p50  DECIMAL(5,1);
+ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS tmax_p50  DECIMAL(5,1);
+
 -- Solar factor columns — scenario_daily_state
 ALTER TABLE scenario_daily_state ADD COLUMN IF NOT EXISTS actual_lar   DECIMAL(8,6);
 ALTER TABLE scenario_daily_state ADD COLUMN IF NOT EXISTS solar_factor DECIMAL(5,4);

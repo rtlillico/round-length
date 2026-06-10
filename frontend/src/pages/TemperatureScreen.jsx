@@ -60,8 +60,11 @@ function buildArrays(chartData, targetLeaves, pastureKey) {
   const tMaxData  = new Array(N).fill(null);
   const tMeanData = new Array(N).fill(null);
   const tMinData  = new Array(N).fill(null);
+  const tMaxAvg   = new Array(N).fill(null); // historical median T_max by day-of-year
+  const tMeanAvg  = new Array(N).fill(null); // historical median T_mean (temp_p50)
+  const tMinAvg   = new Array(N).fill(null); // historical median T_min by day-of-year
 
-  if (!chartData) return { dates, larData, larP10, larP25, larP50, larP75, larP90, roundData, roundP50, tMaxData, tMeanData, tMinData, lastActual: -1 };
+  if (!chartData) return { dates, larData, larP10, larP25, larP50, larP75, larP90, roundData, roundP50, tMaxData, tMeanData, tMinData, tMaxAvg, tMeanAvg, tMinAvg, lastActual: -1 };
 
   const percByDoy = {};
   for (const p of (chartData.percentiles || [])) percByDoy[p.day_of_year] = p;
@@ -83,6 +86,9 @@ function buildArrays(chartData, targetLeaves, pastureKey) {
     larP50[i] = perc.temp_p50 != null ? calcTempLAR(Number(perc.temp_p50), pastureKey) : null;
     larP75[i] = perc.temp_p75 != null ? calcTempLAR(Number(perc.temp_p75), pastureKey) : null;
     larP90[i] = perc.temp_p90 != null ? calcTempLAR(Number(perc.temp_p90), pastureKey) : null;
+    tMeanAvg[i] = perc.temp_p50 != null ? Number(perc.temp_p50) : null;
+    tMinAvg[i]  = perc.tmin_p50 != null ? Number(perc.tmin_p50) : null;
+    tMaxAvg[i]  = perc.tmax_p50 != null ? Number(perc.tmax_p50) : null;
   }
 
   let lastActual = -1;
@@ -115,7 +121,7 @@ function buildArrays(chartData, targetLeaves, pastureKey) {
     if (roundP50[i] == null) roundP50[i] = days || null;
   }
 
-  return { dates, larData, larP10, larP25, larP50, larP75, larP90, roundData, roundP50, tMaxData, tMeanData, tMinData, lastActual };
+  return { dates, larData, larP10, larP25, larP50, larP75, larP90, roundData, roundP50, tMaxData, tMeanData, tMinData, tMaxAvg, tMeanAvg, tMinAvg, lastActual };
 }
 
 const toXY = (arr) => arr.map((v, i) => v != null ? { x: i, y: v } : null).filter(Boolean);
@@ -445,15 +451,19 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     return ds;
   }
   function ds2main() {
-    const { tMaxData, tMeanData, tMinData, lastActual } = arrRef.current;
+    const { tMaxData, tMeanData, tMinData, tMaxAvg, tMeanAvg, tMinAvg, lastActual } = arrRef.current;
     const clip = lastActual >= 0 ? lastActual : TODAY;
     const v = v2Ref.current; const ds = [];
     // Always smoothed on the full-season navigator (30-day window) to calm daily noise;
-    // clip to last actual day so the smoothing window doesn't draw a tail past Today
+    // clip actual to last actual day so the smoothing window doesn't draw a tail past Today
     const clipArr = (arr) => smooth(arr, 30).map((x, i) => i <= clip ? x : null);
     if (v.tMax)  ds.push({ type: 'line', data: toXY(clipArr(tMaxData)),  borderColor: '#c43a2a', borderWidth: 1.2, pointRadius: 0, tension: 0.2 });
     if (v.tMean) ds.push({ type: 'line', data: toXY(clipArr(tMeanData)), borderColor: '#c47a12', borderWidth: 1.5, pointRadius: 0, tension: 0.2 });
     if (v.tMin)  ds.push({ type: 'line', data: toXY(clipArr(tMinData)),  borderColor: '#2a6a9e', borderWidth: 1.2, pointRadius: 0, tension: 0.2 });
+    // Historical average (dashed) across the full season incl. future
+    if (v.tMax)  ds.push({ type: 'line', data: toXY(smooth(tMaxAvg, 30)),  borderColor: '#c43a2a', borderWidth: 0.8, pointRadius: 0, borderDash: [6, 3], tension: 0.2 });
+    if (v.tMean) ds.push({ type: 'line', data: toXY(smooth(tMeanAvg, 30)), borderColor: '#c47a12', borderWidth: 0.8, pointRadius: 0, borderDash: [6, 3], tension: 0.2 });
+    if (v.tMin)  ds.push({ type: 'line', data: toXY(smooth(tMinAvg, 30)),  borderColor: '#2a6a9e', borderWidth: 0.8, pointRadius: 0, borderDash: [6, 3], tension: 0.2 });
     return ds;
   }
   function ds1zoom(win, pw) {
@@ -475,7 +485,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     return ds;
   }
   function ds2zoom(win, pw) {
-    const { tMaxData, tMeanData, tMinData, lastActual } = arrRef.current;
+    const { tMaxData, tMeanData, tMinData, tMaxAvg, tMeanAvg, tMinAvg, lastActual } = arrRef.current;
     const clip = lastActual >= 0 ? lastActual : TODAY;
     const span = win.end - win.start + 1; const bars = span < 60;
     const bt = Math.max(2, Math.floor((pw / span) * 0.82));
@@ -486,11 +496,18 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     const minLine  = (raw.tMin  ? tMinData  : smooth(tMinData, sw)).map((x, i) => i <= clip ? x : null);
     const meanLine = (raw.tMean ? tMeanData : smooth(tMeanData, sw)).map((x, i) => i <= clip ? x : null);
     const maxLine  = (raw.tMax  ? tMaxData  : smooth(tMaxData, sw)).map((x, i) => i <= clip ? x : null);
+    // Historical average (dashed) — spans the whole window incl. future, not clipped
+    const minAvg  = smooth(tMinAvg,  sw);
+    const meanAvg = smooth(tMeanAvg, sw);
+    const maxAvg  = smooth(tMaxAvg,  sw);
     // Bars overlap (linear x-axis). In this chart the FIRST dataset draws in front,
     // so push T_min first (front), T_mean middle, T_max last (back). Bars stay raw daily.
     if (v.tMin)  ds.push(bars ? { type: 'bar', data: toXYWin(tMinData,  win.start, win.end), backgroundColor: 'rgba(42,106,158,0.95)', borderWidth: 0, barThickness: bt } : { type: 'line', data: toXYWin(minLine,  win.start, win.end), borderColor: '#2a6a9e', borderWidth: 2,   pointRadius: 0, tension: 0.2 });
     if (v.tMean) ds.push(bars ? { type: 'bar', data: toXYWin(tMeanData, win.start, win.end), backgroundColor: 'rgba(196,122,18,0.9)',  borderWidth: 0, barThickness: bt } : { type: 'line', data: toXYWin(meanLine, win.start, win.end), borderColor: '#c47a12', borderWidth: 2.5, pointRadius: 0, tension: 0.2 });
     if (v.tMax)  ds.push(bars ? { type: 'bar', data: toXYWin(tMaxData,  win.start, win.end), backgroundColor: 'rgba(196,58,42,0.85)',  borderWidth: 0, barThickness: bt } : { type: 'line', data: toXYWin(maxLine,  win.start, win.end), borderColor: '#c43a2a', borderWidth: 2,   pointRadius: 0, tension: 0.2 });
+    if (v.tMin)  ds.push({ type: 'line', data: toXYWin(minAvg,  win.start, win.end), borderColor: '#2a6a9e', borderWidth: 1, pointRadius: 0, borderDash: [6, 3], tension: 0.2 });
+    if (v.tMean) ds.push({ type: 'line', data: toXYWin(meanAvg, win.start, win.end), borderColor: '#c47a12', borderWidth: 1, pointRadius: 0, borderDash: [6, 3], tension: 0.2 });
+    if (v.tMax)  ds.push({ type: 'line', data: toXYWin(maxAvg,  win.start, win.end), borderColor: '#c43a2a', borderWidth: 1, pointRadius: 0, borderDash: [6, 3], tension: 0.2 });
     return ds;
   }
 
@@ -1305,6 +1322,17 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                 { key: 'tMean', label: 'T_mean', color: '#c47a12' },
                 { key: 'tMin',  label: 'T_min',  color: '#2a6a9e' },
               ]} />
+
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 6, fontSize: 9, color: '#5a6f48' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <svg width="18" height="6"><line x1="0" y1="3" x2="18" y2="3" stroke="#5a6f48" strokeWidth="2" /></svg>
+                  actual
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <svg width="18" height="6"><line x1="0" y1="3" x2="18" y2="3" stroke="#5a6f48" strokeWidth="1" strokeDasharray="4 3" /></svg>
+                  historical average
+                </span>
+              </div>
 
               <div style={{ fontSize: 10, color: '#5a6f48', marginTop: 10, fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span>Full season overview <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to move selection</span></span>

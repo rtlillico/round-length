@@ -6,6 +6,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { scheduleCron, runNightlyUpdate } = require('./cron/nightly');
+const { applySchema } = require('./db/queries');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -53,7 +54,14 @@ app.use((err, req, res, next) => {
 
 // ─── START ────────────────────────────────────────────────────────────────────
 
-app.listen(PORT, () => {
-  console.log(`Round Length backend running on port ${PORT}`);
-  scheduleCron();
-});
+applySchema()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Round Length backend running on port ${PORT}`);
+      scheduleCron();
+    });
+  })
+  .catch((err) => {
+    console.error('Failed to apply database schema:', err);
+    process.exit(1);
+  });
