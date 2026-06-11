@@ -57,6 +57,12 @@ function buildArrays(chartData, targetLeaves, pastureKey) {
   const larP90    = new Array(N).fill(null);
   const roundData = new Array(N).fill(null);
   const roundP50  = new Array(N).fill(null);
+  // Round-length percentiles from the historical distribution (DB round_p*)
+  const rndP10 = new Array(N).fill(null);
+  const rndP25 = new Array(N).fill(null);
+  const rndP50 = new Array(N).fill(null);
+  const rndP75 = new Array(N).fill(null);
+  const rndP90 = new Array(N).fill(null);
   const tMaxData  = new Array(N).fill(null);
   const tMeanData = new Array(N).fill(null);
   const tMinData  = new Array(N).fill(null);
@@ -64,7 +70,7 @@ function buildArrays(chartData, targetLeaves, pastureKey) {
   const tMeanAvg  = new Array(N).fill(null); // historical median T_mean (temp_p50)
   const tMinAvg   = new Array(N).fill(null); // historical median T_min by day-of-year
 
-  if (!chartData) return { dates, larData, larP10, larP25, larP50, larP75, larP90, roundData, roundP50, tMaxData, tMeanData, tMinData, tMaxAvg, tMeanAvg, tMinAvg, lastActual: -1 };
+  if (!chartData) return { dates, larData, larP10, larP25, larP50, larP75, larP90, roundData, roundP50, rndP10, rndP25, rndP50, rndP75, rndP90, tMaxData, tMeanData, tMinData, tMaxAvg, tMeanAvg, tMinAvg, lastActual: -1 };
 
   const percByDoy = {};
   for (const p of (chartData.percentiles || [])) percByDoy[p.day_of_year] = p;
@@ -89,6 +95,11 @@ function buildArrays(chartData, targetLeaves, pastureKey) {
     tMeanAvg[i] = perc.temp_p50 != null ? Number(perc.temp_p50) : null;
     tMinAvg[i]  = perc.tmin_p50 != null ? Number(perc.tmin_p50) : null;
     tMaxAvg[i]  = perc.tmax_p50 != null ? Number(perc.tmax_p50) : null;
+    rndP10[i] = perc.round_p10 != null ? Number(perc.round_p10) : null;
+    rndP25[i] = perc.round_p25 != null ? Number(perc.round_p25) : null;
+    rndP50[i] = perc.round_p50 != null ? Number(perc.round_p50) : null;
+    rndP75[i] = perc.round_p75 != null ? Number(perc.round_p75) : null;
+    rndP90[i] = perc.round_p90 != null ? Number(perc.round_p90) : null;
   }
 
   let lastActual = -1;
@@ -121,7 +132,7 @@ function buildArrays(chartData, targetLeaves, pastureKey) {
     if (roundP50[i] == null) roundP50[i] = days || null;
   }
 
-  return { dates, larData, larP10, larP25, larP50, larP75, larP90, roundData, roundP50, tMaxData, tMeanData, tMinData, tMaxAvg, tMeanAvg, tMinAvg, lastActual };
+  return { dates, larData, larP10, larP25, larP50, larP75, larP90, roundData, roundP50, rndP10, rndP25, rndP50, rndP75, rndP90, tMaxData, tMeanData, tMinData, tMaxAvg, tMeanAvg, tMinAvg, lastActual };
 }
 
 const toXY = (arr) => arr.map((v, i) => v != null ? { x: i, y: v } : null).filter(Boolean);
@@ -190,6 +201,8 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   const vPcRef2 = useRef({ p50: true, p2575: true, p1090: true });
   const [rawPc2, setRawPc2] = useState(false); // actual line in pc chart 2
   const rawPcRef2 = useRef(false);
+  const [pcMetric, setPcMetric] = useState('lar'); // which percentile comparison is shown: 'lar' | 'round'
+  const pcMetricRef = useRef('lar');
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
@@ -226,6 +239,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   useEffect(() => { vPcRef2.current = visPcBands2; }, [visPcBands2]);
   useEffect(() => { rawPcRef.current = rawPc; }, [rawPc]);
   useEffect(() => { rawPcRef2.current = rawPc2; }, [rawPc2]);
+  useEffect(() => { pcMetricRef.current = pcMetric; }, [pcMetric]);
 
   // chart instances
   const mC1 = useRef(null), zC1 = useRef(null);
@@ -405,6 +419,14 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     const max = Math.ceil(rawMax * 20) / 20;
     return { type: 'linear', position: 'right', min: 0, max, ticks: { color: '#4aa8d8', font: { size: 9 }, maxTicksLimit: 4, callback: withUnit('LAR') }, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false } };
   }
+  function mkYpcRound() {
+    const { roundData, rndP90 } = arrRef.current;
+    const vals = [...roundData, ...(rndP90 || [])].filter(v => v != null && isFinite(v) && v > 0);
+    const rawMax = vals.length ? Math.max(...vals) : 80;
+    const step = rawMax > 100 ? 50 : rawMax > 50 ? 20 : 10;
+    const max = Math.ceil(rawMax / step) * step;
+    return { type: 'linear', position: 'right', min: 0, max, ticks: { color: '#4aa8d8', font: { size: 9 }, maxTicksLimit: 4, callback: withUnit('days') }, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false } };
+  }
 
   // ── dataset builders ─────────────────────────────────────────────────────────
   function ds1main() {
@@ -418,9 +440,17 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     if (v.tempRound) ds.push({ type: 'line', data: toXY(smooth(roundP50, 30)),                                      borderColor: '#c47a12', borderWidth: 0.8, pointRadius: 0, borderDash: [6, 3], yAxisID: 'yL' });
     return ds;
   }
-  function buildPcBandDatasets({ isMain, win, vRef = vPcRef, rawRef = rawPcRef }) {
-    const { larData, larP10, larP25, larP50, larP75, larP90, lastActual } = arrRef.current;
-    const clip = lastActual >= 0 ? lastActual : TODAY;
+  function buildPcBandDatasets({ isMain, win, vRef = vPcRef, rawRef = rawPcRef, metric = 'lar' }) {
+    const a = arrRef.current;
+    const clip = a.lastActual >= 0 ? a.lastActual : TODAY;
+    const isRound = metric === 'round';
+    // Same chart shape (actual line vs P50 / P25–P75 / P10–P90 bands), different series
+    const actual = isRound ? a.roundData : a.larData;
+    const p10 = isRound ? a.rndP10 : a.larP10;
+    const p25 = isRound ? a.rndP25 : a.larP25;
+    const p50 = isRound ? a.rndP50 : a.larP50;
+    const p75 = isRound ? a.rndP75 : a.larP75;
+    const p90 = isRound ? a.rndP90 : a.larP90;
     const v = vRef.current; const raw = rawRef.current;
     let toData, toActual;
     if (isMain) {
@@ -436,18 +466,18 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     const ds = [];
     if (v.p1090) {
       const i0 = ds.length;
-      ds.push({ type: 'line', data: toData(larP10), borderWidth: 0, pointRadius: 0, fill: false, yAxisID: 'yR' });
-      ds.push({ type: 'line', data: toData(larP90), borderWidth: 0, pointRadius: 0, fill: { target: i0 }, backgroundColor: 'rgba(74,168,216,0.12)', yAxisID: 'yR' });
+      ds.push({ type: 'line', data: toData(p10), borderWidth: 0, pointRadius: 0, fill: false, yAxisID: 'yR' });
+      ds.push({ type: 'line', data: toData(p90), borderWidth: 0, pointRadius: 0, fill: { target: i0 }, backgroundColor: 'rgba(74,168,216,0.12)', yAxisID: 'yR' });
     }
     if (v.p2575) {
       const i0 = ds.length;
-      ds.push({ type: 'line', data: toData(larP25), borderWidth: 0, pointRadius: 0, fill: false, yAxisID: 'yR' });
-      ds.push({ type: 'line', data: toData(larP75), borderWidth: 0, pointRadius: 0, fill: { target: i0 }, backgroundColor: 'rgba(74,168,216,0.25)', yAxisID: 'yR' });
+      ds.push({ type: 'line', data: toData(p25), borderWidth: 0, pointRadius: 0, fill: false, yAxisID: 'yR' });
+      ds.push({ type: 'line', data: toData(p75), borderWidth: 0, pointRadius: 0, fill: { target: i0 }, backgroundColor: 'rgba(74,168,216,0.25)', yAxisID: 'yR' });
     }
     if (v.p50) {
-      ds.push({ type: 'line', data: toData(larP50), borderColor: '#4aa8d8', borderWidth: 1.5, borderDash: [6, 3], pointRadius: 0, fill: false, yAxisID: 'yR' });
+      ds.push({ type: 'line', data: toData(p50), borderColor: '#4aa8d8', borderWidth: 1.5, borderDash: [6, 3], pointRadius: 0, fill: false, yAxisID: 'yR' });
     }
-    ds.push({ type: 'line', data: toActual(larData), borderColor: '#1a4a7a', borderWidth: 2, pointRadius: 0, fill: false, yAxisID: 'yR' });
+    ds.push({ type: 'line', data: toActual(actual), borderColor: '#1a4a7a', borderWidth: 2, pointRadius: 0, fill: false, yAxisID: 'yR' });
     return ds;
   }
   function ds2main() {
@@ -560,19 +590,21 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
       if (pcZC2.current && pcScZ2.current) pcScZ2.current.style.left = pcZC2.current.scales.x.getPixelForValue(cDay) + 'px';
       if (pcZC2.current && pcTLZ2.current) pcTLZ2.current.style.left = pcZC2.current.scales.x.getPixelForValue(TODAY) + 'px';
       const pcDay = cDay;
-      const { larData: ld, larP10: lp10, larP25: lp25, larP50: lp50, larP75: lp75, larP90: lp90, dates: dts } = arrRef.current;
+      const { larData: ld, larP10: lp10, larP25: lp25, larP50: lp50, larP75: lp75, larP90: lp90,
+              roundData: rd, rndP10: rp10, rndP25: rp25, rndP50: rp50, rndP75: rp75, rndP90: rp90, dates: dts } = arrRef.current;
       const pds = dts[pcDay] || '';
-      const pcVal = pds ? {
+      const f4 = (v) => v != null ? v.toFixed(4) : '—';
+      const fd = (v) => v != null ? v.toFixed(0) + ' days' : '—';
+      setCtrPc(pds ? {
         dl:  fmtDayFull(pds),
-        lar: ld[pcDay]   != null ? ld[pcDay].toFixed(4)   : '—',
-        p10: lp10[pcDay] != null ? lp10[pcDay].toFixed(4) : '—',
-        p25: lp25[pcDay] != null ? lp25[pcDay].toFixed(4) : '—',
-        p50: lp50[pcDay] != null ? lp50[pcDay].toFixed(4) : '—',
-        p75: lp75[pcDay] != null ? lp75[pcDay].toFixed(4) : '—',
-        p90: lp90[pcDay] != null ? lp90[pcDay].toFixed(4) : '—',
-      } : null;
-      setCtrPc(pcVal);
-      setCtrPc2(pcVal);
+        lar: f4(ld[pcDay]), p10: f4(lp10[pcDay]), p25: f4(lp25[pcDay]),
+        p50: f4(lp50[pcDay]), p75: f4(lp75[pcDay]), p90: f4(lp90[pcDay]),
+      } : null);
+      setCtrPc2(pds ? {
+        dl:  fmtDayFull(pds),
+        lar: fd(rd[pcDay]), p10: fd(rp10[pcDay]), p25: fd(rp25[pcDay]),
+        p50: fd(rp50[pcDay]), p75: fd(rp75[pcDay]), p90: fd(rp90[pcDay]),
+      } : null);
     }
 
     // update React state for readouts / window label
@@ -593,7 +625,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   function createAll() {
     const win = clampWin(winRef.current.start, winRef.current.width);
     const ic = (cv, ct, h) => { if (!cv || !ct) return; cv.width = ct.clientWidth || 340; cv.height = h; };
-    [mC1, zC1, mC2, zC2, pcMC1, pcZC1].forEach(r => { if (r.current) { r.current.destroy(); r.current = null; } });
+    [mC1, zC1, mC2, zC2, pcMC1, pcZC1, pcMC2, pcZC2].forEach(r => { if (r.current) { r.current.destroy(); r.current = null; } });
     ic(mCv1.current, mCt1.current, 120);
     ic(zCv1.current, zCt1.current, 180);
     ic(mCv2.current, mCt2.current, 120);
@@ -613,8 +645,8 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     if (showPctRef.current) {
       if (pcMCv1.current && pcMCt1.current) { ic(pcMCv1.current, pcMCt1.current, 120); pcMC1.current = new Chart(pcMCv1.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: true }) }, options: { ...base, scales: { x: xMain(), yR: mkYRpc() } } }); }
       if (pcZCv1.current && pcZCt1.current) { ic(pcZCv1.current, pcZCt1.current, 180); const pcpw = pcZCt1.current.clientWidth || 340; pcZC1.current = new Chart(pcZCv1.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: false, win }) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yR: mkYRpc() } } }); }
-      if (pcMCv2.current && pcMCt2.current) { ic(pcMCv2.current, pcMCt2.current, 120); pcMC2.current = new Chart(pcMCv2.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: true, vRef: vPcRef2, rawRef: rawPcRef2 }) }, options: { ...base, scales: { x: xMain(), yR: mkYRpc() } } }); }
-      if (pcZCv2.current && pcZCt2.current) { ic(pcZCv2.current, pcZCt2.current, 180); const pcpw2 = pcZCt2.current.clientWidth || 340; pcZC2.current = new Chart(pcZCv2.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: false, win, vRef: vPcRef2, rawRef: rawPcRef2 }) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yR: mkYRpc() } } }); }
+      if (pcMCv2.current && pcMCt2.current) { ic(pcMCv2.current, pcMCt2.current, 120); pcMC2.current = new Chart(pcMCv2.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: true, vRef: vPcRef2, rawRef: rawPcRef2, metric: 'round' }) }, options: { ...base, scales: { x: xMain(), yR: mkYpcRound() } } }); }
+      if (pcZCv2.current && pcZCt2.current) { ic(pcZCv2.current, pcZCt2.current, 180); const pcpw2 = pcZCt2.current.clientWidth || 340; pcZC2.current = new Chart(pcZCv2.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: false, win, vRef: vPcRef2, rawRef: rawPcRef2, metric: 'round' }) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yR: mkYpcRound() } } }); }
     }
 
     posOverlays();
@@ -650,7 +682,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
       if (pcZCv2.current && pcZCt2.current) {
         const pw = pcZCt2.current.clientWidth || 340;
         pcZCv2.current.width = pw; pcZCv2.current.height = 180;
-        pcZC2.current = new Chart(pcZCv2.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: false, win, vRef: vPcRef2, rawRef: rawPcRef2 }) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yR: mkYRpc() } } });
+        pcZC2.current = new Chart(pcZCv2.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: false, win, vRef: vPcRef2, rawRef: rawPcRef2, metric: 'round' }) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yR: mkYpcRound() } } });
       }
     }
     posOverlays();
@@ -676,7 +708,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
       const ic = (cv, ct, h) => { if (!cv || !ct) return; cv.width = ct.clientWidth || 340; cv.height = h; };
       [pcMC1, pcZC1, pcMC2, pcZC2].forEach(r => { if (r.current) { r.current.destroy(); r.current = null; } });
       if (pcMCv1.current && pcMCt1.current) { ic(pcMCv1.current, pcMCt1.current, 120); pcMC1.current = new Chart(pcMCv1.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: true }) }, options: { ...base, scales: { x: xMain(), yR: mkYRpc() } } }); }
-      if (pcMCv2.current && pcMCt2.current) { ic(pcMCv2.current, pcMCt2.current, 120); pcMC2.current = new Chart(pcMCv2.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: true, vRef: vPcRef2, rawRef: rawPcRef2 }) }, options: { ...base, scales: { x: xMain(), yR: mkYRpc() } } }); }
+      if (pcMCv2.current && pcMCt2.current) { ic(pcMCv2.current, pcMCt2.current, 120); pcMC2.current = new Chart(pcMCv2.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: true, vRef: vPcRef2, rawRef: rawPcRef2, metric: 'round' }) }, options: { ...base, scales: { x: xMain(), yR: mkYpcRound() } } }); }
       // pcZC1/pcZC2 built by refreshZoom
       refreshZoom();
     }, 50);
@@ -689,7 +721,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     const t = setTimeout(createAll, 10);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visC1, visC2, visPcBands, visPcBands2, rawC1, rawC2, rawPc, rawPc2]);
+  }, [visC1, visC2, visPcBands, visPcBands2, rawC1, rawC2, rawPc, rawPc2, pcMetric]);
 
   useEffect(() => {
     if (!mCt1.current) return;
@@ -1023,19 +1055,39 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                 </div>
                 {showPct && (
                   <div style={{ padding: '0 12px' }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.3, display: 'flex', alignItems: 'center', paddingTop: 10 }}>
-                      <span style={{ color: '#4aa8d8' }}>Temp LAR</span>
-                      <button onClick={() => setInfoPc(v => !v)} style={{ marginLeft: 4, background: 'none', border: 'none', cursor: 'pointer', color: '#4aa8d8', fontSize: 13, opacity: 0.75, padding: 0, lineHeight: 1 }}>ⓘ</button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingTop: 10 }}>
+                      {[
+                        { key: 'lar',   label: 'Temp LAR' },
+                        { key: 'round', label: 'Temp round length' },
+                      ].map(({ key, label }) => (
+                        <button key={key} onClick={() => setPcMetric(key)} style={{
+                          padding: '5px 11px', borderRadius: 14, fontSize: 12, fontWeight: 700,
+                          cursor: 'pointer', border: '1.5px solid #3a6b1a',
+                          background: pcMetric === key ? '#3a6b1a' : '#fff',
+                          color: pcMetric === key ? '#fff' : '#3a6b1a', whiteSpace: 'nowrap',
+                        }}>{label}</button>
+                      ))}
+                      <button onClick={() => setInfoPc(v => !v)} style={{ marginLeft: 2, background: 'none', border: 'none', cursor: 'pointer', color: '#3a6b1a', fontSize: 14, opacity: 0.75, padding: 0, lineHeight: 1 }}>ⓘ</button>
                     </div>
                     {infoPc && (
                       <div style={{ background: '#eef7fd', border: '1px solid rgba(74,168,216,0.3)', borderRadius: 8, padding: '10px 12px', margin: '8px 0 4px', fontSize: 12, color: '#1a4a6b', lineHeight: 1.6 }}>
-                        <div style={{ fontWeight: 600, color: '#4aa8d8', marginBottom: 6 }}>Temp LAR — Leaf Appearance Rate</div>
-                        <div style={{ marginBottom: 8 }}>How many leaves the grass produces per day, driven by temperature alone. Rises from zero at the base temp, peaks at the optimum, then falls back to zero at the ceiling.</div>
+                        {pcMetric === 'lar' ? (
+                          <>
+                            <div style={{ fontWeight: 600, color: '#4aa8d8', marginBottom: 6 }}>Temp LAR — Leaf Appearance Rate</div>
+                            <div style={{ marginBottom: 8 }}>How many leaves the grass produces per day, driven by temperature alone. Rises from zero at the base temp, peaks at the optimum, then falls back to zero at the ceiling.</div>
+                          </>
+                        ) : (
+                          <>
+                            <div style={{ fontWeight: 600, color: '#4aa8d8', marginBottom: 6 }}>Temp round length</div>
+                            <div style={{ marginBottom: 8 }}>How many days it takes to grow the target number of leaves, based on temperature-driven leaf growth. A short round means fast growth; a long round means slow growth.</div>
+                          </>
+                        )}
                         <div style={{ fontWeight: 600, color: '#4aa8d8', marginBottom: 6 }}>Percentiles comparison</div>
-                        <div>This chart plots the current season's <strong style={{ color: '#0a2a4b' }}>Actual LAR</strong> against the distribution of historical LAR for the same time of year. The dashed line is the <strong style={{ color: '#0a2a4b' }}>P50 (median)</strong> — a typical year. The shaded bands show the spread of past years: <strong style={{ color: '#0a2a4b' }}>P25–P75</strong> (the middle half of years) and <strong style={{ color: '#0a2a4b' }}>P10–P90</strong> (all but the most extreme years). When the solid line sits above the median, this season is growing faster than usual; below it, slower.</div>
+                        <div>This chart plots the current season's <strong style={{ color: '#0a2a4b' }}>{pcMetric === 'lar' ? 'Actual LAR' : 'Actual round length'}</strong> against the distribution of the same metric across past years for this time of year. The dashed line is the <strong style={{ color: '#0a2a4b' }}>P50 (median)</strong> — a typical year. The shaded bands show the spread of past years: <strong style={{ color: '#0a2a4b' }}>P25–P75</strong> (the middle half) and <strong style={{ color: '#0a2a4b' }}>P10–P90</strong> (all but the most extreme years).</div>
                       </div>
                     )}
                     {pillRow}
+                    {pcMetric === 'lar' && (<>
                     <div style={{ fontSize: 10, color: '#5a6f48', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 4 }}>
                       <span>Expanded view · selected period</span>
                       <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to pan</span>
@@ -1142,8 +1194,9 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                       </div>
                     </div>
 
-                    {/* ── pc chart 2: Temp Round Length (copy) ── */}
-                    <div style={{ marginTop: 16, borderTop: '1px solid #e0d8cc', paddingTop: 12 }}>
+                    </>)}
+                    {pcMetric === 'round' && (
+                    <div>
                       <div style={{ fontSize: 10, color: '#5a6f48', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 4 }}>
                         <span>Expanded view · selected period</span>
                         <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to pan</span>
@@ -1166,7 +1219,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                         <div onClick={() => setExpandCtrPc2(v => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', cursor: 'pointer', gap: 8 }}>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px 12px' }}>
                             {[
-                              { color: '#1a4a7a', dashed: false, fill: null,                       label: 'Actual LAR' },
+                              { color: '#1a4a7a', dashed: false, fill: null,                       label: 'Actual round length' },
                               { color: '#4aa8d8', dashed: true,  fill: null,                       label: 'P50' },
                               { color: '#4aa8d8', dashed: false, fill: 'rgba(74,168,216,0.25)',    label: 'P25–P75' },
                               { color: '#4aa8d8', dashed: false, fill: 'rgba(74,168,216,0.12)',    label: 'P10–P90' },
@@ -1186,7 +1239,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                             {ctrPc2 && <div style={{ fontWeight: 600, marginBottom: 2, textAlign: 'center', paddingTop: 6 }}>{ctrPc2.dl}</div>}
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 10px' }}>
                               {[
-                                { color: '#1a4a7a', dashed: false, fill: null,                    label: 'Actual LAR', value: ctrPc2?.lar },
+                                { color: '#1a4a7a', dashed: false, fill: null,                    label: 'Actual round length', value: ctrPc2?.lar },
                                 { color: '#4aa8d8', dashed: true,  fill: null,                    label: 'P50',        value: ctrPc2?.p50 },
                                 { color: '#4aa8d8', dashed: false, fill: 'rgba(74,168,216,0.25)', label: 'P25',        value: ctrPc2?.p25 },
                                 { color: '#4aa8d8', dashed: false, fill: 'rgba(74,168,216,0.25)', label: 'P75',        value: ctrPc2?.p75 },
@@ -1246,6 +1299,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                         </div>
                       </div>
                     </div>
+                    )}
                   </div>
                 )}
               </div>
