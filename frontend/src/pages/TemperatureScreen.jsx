@@ -696,6 +696,20 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [arrays, tLabels]);
 
+  // On first data load, centre the window on the latest actual day (a day or two
+  // behind calendar today) so the centre readout lands on real values, not the
+  // empty projection-only gap. The fixed "Today" marker stays at calendar today.
+  const didCentre = useRef(false);
+  useEffect(() => {
+    if (loading || !chartData || didCentre.current) return;
+    const la = arrays.lastActual;
+    if (la >= 0) {
+      winRef.current.start = Math.round(la - winRef.current.width / 2);
+      didCentre.current = true;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [arrays, loading, chartData]);
+
   useEffect(() => {
     if (!showPct) {
       [pcMC1, pcZC1, pcMC2, pcZC2].forEach(r => { if (r.current) { r.current.destroy(); r.current = null; } });
