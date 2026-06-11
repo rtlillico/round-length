@@ -1057,14 +1057,14 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                   <div style={{ padding: '0 12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingTop: 10 }}>
                       {[
-                        { key: 'lar',   label: 'Temp LAR' },
-                        { key: 'round', label: 'Temp round length' },
-                      ].map(({ key, label }) => (
+                        { key: 'lar',   label: 'Temp LAR',          color: '#4aa8d8' },
+                        { key: 'round', label: 'Temp round length', color: '#c47a12' },
+                      ].map(({ key, label, color }) => (
                         <button key={key} onClick={() => setPcMetric(key)} style={{
                           padding: '5px 11px', borderRadius: 14, fontSize: 12, fontWeight: 700,
-                          cursor: 'pointer', border: '1.5px solid #3a6b1a',
-                          background: pcMetric === key ? '#3a6b1a' : '#fff',
-                          color: pcMetric === key ? '#fff' : '#3a6b1a', whiteSpace: 'nowrap',
+                          cursor: 'pointer', border: `1.5px solid ${color}`,
+                          background: pcMetric === key ? color : '#fff',
+                          color: pcMetric === key ? '#fff' : color, whiteSpace: 'nowrap',
                         }}>{label}</button>
                       ))}
                       <button onClick={() => setInfoPc(v => !v)} style={{ marginLeft: 2, background: 'none', border: 'none', cursor: 'pointer', color: '#3a6b1a', fontSize: 14, opacity: 0.75, padding: 0, lineHeight: 1 }}>ⓘ</button>
