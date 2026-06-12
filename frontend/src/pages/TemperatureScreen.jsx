@@ -95,11 +95,6 @@ function buildArrays(chartData, targetLeaves, pastureKey) {
     tMeanAvg[i] = perc.temp_p50 != null ? Number(perc.temp_p50) : null;
     tMinAvg[i]  = perc.tmin_p50 != null ? Number(perc.tmin_p50) : null;
     tMaxAvg[i]  = perc.tmax_p50 != null ? Number(perc.tmax_p50) : null;
-    rndP10[i] = perc.round_p10 != null ? Number(perc.round_p10) : null;
-    rndP25[i] = perc.round_p25 != null ? Number(perc.round_p25) : null;
-    rndP50[i] = perc.round_p50 != null ? Number(perc.round_p50) : null;
-    rndP75[i] = perc.round_p75 != null ? Number(perc.round_p75) : null;
-    rndP90[i] = perc.round_p90 != null ? Number(perc.round_p90) : null;
   }
 
   let lastActual = -1;
@@ -120,16 +115,28 @@ function buildArrays(chartData, targetLeaves, pastureKey) {
     if (roundData[i] == null) roundData[i] = days;
   }
 
-  // Compute roundP50 from larP50 (temp-only P50 LAR) using same backward-accumulation as roundData
-  for (let i = 0; i < N; i++) {
+  // Temp round-length percentiles, computed by backward-accumulating each temp-LAR
+  // percentile (same method as roundData/roundP50). The stored round_p* are unusable
+  // here — they're the full actualLAR true-round, which is currently degenerate (all
+  // 365). Higher LAR → shorter round, so round-length percentiles invert vs LAR:
+  // round P10 (short/fast) comes from larP90, round P90 (long/slow) from larP10.
+  const roundAccum = (larArr, i) => {
     let sum = 0, days = 0;
     for (let j = i; j >= 0; j--) {
-      const v = larP50[j];
+      const v = larArr[j];
       if (v != null) { sum += v; days++; }
-      if (sum >= targetLeaves) { roundP50[i] = days; break; }
-      if (days >= 365) { roundP50[i] = 365; break; }
+      if (sum >= targetLeaves) return days;
+      if (days >= 365) return 365;
     }
-    if (roundP50[i] == null) roundP50[i] = days || null;
+    return days || null;
+  };
+  for (let i = 0; i < N; i++) {
+    rndP10[i] = roundAccum(larP90, i);
+    rndP25[i] = roundAccum(larP75, i);
+    rndP50[i] = roundAccum(larP50, i);
+    rndP75[i] = roundAccum(larP25, i);
+    rndP90[i] = roundAccum(larP10, i);
+    roundP50[i] = rndP50[i];
   }
 
   return { dates, larData, larP10, larP25, larP50, larP75, larP90, roundData, roundP50, rndP10, rndP25, rndP50, rndP75, rndP90, tMaxData, tMeanData, tMinData, tMaxAvg, tMeanAvg, tMinAvg, lastActual };
@@ -419,9 +426,12 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     const max = Math.ceil(rawMax * 20) / 20;
     return { type: 'linear', position: 'right', min: 0, max, ticks: { color: '#4aa8d8', font: { size: 9 }, maxTicksLimit: 4, callback: withUnit('LAR') }, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false } };
   }
-  function mkYpcRound() {
+  function mkYpcRound(win) {
     const { roundData, rndP90 } = arrRef.current;
-    const vals = [...roundData, ...(rndP90 || [])].filter(v => v != null && isFinite(v) && v > 0);
+    // Round length spans a huge seasonal range, so scale the zoom axis to the
+    // visible window (win) for readability; the navigator (no win) uses the full range.
+    const slice = (arr) => { if (!win) return arr; const s = Math.max(0, win.start), e = Math.min(N - 1, win.end); return arr.slice(s, e + 1); };
+    const vals = [...slice(roundData), ...slice(rndP90 || [])].filter(v => v != null && isFinite(v) && v > 0);
     const rawMax = vals.length ? Math.max(...vals) : 80;
     const step = rawMax > 100 ? 50 : rawMax > 50 ? 20 : 10;
     const max = Math.ceil(rawMax / step) * step;
@@ -646,7 +656,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
       if (pcMCv1.current && pcMCt1.current) { ic(pcMCv1.current, pcMCt1.current, 120); pcMC1.current = new Chart(pcMCv1.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: true }) }, options: { ...base, scales: { x: xMain(), yR: mkYRpc() } } }); }
       if (pcZCv1.current && pcZCt1.current) { ic(pcZCv1.current, pcZCt1.current, 180); const pcpw = pcZCt1.current.clientWidth || 340; pcZC1.current = new Chart(pcZCv1.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: false, win }) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yR: mkYRpc() } } }); }
       if (pcMCv2.current && pcMCt2.current) { ic(pcMCv2.current, pcMCt2.current, 120); pcMC2.current = new Chart(pcMCv2.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: true, vRef: vPcRef2, rawRef: rawPcRef2, metric: 'round' }) }, options: { ...base, scales: { x: xMain(), yR: mkYpcRound() } } }); }
-      if (pcZCv2.current && pcZCt2.current) { ic(pcZCv2.current, pcZCt2.current, 180); const pcpw2 = pcZCt2.current.clientWidth || 340; pcZC2.current = new Chart(pcZCv2.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: false, win, vRef: vPcRef2, rawRef: rawPcRef2, metric: 'round' }) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yR: mkYpcRound() } } }); }
+      if (pcZCv2.current && pcZCt2.current) { ic(pcZCv2.current, pcZCt2.current, 180); const pcpw2 = pcZCt2.current.clientWidth || 340; pcZC2.current = new Chart(pcZCv2.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: false, win, vRef: vPcRef2, rawRef: rawPcRef2, metric: 'round' }) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yR: mkYpcRound(win) } } }); }
     }
 
     posOverlays();
@@ -682,7 +692,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
       if (pcZCv2.current && pcZCt2.current) {
         const pw = pcZCt2.current.clientWidth || 340;
         pcZCv2.current.width = pw; pcZCv2.current.height = 180;
-        pcZC2.current = new Chart(pcZCv2.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: false, win, vRef: vPcRef2, rawRef: rawPcRef2, metric: 'round' }) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yR: mkYpcRound() } } });
+        pcZC2.current = new Chart(pcZCv2.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: false, win, vRef: vPcRef2, rawRef: rawPcRef2, metric: 'round' }) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yR: mkYpcRound(win) } } });
       }
     }
     posOverlays();
