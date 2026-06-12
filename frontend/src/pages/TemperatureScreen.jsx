@@ -120,13 +120,18 @@ function buildArrays(chartData, targetLeaves, pastureKey) {
   // here — they're the full actualLAR true-round, which is currently degenerate (all
   // 365). Higher LAR → shorter round, so round-length percentiles invert vs LAR:
   // round P10 (short/fast) comes from larP90, round P90 (long/slow) from larP10.
+  // The bands are climatological (periodic by day-of-year), so accumulate backward
+  // up to a full year, wrapping "before the window start" to the same day-of-year a
+  // year later (same value). This makes each calendar day's percentile identical in
+  // any year, instead of being truncated near the start of the data window.
   const roundAccum = (larArr, i) => {
     let sum = 0, days = 0;
-    for (let j = i; j >= 0; j--) {
+    for (let k = 0; k < 365; k++) {
+      let j = i - k;
+      if (j < 0) j += 365; // wrap to the same day-of-year (bands are periodic)
       const v = larArr[j];
       if (v != null) { sum += v; days++; }
       if (sum >= targetLeaves) return days;
-      if (days >= 365) return 365;
     }
     return days || null;
   };
