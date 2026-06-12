@@ -249,16 +249,25 @@ function calcIFDRunoff(rainfall, ifdData, infiltrationRate) {
  * Returns { SW, runoff, effectiveRainfall, aep, peakIntensity1hr, runoffFraction }
  */
 function calcSoilWater(SW_prev, rainfall, etMorton, radiation, tMean, soilParams, ifdData = null) {
-  const ET0 = etMorton != null
-    ? Math.max(0, Number(etMorton))
-    : Math.max(0, 0.0135 * (radiation ?? 10) * (tMean + 17.8));
+  // Sanitise inputs — a single NaN (bad et_morton_wet, NaN radiation, etc.) must
+  // not poison SW, which would propagate forever via SW_prev and make every
+  // downstream moistureFactor/actualLAR NaN.
+  const etNum = Number(etMorton);
+  const radOk = Number.isFinite(radiation) ? radiation : 10;
+  let ET0 = Number.isFinite(etNum)
+    ? Math.max(0, etNum)
+    : Math.max(0, 0.0135 * radOk * (tMean + 17.8));
+  if (!Number.isFinite(ET0)) ET0 = 0;
 
-  const runoffResult    = calcIFDRunoff(rainfall, ifdData, soilParams.infiltrationRate ?? 15);
-  const effectiveRain   = runoffResult.effectiveRainfall;
+  const runoffResult  = calcIFDRunoff(rainfall, ifdData, soilParams.infiltrationRate ?? 15);
+  let effectiveRain   = runoffResult.effectiveRainfall;
+  if (!Number.isFinite(effectiveRain)) effectiveRain = Number.isFinite(rainfall) ? rainfall : 0;
 
-  const potential = SW_prev + effectiveRain - ET0;
+  const prev      = Number.isFinite(SW_prev) ? SW_prev : soilParams.SWmax;
+  const potential = prev + effectiveRain - ET0;
   const drainage  = Math.max(0, potential - soilParams.SWmax) * soilParams.drainageRate;
-  const SW        = Math.min(soilParams.SWmax, Math.max(0, potential - drainage));
+  let SW          = Math.min(soilParams.SWmax, Math.max(0, potential - drainage));
+  if (!Number.isFinite(SW)) SW = soilParams.SWmax;
 
   return { SW, ...runoffResult };
 }
