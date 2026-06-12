@@ -1135,7 +1135,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                     <div style={{ fontSize: 10, color: '#5a6f48', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 4 }}>
                       <span>Expanded view · selected period</span>
                       <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to pan</span>
-                      <button onClick={() => setRawPc(v => !v)} style={{ background: rawPc ? '#1a4a7a' : 'transparent', border: '1.5px solid #1a4a7a', borderRadius: 10, color: rawPc ? '#fff' : '#1a4a7a', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}>Actual: {rawPc ? 'Raw' : 'Smoothed'}</button>
+                      <button onClick={() => setRawPc(v => !v)} style={{ background: rawPc ? '#1a4a7a' : 'transparent', border: '1.5px solid #1a4a7a', borderRadius: 10, color: rawPc ? '#fff' : '#1a4a7a', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}>{rawPc ? 'Raw' : 'Smoothed'}</button>
                       <button onClick={centerOnToday} style={{ background: 'transparent', border: '1.5px solid #3a6b1a', borderRadius: 10, color: '#3a6b1a', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}>↩ Today</button>
                     </div>
                     <div ref={pcZCt1}
@@ -1244,7 +1244,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                       <div style={{ fontSize: 10, color: '#5a6f48', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 4 }}>
                         <span>Expanded view · selected period</span>
                         <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to pan</span>
-                        <button onClick={() => setRawPc2(v => !v)} style={{ background: rawPc2 ? '#1a4a7a' : 'transparent', border: '1.5px solid #1a4a7a', borderRadius: 10, color: rawPc2 ? '#fff' : '#1a4a7a', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}>Actual: {rawPc2 ? 'Raw' : 'Smoothed'}</button>
+                        <button onClick={() => setRawPc2(v => !v)} style={{ background: rawPc2 ? '#1a4a7a' : 'transparent', border: '1.5px solid #1a4a7a', borderRadius: 10, color: rawPc2 ? '#fff' : '#1a4a7a', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}>{rawPc2 ? 'Raw' : 'Smoothed'}</button>
                         <button onClick={centerOnToday} style={{ background: 'transparent', border: '1.5px solid #3a6b1a', borderRadius: 10, color: '#3a6b1a', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}>↩ Today</button>
                       </div>
                       <div ref={pcZCt2}
