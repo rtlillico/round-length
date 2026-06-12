@@ -188,7 +188,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   const [infoRL,  setInfoRL]  = useState(false);
   const [infoLAR, setInfoLAR] = useState(false);
   const [visC1,   setVisC1]  = useState({ tempLAR: true, tempRound: true });
-  const [rawC1,   setRawC1]  = useState({ lar: false, round: false }); // actual lines: false = smoothed, true = raw daily
+  const [rawC1,   setRawC1]  = useState({ lar: false, round: true }); // actual lines: false = smoothed, true = raw daily
   const [showRaw1, setShowRaw1] = useState(false); // expander for the raw/smoothed toggles
   const [visC2,   setVisC2]  = useState({ tMax: true, tMean: true, tMin: true });
   const [rawC2,   setRawC2]  = useState({ tMax: false, tMean: false, tMin: false }); // temp lines: false = smoothed, true = raw daily
