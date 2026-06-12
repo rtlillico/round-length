@@ -211,7 +211,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   const [expandCtrPc2, setExpandCtrPc2] = useState(false);
   const [visPcBands2, setVisPcBands2] = useState({ p50: true, p2575: true, p1090: true });
   const vPcRef2 = useRef({ p50: true, p2575: true, p1090: true });
-  const [rawPc2, setRawPc2] = useState(false); // actual line in pc chart 2
+  const [rawPc2, setRawPc2] = useState(true); // actual line in pc chart 2 (round length) — raw by default
   const rawPcRef2 = useRef(false);
   const [pcMetric, setPcMetric] = useState('lar'); // which percentile comparison is shown: 'lar' | 'round'
   const pcMetricRef = useRef('lar');
