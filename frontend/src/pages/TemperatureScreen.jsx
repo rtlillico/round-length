@@ -601,19 +601,34 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
       if (pcZC2.current && pcTLZ2.current) pcTLZ2.current.style.left = pcZC2.current.scales.x.getPixelForValue(TODAY) + 'px';
       const pcDay = cDay;
       const { larData: ld, larP10: lp10, larP25: lp25, larP50: lp50, larP75: lp75, larP90: lp90,
-              roundData: rd, rndP10: rp10, rndP25: rp25, rndP50: rp50, rndP75: rp75, rndP90: rp90, dates: dts } = arrRef.current;
+              roundData: rd, rndP10: rp10, rndP25: rp25, rndP50: rp50, rndP75: rp75, rndP90: rp90,
+              dates: dts, lastActual: la } = arrRef.current;
       const pds = dts[pcDay] || '';
+      // Read the SMOOTHED value at the centre so the readout matches the drawn
+      // curve (same span-scaled window the zoom chart smooths with).
+      const swPc = Math.min(60, Math.max(14, Math.round((win.end - win.start + 1) / 6)));
+      const smAt = (arr) => {
+        if (!arr) return null;
+        const half = Math.floor(swPc / 2);
+        let s = 0, n = 0;
+        for (let j = Math.max(0, pcDay - half); j <= Math.min(arr.length - 1, pcDay + half); j++) {
+          const x = arr[j]; if (x != null && isFinite(x)) { s += x; n++; }
+        }
+        return n ? s / n : null;
+      };
+      // Actual line is clipped to the last actual day and obeys the Raw toggle
+      const actAt = (arr, rawRef) => (pcDay > la ? null : (rawRef.current ? arr[pcDay] : smAt(arr)));
       const f4 = (v) => v != null ? v.toFixed(4) : '—';
       const fd = (v) => v != null ? v.toFixed(0) + ' days' : '—';
       setCtrPc(pds ? {
         dl:  fmtDayFull(pds),
-        lar: f4(ld[pcDay]), p10: f4(lp10[pcDay]), p25: f4(lp25[pcDay]),
-        p50: f4(lp50[pcDay]), p75: f4(lp75[pcDay]), p90: f4(lp90[pcDay]),
+        lar: f4(actAt(ld, rawPcRef)), p10: f4(smAt(lp10)), p25: f4(smAt(lp25)),
+        p50: f4(smAt(lp50)), p75: f4(smAt(lp75)), p90: f4(smAt(lp90)),
       } : null);
       setCtrPc2(pds ? {
         dl:  fmtDayFull(pds),
-        lar: fd(rd[pcDay]), p10: fd(rp10[pcDay]), p25: fd(rp25[pcDay]),
-        p50: fd(rp50[pcDay]), p75: fd(rp75[pcDay]), p90: fd(rp90[pcDay]),
+        lar: fd(actAt(rd, rawPcRef2)), p10: fd(smAt(rp10)), p25: fd(smAt(rp25)),
+        p50: fd(smAt(rp50)), p75: fd(smAt(rp75)), p90: fd(smAt(rp90)),
       } : null);
     }
 
