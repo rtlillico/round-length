@@ -207,8 +207,8 @@ async function deleteScenario(id) {
 async function upsertPercentiles(scenarioId, percentileRows) {
   if (percentileRows.length === 0) return;
 
-  // Single bulk INSERT for all 365 rows (365 * 32 = 11680 params, within pg limit)
-  const COLS = 32;
+  // Single bulk INSERT for all 365 rows (365 * 40 = 14600 params, within pg limit)
+  const COLS = 40;
   const values = [];
   const params = [];
   percentileRows.forEach((row, i) => {
@@ -217,7 +217,8 @@ async function upsertPercentiles(scenarioId, percentileRows) {
       `($${b+1},$${b+2},$${b+3},$${b+4},$${b+5},$${b+6},$${b+7},$${b+8},$${b+9},$${b+10}` +
       `,$${b+11},$${b+12},$${b+13},$${b+14},$${b+15},$${b+16},$${b+17},$${b+18},$${b+19}` +
       `,$${b+20},$${b+21},$${b+22},$${b+23},$${b+24},$${b+25},$${b+26},$${b+27},$${b+28}` +
-      `,$${b+29},$${b+30},$${b+31},$${b+32})`
+      `,$${b+29},$${b+30},$${b+31},$${b+32},$${b+33},$${b+34},$${b+35},$${b+36},$${b+37}` +
+      `,$${b+38},$${b+39},$${b+40})`
     );
     params.push(
       scenarioId, row.dayOfYear,
@@ -229,6 +230,8 @@ async function upsertPercentiles(scenarioId, percentileRows) {
       row.moistureP10, row.moistureP25, row.moistureP50, row.moistureP75, row.moistureP90,
       row.yearsCount,
       row.tminP50, row.tmaxP50,
+      row.tminP10, row.tminP25, row.tminP75, row.tminP90,
+      row.tmaxP10, row.tmaxP25, row.tmaxP75, row.tmaxP90,
     );
   });
 
@@ -242,7 +245,9 @@ async function upsertPercentiles(scenarioId, percentileRows) {
         solar_historical_max, solar_historical_min,
         moisture_p10, moisture_p25, moisture_p50, moisture_p75, moisture_p90,
         years_counted,
-        tmin_p50, tmax_p50)
+        tmin_p50, tmax_p50,
+        tmin_p10, tmin_p25, tmin_p75, tmin_p90,
+        tmax_p10, tmax_p25, tmax_p75, tmax_p90)
      VALUES ${values.join(',')}
      ON CONFLICT (scenario_id, day_of_year) DO UPDATE SET
        lar_p10=EXCLUDED.lar_p10, lar_p25=EXCLUDED.lar_p25, lar_p50=EXCLUDED.lar_p50,
@@ -259,7 +264,11 @@ async function upsertPercentiles(scenarioId, percentileRows) {
        moisture_p50=EXCLUDED.moisture_p50, moisture_p75=EXCLUDED.moisture_p75,
        moisture_p90=EXCLUDED.moisture_p90,
        years_counted=EXCLUDED.years_counted,
-       tmin_p50=EXCLUDED.tmin_p50, tmax_p50=EXCLUDED.tmax_p50`,
+       tmin_p50=EXCLUDED.tmin_p50, tmax_p50=EXCLUDED.tmax_p50,
+       tmin_p10=EXCLUDED.tmin_p10, tmin_p25=EXCLUDED.tmin_p25,
+       tmin_p75=EXCLUDED.tmin_p75, tmin_p90=EXCLUDED.tmin_p90,
+       tmax_p10=EXCLUDED.tmax_p10, tmax_p25=EXCLUDED.tmax_p25,
+       tmax_p75=EXCLUDED.tmax_p75, tmax_p90=EXCLUDED.tmax_p90`,
     params
   );
 }

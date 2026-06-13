@@ -131,6 +131,16 @@ ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS temp_p75  DECIMAL(5,1)
 ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS tmin_p50  DECIMAL(5,1);
 ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS tmax_p50  DECIMAL(5,1);
 
+-- Full min/max temperature percentiles (°C) — for T_min / T_max percentile comparison
+ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS tmin_p10  DECIMAL(5,1);
+ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS tmin_p25  DECIMAL(5,1);
+ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS tmin_p75  DECIMAL(5,1);
+ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS tmin_p90  DECIMAL(5,1);
+ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS tmax_p10  DECIMAL(5,1);
+ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS tmax_p25  DECIMAL(5,1);
+ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS tmax_p75  DECIMAL(5,1);
+ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS tmax_p90  DECIMAL(5,1);
+
 -- Solar factor columns — scenario_daily_state
 ALTER TABLE scenario_daily_state ADD COLUMN IF NOT EXISTS actual_lar   DECIMAL(8,6);
 ALTER TABLE scenario_daily_state ADD COLUMN IF NOT EXISTS solar_factor DECIMAL(5,4);
@@ -197,3 +207,4 @@ CREATE INDEX IF NOT EXISTS idx_daily_state_scenario_date
 -- Scenarios: get all scenarios for a farm
 CREATE INDEX IF NOT EXISTS idx_scenarios_farm
   ON scenarios(farm_id);
+l
