@@ -54,14 +54,14 @@ app.use((err, req, res, next) => {
 
 // ─── START ────────────────────────────────────────────────────────────────────
 
+// Start the HTTP server immediately so a schema/DB hiccup (slow or unreachable
+// DB) can never crash-loop or block the whole API. The migration is idempotent
+// and runs in the background; it will re-run cleanly on the next boot.
+app.listen(PORT, () => {
+  console.log(`Round Length backend running on port ${PORT}`);
+  scheduleCron();
+});
+
 applySchema()
-  .then(() => {
-    app.listen(PORT, () => {
-      console.log(`Round Length backend running on port ${PORT}`);
-      scheduleCron();
-    });
-  })
-  .catch((err) => {
-    console.error('Failed to apply database schema:', err);
-    process.exit(1);
-  });
+  .then(() => console.log('Database schema applied'))
+  .catch((err) => console.error('Failed to apply database schema (continuing):', err));
