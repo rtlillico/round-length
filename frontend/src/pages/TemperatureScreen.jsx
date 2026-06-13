@@ -66,11 +66,17 @@ function buildArrays(chartData, targetLeaves, pastureKey) {
   const tMaxData  = new Array(N).fill(null);
   const tMeanData = new Array(N).fill(null);
   const tMinData  = new Array(N).fill(null);
-  const tMaxAvg   = new Array(N).fill(null); // historical median T_max by day-of-year
-  const tMeanAvg  = new Array(N).fill(null); // historical median T_mean (temp_p50)
-  const tMinAvg   = new Array(N).fill(null); // historical median T_min by day-of-year
+  // Temperature percentile bands (°C) by day-of-year, for the temperature percentile comparison.
+  const A = () => new Array(N).fill(null);
+  const tempPc = {
+    min:  { p10: A(), p25: A(), p50: A(), p75: A(), p90: A() },
+    mean: { p10: A(), p25: A(), p50: A(), p75: A(), p90: A() },
+    max:  { p10: A(), p25: A(), p50: A(), p75: A(), p90: A() },
+  };
+  // The "average" (median) lines reuse the p50 slots.
+  const tMinAvg = tempPc.min.p50, tMeanAvg = tempPc.mean.p50, tMaxAvg = tempPc.max.p50;
 
-  if (!chartData) return { dates, larData, larP10, larP25, larP50, larP75, larP90, roundData, roundP50, rndP10, rndP25, rndP50, rndP75, rndP90, tMaxData, tMeanData, tMinData, tMaxAvg, tMeanAvg, tMinAvg, lastActual: -1 };
+  if (!chartData) return { dates, larData, larP10, larP25, larP50, larP75, larP90, roundData, roundP50, rndP10, rndP25, rndP50, rndP75, rndP90, tMaxData, tMeanData, tMinData, tMaxAvg, tMeanAvg, tMinAvg, tempPc, lastActual: -1 };
 
   const percByDoy = {};
   for (const p of (chartData.percentiles || [])) percByDoy[p.day_of_year] = p;
@@ -92,9 +98,10 @@ function buildArrays(chartData, targetLeaves, pastureKey) {
     larP50[i] = perc.temp_p50 != null ? calcTempLAR(Number(perc.temp_p50), pastureKey) : null;
     larP75[i] = perc.temp_p75 != null ? calcTempLAR(Number(perc.temp_p75), pastureKey) : null;
     larP90[i] = perc.temp_p90 != null ? calcTempLAR(Number(perc.temp_p90), pastureKey) : null;
-    tMeanAvg[i] = perc.temp_p50 != null ? Number(perc.temp_p50) : null;
-    tMinAvg[i]  = perc.tmin_p50 != null ? Number(perc.tmin_p50) : null;
-    tMaxAvg[i]  = perc.tmax_p50 != null ? Number(perc.tmax_p50) : null;
+    const num = (v) => v != null ? Number(v) : null;
+    tempPc.mean.p10[i] = num(perc.temp_p10); tempPc.mean.p25[i] = num(perc.temp_p25); tempPc.mean.p50[i] = num(perc.temp_p50); tempPc.mean.p75[i] = num(perc.temp_p75); tempPc.mean.p90[i] = num(perc.temp_p90);
+    tempPc.min.p10[i]  = num(perc.tmin_p10); tempPc.min.p25[i]  = num(perc.tmin_p25); tempPc.min.p50[i]  = num(perc.tmin_p50); tempPc.min.p75[i]  = num(perc.tmin_p75); tempPc.min.p90[i]  = num(perc.tmin_p90);
+    tempPc.max.p10[i]  = num(perc.tmax_p10); tempPc.max.p25[i]  = num(perc.tmax_p25); tempPc.max.p50[i]  = num(perc.tmax_p50); tempPc.max.p75[i]  = num(perc.tmax_p75); tempPc.max.p90[i]  = num(perc.tmax_p90);
   }
 
   let lastActual = -1;
@@ -144,8 +151,15 @@ function buildArrays(chartData, targetLeaves, pastureKey) {
     roundP50[i] = rndP50[i];
   }
 
-  return { dates, larData, larP10, larP25, larP50, larP75, larP90, roundData, roundP50, rndP10, rndP25, rndP50, rndP75, rndP90, tMaxData, tMeanData, tMinData, tMaxAvg, tMeanAvg, tMinAvg, lastActual };
+  return { dates, larData, larP10, larP25, larP50, larP75, larP90, roundData, roundP50, rndP10, rndP25, rndP50, rndP75, rndP90, tMaxData, tMeanData, tMinData, tMaxAvg, tMeanAvg, tMinAvg, tempPc, lastActual };
 }
+
+// Temperature percentile-comparison colours per metric (band/p50, actual line, band-fill rgb)
+const TPC_COL = {
+  min:  { key: 'tMin',  label: 'T_min',  band: '#4a90c4', actual: '#1a4a6b', rgb: '74,144,196' },
+  mean: { key: 'tMean', label: 'T_ave',  band: '#c47a12', actual: '#7a4a08', rgb: '196,122,18' },
+  max:  { key: 'tMax',  label: 'T_max',  band: '#d05a44', actual: '#8a2a1e', rgb: '208,90,68' },
+};
 
 const toXY = (arr) => arr.map((v, i) => v != null ? { x: i, y: v } : null).filter(Boolean);
 const toXYWin = (arr, s, e) => { const r = []; for (let i = s; i <= e; i++) { if (arr[i] != null) r.push({ x: i, y: arr[i] }); } return r; };
@@ -216,6 +230,19 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   const [pcMetric, setPcMetric] = useState('lar'); // which percentile comparison is shown: 'lar' | 'round'
   const pcMetricRef = useRef('lar');
 
+  // ── temperature percentile comparison (Card 2) ──
+  const [showTpc, setShowTpc] = useState(false);
+  const showTpcRef = useRef(false);
+  const [infoTpc, setInfoTpc] = useState(false);
+  const [tpcMetric, setTpcMetric] = useState('mean'); // 'min' | 'mean' | 'max'
+  const tpcMetricRef = useRef('mean');
+  const [rawTpc, setRawTpc] = useState(true); // actual temp line raw by default
+  const rawTpcRef = useRef(true);
+  const [visTpcBands, setVisTpcBands] = useState({ p50: true, p2575: true, p1090: true });
+  const vTpcRef = useRef({ p50: true, p2575: true, p1090: true });
+  const [ctrTpc, setCtrTpc] = useState(null);
+  const [expandCtrTpc, setExpandCtrTpc] = useState(false);
+
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
   const pasture = PASTURE_PARAMS[scenario.pasture_key];
@@ -252,6 +279,10 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   useEffect(() => { rawPcRef.current = rawPc; }, [rawPc]);
   useEffect(() => { rawPcRef2.current = rawPc2; }, [rawPc2]);
   useEffect(() => { pcMetricRef.current = pcMetric; }, [pcMetric]);
+  useEffect(() => { showTpcRef.current = showTpc; }, [showTpc]);
+  useEffect(() => { vTpcRef.current = visTpcBands; }, [visTpcBands]);
+  useEffect(() => { rawTpcRef.current = rawTpc; }, [rawTpc]);
+  useEffect(() => { tpcMetricRef.current = tpcMetric; }, [tpcMetric]);
 
   // chart instances
   const mC1 = useRef(null), zC1 = useRef(null);
@@ -295,6 +326,15 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   const pcSeL2 = useRef(null), pcSeR2 = useRef(null);
   const pcScM2 = useRef(null), pcScZ2 = useRef(null);
   const pcTL2  = useRef(null), pcTLZ2 = useRef(null);
+
+  // percentile card refs — temperature (T_min / T_mean / T_max)
+  const tpcZC = useRef(null), tpcMC = useRef(null);
+  const tpcZCv = useRef(null), tpcMCv = useRef(null);
+  const tpcZCt = useRef(null), tpcMCt = useRef(null);
+  const tpcSdl = useRef(null), tpcSb = useRef(null), tpcSdr = useRef(null);
+  const tpcSeL = useRef(null), tpcSeR = useRef(null);
+  const tpcScM = useRef(null), tpcScZ = useRef(null);
+  const tpcTL  = useRef(null), tpcTLZ = useRef(null);
 
   // ── x-scale configs ───────────────────────────────────────────────────────────
   function xMain() {
@@ -442,6 +482,20 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     const max = Math.ceil(rawMax / step) * step;
     return { type: 'linear', position: 'right', min: 0, max, ticks: { color: '#4aa8d8', font: { size: 9 }, maxTicksLimit: 4, callback: withUnit('days') }, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false } };
   }
+  function mkYpcTemp(win) {
+    const a = arrRef.current;
+    const metric = tpcMetricRef.current;
+    const m = a.tempPc?.[metric] || {};
+    const actual = metric === 'min' ? a.tMinData : metric === 'max' ? a.tMaxData : a.tMeanData;
+    const slice = (arr) => { if (!arr) return []; if (!win) return arr; const s = Math.max(0, win.start), e = Math.min(N - 1, win.end); return arr.slice(s, e + 1); };
+    const vals = [...slice(actual), ...slice(m.p10), ...slice(m.p90)].filter(v => v != null && isFinite(v));
+    const base = { type: 'linear', position: 'right', ticks: { color: '#4aa8d8', font: { size: 9 }, maxTicksLimit: 4, callback: withUnit('°C') }, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false } };
+    if (!vals.length) return base;
+    let lo = Math.floor(Math.min(...vals) / 5) * 5;
+    let hi = Math.ceil(Math.max(...vals) / 5) * 5;
+    if (hi <= lo) hi = lo + 5;
+    return { ...base, min: lo, max: hi };
+  }
 
   // ── dataset builders ─────────────────────────────────────────────────────────
   function ds1main() {
@@ -493,6 +547,42 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
       ds.push({ type: 'line', data: toData(p50), borderColor: '#4aa8d8', borderWidth: 1.5, borderDash: [6, 3], pointRadius: 0, fill: false, yAxisID: 'yR' });
     }
     ds.push({ type: 'line', data: toActual(actual), borderColor: '#1a4a7a', borderWidth: 2, pointRadius: 0, fill: false, yAxisID: 'yR' });
+    return ds;
+  }
+  function buildTempPcDatasets({ isMain, win }) {
+    const a = arrRef.current;
+    const clip = a.lastActual >= 0 ? a.lastActual : TODAY;
+    const metric = tpcMetricRef.current;
+    const m = a.tempPc?.[metric] || {};
+    const actual = metric === 'min' ? a.tMinData : metric === 'max' ? a.tMaxData : a.tMeanData;
+    const c = TPC_COL[metric] || TPC_COL.mean;
+    const v = vTpcRef.current; const raw = rawTpcRef.current;
+    let toData, toActual;
+    if (isMain) {
+      const sw = 30;
+      toData   = arr => toXY(smooth(arr || [], sw));
+      toActual = arr => toXY(smooth(arr || [], sw).map((x, i) => i <= clip ? x : null));
+    } else {
+      const span = win.end - win.start + 1;
+      const sw = Math.min(60, Math.max(14, Math.round(span / 6)));
+      toData   = arr => toXYWin(smooth(arr || [], sw), win.start, win.end);
+      toActual = arr => toXYWin((raw ? (arr || []) : smooth(arr || [], sw)).map((x, i) => i <= clip ? x : null), win.start, win.end);
+    }
+    const ds = [];
+    if (v.p1090) {
+      const i0 = ds.length;
+      ds.push({ type: 'line', data: toData(m.p10), borderWidth: 0, pointRadius: 0, fill: false, yAxisID: 'yR' });
+      ds.push({ type: 'line', data: toData(m.p90), borderWidth: 0, pointRadius: 0, fill: { target: i0 }, backgroundColor: `rgba(${c.rgb},0.12)`, yAxisID: 'yR' });
+    }
+    if (v.p2575) {
+      const i0 = ds.length;
+      ds.push({ type: 'line', data: toData(m.p25), borderWidth: 0, pointRadius: 0, fill: false, yAxisID: 'yR' });
+      ds.push({ type: 'line', data: toData(m.p75), borderWidth: 0, pointRadius: 0, fill: { target: i0 }, backgroundColor: `rgba(${c.rgb},0.28)`, yAxisID: 'yR' });
+    }
+    if (v.p50) {
+      ds.push({ type: 'line', data: toData(m.p50), borderColor: c.band, borderWidth: 1.5, borderDash: [6, 3], pointRadius: 0, fill: false, yAxisID: 'yR' });
+    }
+    ds.push({ type: 'line', data: toActual(actual), borderColor: c.actual, borderWidth: 2, pointRadius: 0, fill: false, yAxisID: 'yR' });
     return ds;
   }
   function ds2main() {
@@ -637,6 +727,37 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
       } : null);
     }
 
+    if (showTpcRef.current) {
+      applySpot(tpcMC.current, tpcSdl, tpcSb, tpcSdr, tpcSeL, tpcSeR, tpcScM);
+      if (tpcMC.current) {
+        const pxT = tpcMC.current.scales.x.getPixelForValue(TODAY);
+        if (tpcTL.current) tpcTL.current.style.left = pxT + 'px';
+      }
+      if (tpcZC.current && tpcScZ.current) tpcScZ.current.style.left = tpcZC.current.scales.x.getPixelForValue(cDay) + 'px';
+      if (tpcZC.current && tpcTLZ.current) tpcTLZ.current.style.left = tpcZC.current.scales.x.getPixelForValue(TODAY) + 'px';
+      const a = arrRef.current;
+      const metric = tpcMetricRef.current;
+      const m = a.tempPc?.[metric] || {};
+      const actual = metric === 'min' ? a.tMinData : metric === 'max' ? a.tMaxData : a.tMeanData;
+      const pds = a.dates[cDay] || '';
+      const swT = Math.min(60, Math.max(14, Math.round((win.end - win.start + 1) / 6)));
+      const smAtT = (arr) => {
+        if (!arr) return null;
+        const half = Math.floor(swT / 2); let s = 0, n = 0;
+        for (let j = Math.max(0, cDay - half); j <= Math.min(arr.length - 1, cDay + half); j++) {
+          const x = arr[j]; if (x != null && isFinite(x)) { s += x; n++; }
+        }
+        return n ? s / n : null;
+      };
+      const actVal = cDay > a.lastActual ? null : (rawTpcRef.current ? actual[cDay] : smAtT(actual));
+      const ft = (v) => v != null ? v.toFixed(1) + '°C' : '—';
+      setCtrTpc(pds ? {
+        dl: fmtDayFull(pds),
+        val: ft(actVal), p10: ft(smAtT(m.p10)), p25: ft(smAtT(m.p25)),
+        p50: ft(smAtT(m.p50)), p75: ft(smAtT(m.p75)), p90: ft(smAtT(m.p90)),
+      } : null);
+    }
+
     // update React state for readouts / window label
     const { dates, larData, larP50, roundData, roundP50, tMeanData } = arrRef.current;
     const ds = dates[cDay] || '';
@@ -655,7 +776,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   function createAll() {
     const win = clampWin(winRef.current.start, winRef.current.width);
     const ic = (cv, ct, h) => { if (!cv || !ct) return; cv.width = ct.clientWidth || 340; cv.height = h; };
-    [mC1, zC1, mC2, zC2, pcMC1, pcZC1, pcMC2, pcZC2].forEach(r => { if (r.current) { r.current.destroy(); r.current = null; } });
+    [mC1, zC1, mC2, zC2, pcMC1, pcZC1, pcMC2, pcZC2, tpcMC, tpcZC].forEach(r => { if (r.current) { r.current.destroy(); r.current = null; } });
     ic(mCv1.current, mCt1.current, 120);
     ic(zCv1.current, zCt1.current, 180);
     ic(mCv2.current, mCt2.current, 120);
@@ -677,6 +798,11 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
       if (pcZCv1.current && pcZCt1.current) { ic(pcZCv1.current, pcZCt1.current, 180); const pcpw = pcZCt1.current.clientWidth || 340; pcZC1.current = new Chart(pcZCv1.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: false, win }) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yR: mkYRpc() } } }); }
       if (pcMCv2.current && pcMCt2.current) { ic(pcMCv2.current, pcMCt2.current, 120); pcMC2.current = new Chart(pcMCv2.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: true, vRef: vPcRef2, rawRef: rawPcRef2, metric: 'round' }) }, options: { ...base, scales: { x: xMain(), yR: mkYpcRound() } } }); }
       if (pcZCv2.current && pcZCt2.current) { ic(pcZCv2.current, pcZCt2.current, 180); const pcpw2 = pcZCt2.current.clientWidth || 340; pcZC2.current = new Chart(pcZCv2.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: false, win, vRef: vPcRef2, rawRef: rawPcRef2, metric: 'round' }) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yR: mkYpcRound(win) } } }); }
+    }
+
+    if (showTpcRef.current) {
+      if (tpcMCv.current && tpcMCt.current) { ic(tpcMCv.current, tpcMCt.current, 120); tpcMC.current = new Chart(tpcMCv.current, { type: 'line', data: { datasets: buildTempPcDatasets({ isMain: true }) }, options: { ...base, scales: { x: xMain(), yR: mkYpcTemp() } } }); }
+      if (tpcZCv.current && tpcZCt.current) { ic(tpcZCv.current, tpcZCt.current, 180); tpcZC.current = new Chart(tpcZCv.current, { type: 'line', data: { datasets: buildTempPcDatasets({ isMain: false, win }) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yR: mkYpcTemp(win) } } }); }
     }
 
     posOverlays();
@@ -715,6 +841,14 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
         pcZC2.current = new Chart(pcZCv2.current, { type: 'line', data: { datasets: buildPcBandDatasets({ isMain: false, win, vRef: vPcRef2, rawRef: rawPcRef2, metric: 'round' }) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yR: mkYpcRound(win) } } });
       }
     }
+    if (showTpcRef.current) {
+      if (tpcZC.current) { tpcZC.current.destroy(); tpcZC.current = null; }
+      if (tpcZCv.current && tpcZCt.current) {
+        const pw = tpcZCt.current.clientWidth || 340;
+        tpcZCv.current.width = pw; tpcZCv.current.height = 180;
+        tpcZC.current = new Chart(tpcZCv.current, { type: 'line', data: { datasets: buildTempPcDatasets({ isMain: false, win }) }, options: { ...base, scales: { x: xZoom(win.start, win.end), yR: mkYpcTemp(win) } } });
+      }
+    }
     posOverlays();
   }
 
@@ -722,7 +856,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   useEffect(() => {
     if (loading || !chartData) return;
     const t = setTimeout(createAll, 50);
-    return () => { clearTimeout(t); [mC1, zC1, mC2, zC2, pcMC1, pcZC1, pcMC2, pcZC2].forEach(r => { if (r.current) { r.current.destroy(); r.current = null; } }); };
+    return () => { clearTimeout(t); [mC1, zC1, mC2, zC2, pcMC1, pcZC1, pcMC2, pcZC2, tpcMC, tpcZC].forEach(r => { if (r.current) { r.current.destroy(); r.current = null; } }); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [arrays, tLabels]);
 
@@ -761,11 +895,28 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   }, [showPct]);
 
   useEffect(() => {
+    if (!showTpc) {
+      [tpcMC, tpcZC].forEach(r => { if (r.current) { r.current.destroy(); r.current = null; } });
+      return;
+    }
+    const t = setTimeout(() => {
+      const base = { responsive: false, animation: false, plugins: { legend: { display: false }, tooltip: { enabled: false } } };
+      const ic = (cv, ct, h) => { if (!cv || !ct) return; cv.width = ct.clientWidth || 340; cv.height = h; };
+      [tpcMC, tpcZC].forEach(r => { if (r.current) { r.current.destroy(); r.current = null; } });
+      if (tpcMCv.current && tpcMCt.current) { ic(tpcMCv.current, tpcMCt.current, 120); tpcMC.current = new Chart(tpcMCv.current, { type: 'line', data: { datasets: buildTempPcDatasets({ isMain: true }) }, options: { ...base, scales: { x: xMain(), yR: mkYpcTemp() } } }); }
+      // tpcZC built by refreshZoom
+      refreshZoom();
+    }, 50);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showTpc]);
+
+  useEffect(() => {
     if (loading || !chartData) return;
     const t = setTimeout(createAll, 10);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visC1, visC2, visPcBands, visPcBands2, rawC1, rawC2, rawPc, rawPc2, pcMetric]);
+  }, [visC1, visC2, visPcBands, visPcBands2, rawC1, rawC2, rawPc, rawPc2, pcMetric, showTpc, tpcMetric, rawTpc, visTpcBands]);
 
   useEffect(() => {
     if (!mCt1.current) return;
@@ -847,6 +998,29 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     refreshZoom();
   }
   function onPcMain2Up() { panM.current = null; }
+
+  function onTpcZoomDown(e) {
+    panZ.current = { startX: e.clientX, snap: winRef.current.start };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+  function onTpcZoomMove(e) {
+    const p = panZ.current; if (!p) return;
+    winRef.current.start = Math.round(p.snap - (e.clientX - p.startX) / ((tpcZCt.current?.clientWidth || 340) / winRef.current.width));
+    refreshZoom();
+  }
+  function onTpcZoomUp() { panZ.current = null; }
+
+  function onTpcMainDown(e) {
+    if (e.target.dataset.edge) return;
+    panM.current = { startX: e.clientX, snap: winRef.current.start };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+  function onTpcMainMove(e) {
+    const p = panM.current; if (!p) return;
+    winRef.current.start = Math.round(p.snap - (e.clientX - p.startX) / ((tpcMCt.current?.clientWidth || 340) / N));
+    refreshZoom();
+  }
+  function onTpcMainUp() { panM.current = null; }
 
   function onEdgeDown(e, side) {
     e.stopPropagation();
@@ -1451,6 +1625,113 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                   <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: '1.5px', background: '#3a6b1a', opacity: 0.7 }} />
                   <div style={{ position: 'absolute', top: 2, left: 3, fontSize: 7, color: '#3a6b1a', fontWeight: 700, whiteSpace: 'nowrap', background: 'rgba(240,248,232,0.85)', padding: '1px 3px', borderRadius: 3 }}>Today</div>
                 </div>
+              </div>
+
+              {/* ── Temperature percentile comparison (collapsible) ──────────────── */}
+              <div style={{ marginTop: 12, border: '1px solid #e0d8cc', borderRadius: 8, overflow: 'hidden' }}>
+                <div onClick={() => setShowTpc(v => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: showTpc ? '12px 12px' : '8px 12px', cursor: 'pointer', background: showTpc ? '#e9ecdf' : '#f5f0e8' }}>
+                  <span style={{ fontSize: showTpc ? 17 : 12, fontWeight: 700, color: '#3a6b1a' }}>Percentiles comparison</span>
+                  <span style={{ fontSize: showTpc ? 14 : 11, color: '#9aab85' }}>{showTpc ? '▲' : '▼'}</span>
+                </div>
+                {showTpc && (() => { const c = TPC_COL[tpcMetric]; return (
+                  <div style={{ padding: '0 12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingTop: 10, flexWrap: 'wrap' }}>
+                      {['min', 'mean', 'max'].map(mk => { const cc = TPC_COL[mk]; return (
+                        <button key={mk} onClick={() => setTpcMetric(mk)} style={{ padding: '5px 11px', borderRadius: 14, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: `1.5px solid ${cc.band}`, background: tpcMetric === mk ? cc.band : '#fff', color: tpcMetric === mk ? '#fff' : cc.band, whiteSpace: 'nowrap' }}>{cc.label}</button>
+                      ); })}
+                      <button onClick={() => setInfoTpc(v => !v)} style={{ marginLeft: 2, background: 'none', border: 'none', cursor: 'pointer', color: '#9aab85', fontSize: 13, padding: 0, lineHeight: 1 }}>ⓘ</button>
+                    </div>
+                    {infoTpc && (
+                      <div style={{ background: '#f0f7fd', border: '1px solid #c0daf0', borderRadius: 8, padding: '10px 12px', margin: '8px 0 4px', fontSize: 12, color: '#2d4a1e', lineHeight: 1.6 }}>
+                        This chart plots the current season's actual <strong>{c.label}</strong> against the distribution of historical {c.label} for the same time of year. The dashed line is the <strong>P50 (median)</strong> — a typical year. The shaded bands show the spread of past years: <strong>P25–P75</strong> (the middle half) and <strong>P10–P90</strong> (all but the most extreme). Above the median = warmer than usual for the date; below = cooler.
+                      </div>
+                    )}
+                    {pillRow}
+                    <div style={{ fontSize: 10, color: '#5a6f48', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 4 }}>
+                      <span>Expanded view · selected period</span>
+                      <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to pan</span>
+                      <button onClick={() => setRawTpc(v => !v)} style={{ background: rawTpc ? c.actual : 'transparent', border: `1.5px solid ${c.actual}`, borderRadius: 10, color: rawTpc ? '#fff' : c.actual, fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}>{rawTpc ? 'Raw' : 'Smoothed'}</button>
+                      <button onClick={centerOnToday} style={{ background: 'transparent', border: '1.5px solid #3a6b1a', borderRadius: 10, color: '#3a6b1a', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}>↩ Today</button>
+                    </div>
+                    <div ref={tpcZCt}
+                      style={{ position: 'relative', height: 180, touchAction: 'none', userSelect: 'none', overflow: 'hidden', borderRadius: 6, cursor: 'grab', border: '2px solid #3a6b1a' }}
+                      onPointerDown={onTpcZoomDown} onPointerMove={onTpcZoomMove} onPointerUp={onTpcZoomUp} onPointerCancel={onTpcZoomUp}
+                    >
+                      <canvas ref={tpcZCv} style={{ display: 'block' }} />
+                      <div ref={tpcTLZ} style={{ position: 'absolute', top: 0, bottom: 0, pointerEvents: 'none', zIndex: 4 }}>
+                        <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: '1.5px', background: '#3a6b1a', opacity: 0.7 }} />
+                        <div style={{ position: 'absolute', top: 4, left: 3, fontSize: 8, color: '#3a6b1a', fontWeight: 700, whiteSpace: 'nowrap', background: 'rgba(240,248,232,0.88)', padding: '1px 4px', borderRadius: 3 }}>Today</div>
+                      </div>
+                      <div ref={tpcScZ} style={S.scrub}><div style={S.sDot} /></div>
+                    </div>
+
+                    <div style={{ fontSize: 11, color: '#2d4a1e', marginTop: 6, background: '#f0f7fd', border: '1px solid #c0daf0', borderRadius: 6, overflow: 'hidden' }}>
+                      <div onClick={() => setExpandCtrTpc(v => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', cursor: 'pointer', gap: 8 }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px 12px' }}>
+                          {[
+                            { color: c.actual, dashed: false, fill: null,                  label: `Actual ${c.label}` },
+                            { color: c.band,   dashed: true,  fill: null,                  label: 'P50' },
+                            { color: c.band,   dashed: false, fill: `rgba(${c.rgb},0.28)`, label: 'P25–P75' },
+                            { color: c.band,   dashed: false, fill: `rgba(${c.rgb},0.12)`, label: 'P10–P90' },
+                          ].map(({ color, dashed, fill, label }) => (
+                            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <svg width="16" height="8" style={{ flexShrink: 0 }}>{fill ? <rect x="0" y="1" width="16" height="6" fill={fill} rx="1" /> : <line x1="0" y1="4" x2="16" y2="4" stroke={color} strokeWidth={dashed ? 1.5 : 2} strokeDasharray={dashed ? '4 3' : 'none'} />}</svg>
+                              <span style={{ color, whiteSpace: 'nowrap' }}>{label}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <span style={{ fontSize: 10, color: '#9aab85', flexShrink: 0 }}>{expandCtrTpc ? '▲' : '▼'}</span>
+                      </div>
+                      {expandCtrTpc && (
+                        <div style={{ padding: '0 10px 8px', borderTop: '1px solid #c0daf0', lineHeight: 1.7 }}>
+                          {ctrTpc && <div style={{ fontWeight: 600, marginBottom: 2, textAlign: 'center', paddingTop: 6 }}>{ctrTpc.dl}</div>}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 10px' }}>
+                            {[
+                              { label: `Actual ${c.label}`, value: ctrTpc?.val },
+                              { label: 'P50', value: ctrTpc?.p50 },
+                              { label: 'P25', value: ctrTpc?.p25 },
+                              { label: 'P75', value: ctrTpc?.p75 },
+                              { label: 'P10', value: ctrTpc?.p10 },
+                              { label: 'P90', value: ctrTpc?.p90 },
+                            ].map(({ label, value }) => (
+                              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'nowrap' }}>
+                                <span style={{ color: c.band, whiteSpace: 'nowrap' }}>{label}</span>{' '}<strong>{value ?? '—'}</strong>
+                              </div>
+                            ))}
+                          </div>
+                          <div style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic', marginTop: 4, textAlign: 'center' }}>{ctrTpc ? 'centre of window — pan to explore' : 'pan to explore values'}</div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 10 }}>
+                      {[{ key: 'p1090', label: 'P10–P90' }, { key: 'p2575', label: 'P25–P75' }, { key: 'p50', label: 'P50 median' }].map(({ key, label }) => (
+                        <button key={key} onClick={() => setVisTpcBands(p => ({ ...p, [key]: !p[key] }))} style={{ padding: '5px 9px', borderRadius: 14, fontSize: 10, fontWeight: 500, lineHeight: 1, cursor: 'pointer', border: `1.5px solid ${c.band}`, background: visTpcBands[key] ? c.band : '#fff', color: visTpcBands[key] ? '#fff' : c.band, whiteSpace: 'nowrap' }}>{label}</button>
+                      ))}
+                    </div>
+
+                    <div style={{ fontSize: 10, color: '#5a6f48', marginTop: 10, fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>Full season overview <span style={{ fontSize: 9, color: '#9aab85', fontStyle: 'italic' }}>↔ drag to move selection</span></span>
+                      <button onClick={centerOnToday} style={{ background: 'transparent', border: '1.5px solid #3a6b1a', borderRadius: 10, color: '#3a6b1a', fontSize: 9, fontWeight: 600, padding: '2px 8px', cursor: 'pointer' }}>↩ Today</button>
+                    </div>
+                    <div ref={tpcMCt}
+                      style={{ position: 'relative', height: 120, marginTop: 5, touchAction: 'none', userSelect: 'none', overflow: 'hidden' }}
+                      onPointerDown={onTpcMainDown} onPointerMove={onTpcMainMove} onPointerUp={onTpcMainUp} onPointerCancel={onTpcMainUp}
+                    >
+                      <canvas ref={tpcMCv} style={{ display: 'block' }} />
+                      <div ref={tpcSdl} style={S.dim} />
+                      <div ref={tpcSb}  style={S.band} />
+                      <div ref={tpcSdr} style={S.dim} />
+                      {edgeDiv(tpcSeL, 'l')}
+                      {edgeDiv(tpcSeR, 'r')}
+                      <div ref={tpcScM} style={S.scrub}><div style={S.sDot} /></div>
+                      <div ref={tpcTL} style={{ position: 'absolute', top: 0, bottom: 0, pointerEvents: 'none', zIndex: 4 }}>
+                        <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: '1.5px', background: '#3a6b1a', opacity: 0.7 }} />
+                        <div style={{ position: 'absolute', top: 2, left: 3, fontSize: 7, color: '#3a6b1a', fontWeight: 700, whiteSpace: 'nowrap', background: 'rgba(240,248,232,0.85)', padding: '1px 3px', borderRadius: 3 }}>Today</div>
+                      </div>
+                    </div>
+                  </div>
+                ); })()}
               </div>
 
             </>
