@@ -77,6 +77,10 @@ router.patch('/:id', async (req, res) => {
       const child = fork(
         path.join(__dirname, '../lib/recompute-worker.js'),
         [String(updated.id), String(updated.farm_id)],
+        // Cap the worker's heap so V8 GCs aggressively and its RSS stays bounded.
+        // Without this, the default (~2GB) heap lets the worker balloon and the OS
+        // OOM-killer kills it on this small VPS (exit code != 0 → "Recompute failed").
+        { execArgv: ['--max-old-space-size=384'] },
       );
       child.on('exit', (code) => {
         if (code === 0) {
