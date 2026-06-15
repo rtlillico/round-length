@@ -25,6 +25,13 @@ app.use((req, res, next) => {
   next();
 });
 
+// Never let browsers cache API responses — chart data changes after a recompute
+// and a stale cached response would show old/missing percentile bands.
+app.use('/api', (req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
+
 // ─── ROUTES ───────────────────────────────────────────────────────────────────
 
 app.use('/api/farms',     require('./routes/farms'));
