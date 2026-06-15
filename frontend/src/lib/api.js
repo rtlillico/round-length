@@ -6,6 +6,10 @@ const BASE = '/api';
 async function request(method, path, body) {
   const res = await fetch(`${BASE}${path}`, {
     method,
+    // Bypass the browser HTTP cache so chart/percentile data is always fresh —
+    // a stale cached response (e.g. from before a recompute) would show old or
+    // missing data even after the server started sending Cache-Control: no-store.
+    cache: 'no-store',
     headers: { 'Content-Type': 'application/json' },
     body: body ? JSON.stringify(body) : undefined,
   });
