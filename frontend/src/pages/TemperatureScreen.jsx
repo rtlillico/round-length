@@ -236,8 +236,8 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   const [infoTpc, setInfoTpc] = useState(false);
   const [tpcMetric, setTpcMetric] = useState('mean'); // 'min' | 'mean' | 'max'
   const tpcMetricRef = useRef('mean');
-  const [rawTpc, setRawTpc] = useState(true); // actual temp line raw by default
-  const rawTpcRef = useRef(true);
+  const [rawTpc, setRawTpc] = useState(false); // actual temp line smoothed by default
+  const rawTpcRef = useRef(false);
   const [visTpcBands, setVisTpcBands] = useState({ p50: true, p2575: true, p1090: true });
   const vTpcRef = useRef({ p50: true, p2575: true, p1090: true });
   const [ctrTpc, setCtrTpc] = useState(null);
