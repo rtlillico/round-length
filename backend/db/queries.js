@@ -16,13 +16,31 @@ const pool = new Pool({
 });
 
 /**
- * Apply schema.sql on startup. Every statement is idempotent
- * (IF NOT EXISTS), so this safely creates tables/columns/indexes that
- * don't exist yet — acting as a lightweight auto-migration on each deploy.
+ * Apply schema.sql on startup. Every statement is idempotent (IF NOT EXISTS),
+ * so this safely creates tables/columns/indexes that don't exist yet —
+ * a lightweight auto-migration on each deploy.
+ *
+ * Each statement is run SEPARATELY: pg executes a multi-statement query as a
+ * single implicit transaction, so one failing statement would roll back the
+ * whole batch (silently reverting every new column). Running them one at a time
+ * means a single bad migration can't block the others.
  */
 async function applySchema() {
   const sql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
-  await pool.query(sql);
+  const statements = sql
+    .split(';')
+    .map(s => s.replace(/--[^\n]*/g, '').trim()) // strip line comments
+    .filter(Boolean);
+  let failed = 0;
+  for (const stmt of statements) {
+    try {
+      await pool.query(stmt);
+    } catch (err) {
+      failed++;
+      console.error('[schema] statement failed (continuing):', err.message, '::', stmt.replace(/\s+/g, ' ').slice(0, 90));
+    }
+  }
+  console.log(`[schema] applied ${statements.length - failed}/${statements.length} statements`);
 }
 
 // ─── FARMS ────────────────────────────────────────────────────────────────────
