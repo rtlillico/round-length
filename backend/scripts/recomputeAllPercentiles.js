@@ -2,9 +2,13 @@
 // One-off script: recomputes percentiles and daily state for every scenario.
 // Run after adding solar factor columns or changing the LAR formula.
 //
-//   node backend/scripts/recomputeAllPercentiles.js
+//   node backend/scripts/recomputeAllPercentiles.js   (run from the backend dir)
 
 'use strict';
+
+// Load DB credentials from backend/.env so the script can be run directly
+// (the server loads these via dotenv; this standalone script must too).
+require('dotenv').config();
 
 const { pool, getAllFarms, getScenariosForFarm, getAllSILORows, upsertPercentiles, upsertDailyStateBulk } = require('../db/queries');
 const { processHistoricalData } = require('../lib/formula');
@@ -27,7 +31,8 @@ async function run() {
         allSILO,
         scenario.pasture_key,
         Number(scenario.target_leaves),
-        scenario.soil_type || 'sandyLoam'
+        scenario.soil_type || 'sandyLoam',
+        farm.ifd_data || null   // include IFD runoff so results match production
       );
 
       await upsertPercentiles(scenario.id, percentiles);

@@ -207,4 +207,3 @@ CREATE INDEX IF NOT EXISTS idx_daily_state_scenario_date
 -- Scenarios: get all scenarios for a farm
 CREATE INDEX IF NOT EXISTS idx_scenarios_farm
   ON scenarios(farm_id);
-l
