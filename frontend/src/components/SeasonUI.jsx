@@ -1,6 +1,6 @@
 // round-length/frontend/src/components/SeasonUI.jsx
 // Shared UI components for season overview and factor screens.
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { C } from '../App';
 import { api } from '../lib/api';
 import { PASTURE_PARAMS, SOIL_PARAMS } from '../lib/formula';
@@ -141,6 +141,32 @@ export function ScenarioInfoSheet({ scenario, onClose, onSaved, startEditing = f
 }
 
 export function ScenarioBanner({ scenario, pasture, title, onBack, onGoToScenarios }) {
+  const [showInfo, setShowInfo] = useState(false);
+  const [farm, setFarm] = useState(null);
+
+  // Lazily fetch the farm (for name + location) the first time the panel opens.
+  useEffect(() => {
+    if (showInfo && !farm && scenario.farm_id != null) {
+      api.farms.get(scenario.farm_id).then(setFarm).catch(() => {});
+    }
+  }, [showInfo, farm, scenario.farm_id]);
+
+  const code = scenario.short_code || 'S1';
+  const scenarioNo = code.replace(/^S/i, '') || '?';
+  const fmtCoord = (v) => v != null ? Number(v).toFixed(4) : null;
+  const location = farm && farm.lat != null && farm.lon != null
+    ? `${fmtCoord(farm.lat)}, ${fmtCoord(farm.lon)}` : null;
+
+  const rows = [
+    ['Name',            scenario.name || '—'],
+    ['Farm',            farm?.name || '…'],
+    ['Location',        location || '…'],
+    ['Grass type',      pasture?.name || PASTURE_PARAMS[scenario.pasture_key]?.name || scenario.pasture_key],
+    ['Target leaf stage', `${scenario.target_leaves} leaf`],
+    ['Soil type',       SOIL_PARAMS[scenario.soil_type]?.name || scenario.soil_type || '—'],
+    ['Description',     scenario.description || '—'],
+  ];
+
   return (
     <div style={{ background: '#1e3a12', padding: '14px 16px 10px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -153,19 +179,39 @@ export function ScenarioBanner({ scenario, pasture, title, onBack, onGoToScenari
         <div style={{ flex: 1, cursor: onGoToScenarios ? 'pointer' : 'default' }} onClick={onGoToScenarios}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 28, fontWeight: 700, color: '#e8f5d0', lineHeight: 1, fontFamily: "'Lora', Georgia, serif" }}>
-              {scenario.short_code || 'S1'}
+              {code}
             </span>
             <span style={{ fontSize: 12, color: '#a8c48a' }}>
               {pasture?.name || scenario.pasture_key} · {scenario.target_leaves} leaf
             </span>
           </div>
         </div>
+        <button onClick={(e) => { e.stopPropagation(); setShowInfo(v => !v); }}
+          style={{ background: 'transparent', border: '1.5px solid #a8c48a', borderRadius: '50%', width: 22, height: 22, color: '#a8c48a', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0, lineHeight: 1, flexShrink: 0, fontStyle: 'italic' }}
+          title="About this scenario">
+          i
+        </button>
         <button onClick={() => window.location.reload()}
           style={{ background: 'transparent', border: 'none', color: '#a8c48a', fontSize: 18, cursor: 'pointer', padding: '4px 6px', lineHeight: 1, flexShrink: 0 }}
           title="Refresh">
           ↻
         </button>
       </div>
+
+      {showInfo && (
+        <div style={{ background: '#f8fdf4', borderRadius: 8, padding: '10px 12px', margin: '10px 0 4px', fontSize: 12, color: '#1e3a12', lineHeight: 1.5 }}>
+          <div style={{ marginBottom: 8, color: '#3a6b1a' }}>
+            <strong>{code}</strong> is the short code for <strong>Scenario {scenarioNo}</strong> — one paddock/pasture setup you're tracking. Its properties:
+          </div>
+          {rows.map(([label, value]) => (
+            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '3px 0', borderBottom: '1px solid #e7efdc' }}>
+              <span style={{ color: '#5a7a3a' }}>{label}</span>
+              <span style={{ fontWeight: 600, textAlign: 'right' }}>{value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div style={{ height: 1.5, background: 'rgba(255,255,255,0.25)', margin: '9px 0 7px' }} />
       <div style={{ fontSize: 16, fontWeight: 700, color: '#f0ead8', letterSpacing: 0.2 }}>{title}</div>
     </div>
