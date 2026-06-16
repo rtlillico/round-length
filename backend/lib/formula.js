@@ -385,7 +385,7 @@ function processHistoricalData(siloData, pastureKey, targetLeaves, soilType = 's
   // Step 3: group by day-of-year and compute percentiles
   const buckets = {};
   for (let doy = 1; doy <= 365; doy++) {
-    buckets[doy] = { lars: [], rounds: [], temps: [], tmins: [], tmaxs: [], solars: [], moistures: [] };
+    buckets[doy] = { lars: [], rounds: [], temps: [], tmins: [], tmaxs: [], solars: [], rads: [], moistures: [] };
   }
 
   for (const row of dailySeries) {
@@ -397,6 +397,7 @@ function processHistoricalData(siloData, pastureKey, targetLeaves, soilType = 's
     if (row.tMax != null) buckets[doy].tmaxs.push(row.tMax);
     buckets[doy].moistures.push(row.moistureFactor);
     if (row.solarFactor != null) buckets[doy].solars.push(row.solarFactor);
+    if (row.radiation != null && isFinite(row.radiation)) buckets[doy].rads.push(row.radiation);
   }
 
   const percentileRows = [];
@@ -408,6 +409,7 @@ function processHistoricalData(siloData, pastureKey, targetLeaves, soilType = 's
     const sTmin = [...b.tmins].sort((a, b) => a - b);
     const sTmax = [...b.tmaxs].sort((a, b) => a - b);
     const sS = [...b.solars].sort((a, b) => a - b);
+    const sRad = [...b.rads].sort((a, b) => a - b);
     const sM = [...b.moistures].sort((a, b) => a - b);
 
     percentileRows.push({
@@ -426,6 +428,8 @@ function processHistoricalData(siloData, pastureKey, targetLeaves, soilType = 's
       solarP75: percentile(sS, 75), solarP90: percentile(sS, 90),
       solarHistoricalMax: sS.length > 0 ? sS[sS.length - 1] : null,
       solarHistoricalMin: sS.length > 0 ? sS[0] : null,
+      radP10: percentile(sRad, 10), radP25: percentile(sRad, 25), radP50: percentile(sRad, 50),
+      radP75: percentile(sRad, 75), radP90: percentile(sRad, 90),
       moistureP10: percentile(sM, 10), moistureP25: percentile(sM, 25),
       moistureP50: percentile(sM, 50), moistureP75: percentile(sM, 75),
       moistureP90: percentile(sM, 90),

@@ -141,6 +141,13 @@ ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS tmax_p25  DECIMAL(5,1)
 ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS tmax_p75  DECIMAL(5,1);
 ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS tmax_p90  DECIMAL(5,1);
 
+-- Solar radiation percentiles (MJ/m²/day) — for the Solar radiation percentile comparison
+ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS rad_p10  DECIMAL(5,1);
+ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS rad_p25  DECIMAL(5,1);
+ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS rad_p50  DECIMAL(5,1);
+ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS rad_p75  DECIMAL(5,1);
+ALTER TABLE scenario_percentiles ADD COLUMN IF NOT EXISTS rad_p90  DECIMAL(5,1);
+
 -- Solar factor columns — scenario_daily_state
 ALTER TABLE scenario_daily_state ADD COLUMN IF NOT EXISTS actual_lar   DECIMAL(8,6);
 ALTER TABLE scenario_daily_state ADD COLUMN IF NOT EXISTS solar_factor DECIMAL(5,4);

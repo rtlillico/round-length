@@ -225,8 +225,8 @@ async function deleteScenario(id) {
 async function upsertPercentiles(scenarioId, percentileRows) {
   if (percentileRows.length === 0) return;
 
-  // Single bulk INSERT for all 365 rows (365 * 40 = 14600 params, within pg limit)
-  const COLS = 40;
+  // Single bulk INSERT for all 365 rows (365 * 45 = 16425 params, within pg limit)
+  const COLS = 45;
   const values = [];
   const params = [];
   percentileRows.forEach((row, i) => {
@@ -236,7 +236,7 @@ async function upsertPercentiles(scenarioId, percentileRows) {
       `,$${b+11},$${b+12},$${b+13},$${b+14},$${b+15},$${b+16},$${b+17},$${b+18},$${b+19}` +
       `,$${b+20},$${b+21},$${b+22},$${b+23},$${b+24},$${b+25},$${b+26},$${b+27},$${b+28}` +
       `,$${b+29},$${b+30},$${b+31},$${b+32},$${b+33},$${b+34},$${b+35},$${b+36},$${b+37}` +
-      `,$${b+38},$${b+39},$${b+40})`
+      `,$${b+38},$${b+39},$${b+40},$${b+41},$${b+42},$${b+43},$${b+44},$${b+45})`
     );
     params.push(
       scenarioId, row.dayOfYear,
@@ -250,6 +250,7 @@ async function upsertPercentiles(scenarioId, percentileRows) {
       row.tminP50, row.tmaxP50,
       row.tminP10, row.tminP25, row.tminP75, row.tminP90,
       row.tmaxP10, row.tmaxP25, row.tmaxP75, row.tmaxP90,
+      row.radP10, row.radP25, row.radP50, row.radP75, row.radP90,
     );
   });
 
@@ -265,7 +266,8 @@ async function upsertPercentiles(scenarioId, percentileRows) {
         years_counted,
         tmin_p50, tmax_p50,
         tmin_p10, tmin_p25, tmin_p75, tmin_p90,
-        tmax_p10, tmax_p25, tmax_p75, tmax_p90)
+        tmax_p10, tmax_p25, tmax_p75, tmax_p90,
+        rad_p10, rad_p25, rad_p50, rad_p75, rad_p90)
      VALUES ${values.join(',')}
      ON CONFLICT (scenario_id, day_of_year) DO UPDATE SET
        lar_p10=EXCLUDED.lar_p10, lar_p25=EXCLUDED.lar_p25, lar_p50=EXCLUDED.lar_p50,
@@ -286,7 +288,9 @@ async function upsertPercentiles(scenarioId, percentileRows) {
        tmin_p10=EXCLUDED.tmin_p10, tmin_p25=EXCLUDED.tmin_p25,
        tmin_p75=EXCLUDED.tmin_p75, tmin_p90=EXCLUDED.tmin_p90,
        tmax_p10=EXCLUDED.tmax_p10, tmax_p25=EXCLUDED.tmax_p25,
-       tmax_p75=EXCLUDED.tmax_p75, tmax_p90=EXCLUDED.tmax_p90`,
+       tmax_p75=EXCLUDED.tmax_p75, tmax_p90=EXCLUDED.tmax_p90,
+       rad_p10=EXCLUDED.rad_p10, rad_p25=EXCLUDED.rad_p25, rad_p50=EXCLUDED.rad_p50,
+       rad_p75=EXCLUDED.rad_p75, rad_p90=EXCLUDED.rad_p90`,
     params
   );
 }
