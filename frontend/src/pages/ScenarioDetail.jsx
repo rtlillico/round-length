@@ -24,6 +24,7 @@ export default function ScenarioDetail({ scenario, farmId, onBack }) {
 
   if (screen === 'formula')  return <FormulaBreakdown scenario={scenario} actualSeries={chartData?.actual} onBack={() => setScreen('overview')} />;
   if (screen === 'temp')     return <TemperatureScreen {...shared} />;
+  if (screen === 'comparison') return <TemperatureScreen {...shared} comparisonOnly />;
   if (screen === 'moisture') return <MoistureScreen    {...shared} />;
   if (screen === 'solar')    return <SolarScreen       {...shared} />;
   if (screen === 'nitrogen') return <NitrogenScreen    {...shared} />;

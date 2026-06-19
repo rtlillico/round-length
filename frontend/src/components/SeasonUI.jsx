@@ -220,10 +220,11 @@ export function ScenarioBanner({ scenario, pasture, title, onBack, onGoToScenari
 
 export function NavLinks({ onNavigate, current }) {
   const all = [
-    { id: 'temp',     label: '🌡️ Temperature' },
-    { id: 'moisture', label: '💧 Moisture' },
-    { id: 'solar',    label: '☀️ Solar' },
-    { id: 'nitrogen', label: '🌱 Nitrogen' },
+    { id: 'temp',       label: '🌡️ Temperature' },
+    { id: 'moisture',   label: '💧 Moisture' },
+    { id: 'solar',      label: '☀️ Solar' },
+    { id: 'nitrogen',   label: '🌱 Nitrogen' },
+    { id: 'comparison', label: '📊 Comparison' },
   ];
   return (
     <div style={{ padding: '16px 0 100px', borderTop: `1px solid ${C.border}`, marginTop: 16 }}>

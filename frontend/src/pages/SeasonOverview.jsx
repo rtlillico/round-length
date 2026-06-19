@@ -590,10 +590,11 @@ export default function SeasonOverview({ scenario, chartData, loading, error, fa
             Explore in detail
           </div>
           {[
-            { id: 'temp',     icon: '🌡️', label: 'Temperature', sub: 'Temp round length, Temp LAR, T_min, T_max, T_mean' },
-            { id: 'moisture', icon: '💧', label: 'Moisture',     sub: 'Moisture factor, soil water, rainfall, ET₀' },
-            { id: 'solar',    icon: '☀️', label: 'Solar',        sub: 'Solar factor, actual solar, max solar for month' },
-            { id: 'nitrogen', icon: '🌱', label: 'Nitrogen',     sub: 'Nitrogen factor over time' },
+            { id: 'temp',       icon: '🌡️', label: 'Temperature', sub: 'Temp round length, Temp LAR, T_min, T_max, T_mean' },
+            { id: 'moisture',   icon: '💧', label: 'Moisture',     sub: 'Moisture factor, soil water, rainfall, ET₀' },
+            { id: 'solar',      icon: '☀️', label: 'Solar',        sub: 'Solar factor, actual solar, max solar for month' },
+            { id: 'nitrogen',   icon: '🌱', label: 'Nitrogen',     sub: 'Nitrogen factor over time' },
+            { id: 'comparison', icon: '📊', label: 'Comparison',   sub: 'Temp LAR & Temp round length' },
           ].map(({ id, icon, label, sub }) => (
             <div key={id} onClick={() => onNavigate(id)} style={{
               background: '#fff', borderRadius: 12, padding: '13px 14px', marginBottom: 7,

@@ -197,7 +197,7 @@ const S = {
 };
 
 // ── TemperatureScreen ──────────────────────────────────────────────────────────
-export default function TemperatureScreen({ scenario, chartData, loading, onNavigate, onGoToScenarios }) {
+export default function TemperatureScreen({ scenario, chartData, loading, onNavigate, onGoToScenarios, comparisonOnly = false }) {
   const [fTemp,   setFTemp]  = useState(false);
   const [infoRL,  setInfoRL]  = useState(false);
   const [infoLAR, setInfoLAR] = useState(false);
@@ -1102,7 +1102,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   return (
     <div style={styles.screen}>
       <div style={{ background: '#2d4a1e', position: 'sticky', top: 0, zIndex: 20 }}>
-        <ScenarioBanner scenario={scenario} pasture={pasture} title="🌡️ Temperature" onBack={() => onNavigate('overview')} onGoToScenarios={onGoToScenarios} />
+        <ScenarioBanner scenario={scenario} pasture={pasture} title={comparisonOnly ? '📊 Comparison' : '🌡️ Temperature'} onBack={() => onNavigate('overview')} onGoToScenarios={onGoToScenarios} />
       </div>
 
       <div style={{ padding: '10px 10px 0' }}>
@@ -1265,7 +1265,8 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
 
               {gestureCard}
 
-              {/* ── Percentile comparison (collapsible) ──────────────────── */}
+              {/* ── Percentile comparison (collapsible) — hidden in Comparison view ── */}
+              {!comparisonOnly && (
               <div style={{ marginTop: 12, border: '1px solid #e0d8cc', borderRadius: 8, overflow: 'hidden' }}>
                 <div onClick={() => setShowPct(v => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: showPct ? '12px 12px' : '8px 12px', cursor: 'pointer', background: showPct ? '#e9ecdf' : '#f5f0e8' }}>
                   <span style={{ fontSize: showPct ? 17 : 12, fontWeight: 700, color: '#3a6b1a' }}>Percentiles comparison</span>
@@ -1521,11 +1522,13 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                   </div>
                 )}
               </div>
+              )}
             </>
           )}
         </div>
 
-        {/* ── Card 2: Temperature °C ────────────────────────────────────────── */}
+        {/* ── Card 2: Temperature °C — hidden in Comparison view ── */}
+        {!comparisonOnly && (
         <div style={styles.card}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: '#1e3a12' }}>Temperature (°C)</div>
@@ -1737,8 +1740,9 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
             </>
           )}
         </div>
+        )}
 
-        <NavLinks onNavigate={onNavigate} current="temp" />
+        <NavLinks onNavigate={onNavigate} current={comparisonOnly ? 'comparison' : 'temp'} />
       </div>
     </div>
   );
