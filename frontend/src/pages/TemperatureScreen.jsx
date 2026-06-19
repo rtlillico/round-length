@@ -50,6 +50,7 @@ function buildArrays(chartData, targetLeaves, pastureKey) {
   }
 
   const larData   = new Array(N).fill(null);
+  const solarLARData = new Array(N).fill(null); // Temp LAR × Solar factor (Comparison view)
   const larP10    = new Array(N).fill(null);
   const larP25    = new Array(N).fill(null);
   const larP50    = new Array(N).fill(null);
@@ -76,7 +77,7 @@ function buildArrays(chartData, targetLeaves, pastureKey) {
   // The "average" (median) lines reuse the p50 slots.
   const tMinAvg = tempPc.min.p50, tMeanAvg = tempPc.mean.p50, tMaxAvg = tempPc.max.p50;
 
-  if (!chartData) return { dates, larData, larP10, larP25, larP50, larP75, larP90, roundData, roundP50, rndP10, rndP25, rndP50, rndP75, rndP90, tMaxData, tMeanData, tMinData, tMaxAvg, tMeanAvg, tMinAvg, tempPc, lastActual: -1 };
+  if (!chartData) return { dates, larData, solarLARData, larP10, larP25, larP50, larP75, larP90, roundData, roundP50, rndP10, rndP25, rndP50, rndP75, rndP90, tMaxData, tMeanData, tMinData, tMaxAvg, tMeanAvg, tMinAvg, tempPc, lastActual: -1 };
 
   const percByDoy = {};
   for (const p of (chartData.percentiles || [])) percByDoy[p.day_of_year] = p;
@@ -113,6 +114,10 @@ function buildArrays(chartData, targetLeaves, pastureKey) {
     const row = allActual[ai];
 
     larData[i]   = row.temp_lar != null ? Number(row.temp_lar) : null;
+    if (larData[i] != null) {
+      const sf = row.solar_factor != null ? Number(row.solar_factor) : 1;
+      solarLARData[i] = larData[i] * sf;
+    }
     tMaxData[i]  = row.t_max   != null ? Number(row.t_max)    : null;
     tMeanData[i] = row.t_mean  != null ? Number(row.t_mean)   : null;
     tMinData[i]  = row.t_min   != null ? Number(row.t_min)    : null;
@@ -151,7 +156,7 @@ function buildArrays(chartData, targetLeaves, pastureKey) {
     roundP50[i] = rndP50[i];
   }
 
-  return { dates, larData, larP10, larP25, larP50, larP75, larP90, roundData, roundP50, rndP10, rndP25, rndP50, rndP75, rndP90, tMaxData, tMeanData, tMinData, tMaxAvg, tMeanAvg, tMinAvg, tempPc, lastActual };
+  return { dates, larData, solarLARData, larP10, larP25, larP50, larP75, larP90, roundData, roundP50, rndP10, rndP25, rndP50, rndP75, rndP90, tMaxData, tMeanData, tMinData, tMaxAvg, tMeanAvg, tMinAvg, tempPc, lastActual };
 }
 
 // Temperature percentile-comparison colours per metric (band/p50, actual line, band-fill rgb)
@@ -201,7 +206,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   const [fTemp,   setFTemp]  = useState(false);
   const [infoRL,  setInfoRL]  = useState(false);
   const [infoLAR, setInfoLAR] = useState(false);
-  const [visC1,   setVisC1]  = useState({ tempLAR: true, tempRound: true });
+  const [visC1,   setVisC1]  = useState({ tempLAR: true, tempRound: true, solarLAR: true });
   const [rawC1,   setRawC1]  = useState({ lar: false, round: true }); // actual lines: false = smoothed, true = raw daily
   const [showRaw1, setShowRaw1] = useState(false); // expander for the raw/smoothed toggles
   const [visC2,   setVisC2]  = useState({ tMax: true, tMean: true, tMin: true });
@@ -499,12 +504,13 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
 
   // ── dataset builders ─────────────────────────────────────────────────────────
   function ds1main() {
-    const { larData, larP50, roundData, roundP50, lastActual } = arrRef.current;
+    const { larData, solarLARData, larP50, roundData, roundP50, lastActual } = arrRef.current;
     const clip = lastActual >= 0 ? lastActual : TODAY;
     const v = v1Ref.current; const ds = [];
     // Main chart always shows 730 days — use a wide window to smooth out daily noise
     if (v.tempLAR)   ds.push({ type: 'line', data: toXY(smooth(larData, 60).map((v, i) => i <= clip ? v : null)), borderColor: '#4aa8d8', borderWidth: 1.4, pointRadius: 0, tension: 0, yAxisID: 'yR' });
     if (v.tempLAR)   ds.push({ type: 'line', data: toXY(smooth(larP50, 30)),                                       borderColor: '#4aa8d8', borderWidth: 0.8, pointRadius: 0, borderDash: [8, 4], yAxisID: 'yR' });
+    if (comparisonOnly && v.solarLAR) ds.push({ type: 'line', data: toXY(smooth(solarLARData, 60).map((v, i) => i <= clip ? v : null)), borderColor: '#d4a020', borderWidth: 1.4, pointRadius: 0, tension: 0, yAxisID: 'yR' });
     if (v.tempRound) ds.push({ type: 'line', data: toXY(smooth(roundData, 60).map((v, i) => i <= clip ? v : null)), borderColor: '#c47a12', borderWidth: 1.4, pointRadius: 0, tension: 0, yAxisID: 'yL' });
     if (v.tempRound) ds.push({ type: 'line', data: toXY(smooth(roundP50, 30)),                                      borderColor: '#c47a12', borderWidth: 0.8, pointRadius: 0, borderDash: [6, 3], yAxisID: 'yL' });
     return ds;
@@ -602,7 +608,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     return ds;
   }
   function ds1zoom(win, pw) {
-    const { larData, larP50, roundData, roundP50, lastActual } = arrRef.current;
+    const { larData, solarLARData, larP50, roundData, roundP50, lastActual } = arrRef.current;
     const clip = lastActual >= 0 ? lastActual : TODAY;
     const span = win.end - win.start + 1; const bars = span < 60;
     const bt = Math.max(2, Math.floor((pw / span) * 0.82));
@@ -611,10 +617,13 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     const v = v1Ref.current; const raw = rawRef.current; const ds = [];
     const larActual   = (raw.lar   ? larData   : smooth(larData, sw)).map((x, i) => i <= clip ? x : null);
     const roundActual = (raw.round ? roundData : smooth(roundData, sw)).map((x, i) => i <= clip ? x : null);
+    const solarLARActual = (raw.lar ? solarLARData : smooth(solarLARData, sw)).map((x, i) => i <= clip ? x : null);
     if (v.tempLAR) ds.push(bars
       ? { type: 'bar',  data: toXYWin(larData, win.start, win.end), backgroundColor: 'rgba(74,168,216,0.45)', borderWidth: 0, barThickness: bt, yAxisID: 'yR' }
       : { type: 'line', data: toXYWin(larActual, win.start, win.end), borderColor: '#4aa8d8', borderWidth: 2, pointRadius: 0, tension: 0, yAxisID: 'yR' });
     if (v.tempLAR) ds.push({ type: 'line', data: toXYWin(smooth(larP50, sw), win.start, win.end), borderColor: '#4aa8d8', borderWidth: 1, pointRadius: 0, borderDash: [10, 5], yAxisID: 'yR' });
+    // Solar LAR = Temp LAR × Solar factor (Comparison view only) — shows how much sunlight limits growth
+    if (comparisonOnly && v.solarLAR) ds.push({ type: 'line', data: toXYWin(solarLARActual, win.start, win.end), borderColor: '#d4a020', borderWidth: 2, pointRadius: 0, tension: 0, yAxisID: 'yR' });
     if (v.tempRound) ds.push({ type: 'line', data: toXYWin(roundActual, win.start, win.end), borderColor: '#c47a12', borderWidth: 2.5, pointRadius: 0, tension: 0, yAxisID: 'yL' });
     if (v.tempRound) ds.push({ type: 'line', data: toXYWin(smooth(roundP50, sw), win.start, win.end), borderColor: '#c47a12', borderWidth: 1, pointRadius: 0, borderDash: [6, 3], yAxisID: 'yL' });
     return ds;
@@ -759,11 +768,12 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     }
 
     // update React state for readouts / window label
-    const { dates, larData, larP50, roundData, roundP50, tMeanData } = arrRef.current;
+    const { dates, larData, solarLARData, larP50, roundData, roundP50, tMeanData } = arrRef.current;
     const ds = dates[cDay] || '';
     setCtr1(ds ? {
       dl:        fmtDayFull(ds),
       lar:       larData[cDay]   != null ? larData[cDay].toFixed(4)        : '—',
+      solarLAR:  solarLARData[cDay] != null ? solarLARData[cDay].toFixed(4) : '—',
       larAvg:    larP50[cDay]    != null ? larP50[cDay].toFixed(4)         : '—',
       round:     roundData[cDay] != null ? roundData[cDay].toFixed(0) + ' days' : '—',
       roundAvg:  roundP50[cDay]  != null ? roundP50[cDay].toFixed(0) + ' days'  : '—',
@@ -1194,6 +1204,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px 12px' }}>
                     {[
                       { color: '#4aa8d8', dashed: false, label: 'Temp LAR' },
+                      ...(comparisonOnly ? [{ color: '#d4a020', dashed: false, label: 'Solar LAR' }] : []),
                       { color: '#4aa8d8', dashed: true,  label: 'LAR avg' },
                       { color: '#c47a12', dashed: false, label: 'Round length' },
                       { color: '#c47a12', dashed: true,  label: 'RL avg' },
@@ -1216,6 +1227,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 10px' }}>
                       {[
                         { color: '#4aa8d8', dashed: false, label: 'Temp LAR',    value: ctr1?.lar },
+                        ...(comparisonOnly ? [{ color: '#d4a020', dashed: false, label: 'Solar LAR', value: ctr1?.solarLAR }] : []),
                         { color: '#4aa8d8', dashed: true,  label: 'LAR avg',     value: ctr1?.larAvg },
                         { color: '#c47a12', dashed: false, label: 'Round length', value: ctr1?.round },
                         { color: '#c47a12', dashed: true,  label: 'RL avg',      value: ctr1?.roundAvg },
@@ -1239,6 +1251,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
 
               <ToggleBar show={visC1} onToggle={k => setVisC1(p => ({ ...p, [k]: !p[k] }))} items={[
                 { key: 'tempLAR',   label: 'Temp LAR',          color: '#4aa8d8' },
+                ...(comparisonOnly ? [{ key: 'solarLAR', label: 'Solar LAR', color: '#d4a020' }] : []),
                 { key: 'tempRound', label: 'Temp round length', color: '#c47a12' },
               ]} />
 
