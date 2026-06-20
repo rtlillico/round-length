@@ -52,6 +52,7 @@ function buildArrays(chartData, targetLeaves, pastureKey) {
   const larData   = new Array(N).fill(null);
   const solarLARData = new Array(N).fill(null);   // Temp LAR × Solar factor (Comparison view)
   const solarRoundData = new Array(N).fill(null); // round length from Solar LAR (Comparison view)
+  const solarLARAvg = new Array(N).fill(null);    // typical Solar LAR = larP50 × median solar factor
   const larP10    = new Array(N).fill(null);
   const larP25    = new Array(N).fill(null);
   const larP50    = new Array(N).fill(null);
@@ -78,7 +79,7 @@ function buildArrays(chartData, targetLeaves, pastureKey) {
   // The "average" (median) lines reuse the p50 slots.
   const tMinAvg = tempPc.min.p50, tMeanAvg = tempPc.mean.p50, tMaxAvg = tempPc.max.p50;
 
-  if (!chartData) return { dates, larData, solarLARData, solarRoundData, larP10, larP25, larP50, larP75, larP90, roundData, roundP50, rndP10, rndP25, rndP50, rndP75, rndP90, tMaxData, tMeanData, tMinData, tMaxAvg, tMeanAvg, tMinAvg, tempPc, lastActual: -1 };
+  if (!chartData) return { dates, larData, solarLARData, solarRoundData, solarLARAvg, larP10, larP25, larP50, larP75, larP90, roundData, roundP50, rndP10, rndP25, rndP50, rndP75, rndP90, tMaxData, tMeanData, tMinData, tMaxAvg, tMeanAvg, tMinAvg, tempPc, lastActual: -1 };
 
   const percByDoy = {};
   for (const p of (chartData.percentiles || [])) percByDoy[p.day_of_year] = p;
@@ -101,6 +102,7 @@ function buildArrays(chartData, targetLeaves, pastureKey) {
     larP50[i] = perc.temp_p50 != null ? calcTempLAR(Number(perc.temp_p50), pastureKey) : null;
     larP75[i] = perc.temp_p75 != null ? calcTempLAR(Number(perc.temp_p75), pastureKey) : null;
     larP90[i] = perc.temp_p90 != null ? calcTempLAR(Number(perc.temp_p90), pastureKey) : null;
+    solarLARAvg[i] = (larP50[i] != null && perc.solar_p50 != null) ? larP50[i] * Number(perc.solar_p50) : null;
     const num = (v) => v != null ? Number(v) : null;
     tempPc.mean.p10[i] = num(perc.temp_p10); tempPc.mean.p25[i] = num(perc.temp_p25); tempPc.mean.p50[i] = num(perc.temp_p50); tempPc.mean.p75[i] = num(perc.temp_p75); tempPc.mean.p90[i] = num(perc.temp_p90);
     tempPc.min.p10[i]  = num(perc.tmin_p10); tempPc.min.p25[i]  = num(perc.tmin_p25); tempPc.min.p50[i]  = num(perc.tmin_p50); tempPc.min.p75[i]  = num(perc.tmin_p75); tempPc.min.p90[i]  = num(perc.tmin_p90);
@@ -162,7 +164,7 @@ function buildArrays(chartData, targetLeaves, pastureKey) {
     roundP50[i] = rndP50[i];
   }
 
-  return { dates, larData, solarLARData, solarRoundData, larP10, larP25, larP50, larP75, larP90, roundData, roundP50, rndP10, rndP25, rndP50, rndP75, rndP90, tMaxData, tMeanData, tMinData, tMaxAvg, tMeanAvg, tMinAvg, tempPc, lastActual };
+  return { dates, larData, solarLARData, solarRoundData, solarLARAvg, larP10, larP25, larP50, larP75, larP90, roundData, roundP50, rndP10, rndP25, rndP50, rndP75, rndP90, tMaxData, tMeanData, tMinData, tMaxAvg, tMeanAvg, tMinAvg, tempPc, lastActual };
 }
 
 // Temperature percentile-comparison colours per metric (band/p50, actual line, band-fill rgb)
@@ -514,7 +516,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
 
   // ── dataset builders ─────────────────────────────────────────────────────────
   function ds1main() {
-    const { larData, solarLARData, larP50, roundData, roundP50, solarRoundData, lastActual } = arrRef.current;
+    const { larData, solarLARData, larP50, roundData, roundP50, solarRoundData, solarLARAvg, lastActual } = arrRef.current;
     const clip = lastActual >= 0 ? lastActual : TODAY;
     const v = v1Ref.current; const ds = [];
     // In Comparison view the LAR/Round Length tab picks the group; elsewhere both show.
@@ -525,6 +527,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     if (showLAR && v.tempLAR)   ds.push({ type: 'line', data: toXY(smooth(larData, 60).map((v, i) => i <= clip ? v : null)), borderColor: '#4aa8d8', borderWidth: 1.4, pointRadius: 0, tension: 0, yAxisID: 'yR' });
     if (showLAR && v.tempLAR)   ds.push({ type: 'line', data: toXY(smooth(larP50, 30)),                                       borderColor: '#4aa8d8', borderWidth: 0.8, pointRadius: 0, borderDash: [8, 4], yAxisID: 'yR' });
     if (comparisonOnly && showLAR && v.solarLAR) ds.push({ type: 'line', data: toXY(smooth(solarLARData, 60).map((v, i) => i <= clip ? v : null)), borderColor: '#d4a020', borderWidth: 1.4, pointRadius: 0, tension: 0, yAxisID: 'yR' });
+    if (comparisonOnly && showLAR && v.solarLAR) ds.push({ type: 'line', data: toXY(smooth(solarLARAvg, 30)), borderColor: '#d4a020', borderWidth: 0.8, pointRadius: 0, borderDash: [8, 4], yAxisID: 'yR' });
     if (showRound && v.tempRound) ds.push({ type: 'line', data: toXY(smooth(roundData, 60).map((v, i) => i <= clip ? v : null)), borderColor: '#c47a12', borderWidth: 1.4, pointRadius: 0, tension: 0, yAxisID: 'yL' });
     if (showRound && v.tempRound) ds.push({ type: 'line', data: toXY(smooth(roundP50, 30)),                                      borderColor: '#c47a12', borderWidth: 0.8, pointRadius: 0, borderDash: [6, 3], yAxisID: 'yL' });
     if (comparisonOnly && showRound && v.solarRound) ds.push({ type: 'line', data: toXY(smooth(solarRoundData, 60).map((v, i) => i <= clip ? v : null)), borderColor: '#d4a020', borderWidth: 1.4, pointRadius: 0, tension: 0, yAxisID: 'yL' });
@@ -623,7 +626,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     return ds;
   }
   function ds1zoom(win, pw) {
-    const { larData, solarLARData, larP50, roundData, roundP50, solarRoundData, lastActual } = arrRef.current;
+    const { larData, solarLARData, larP50, roundData, roundP50, solarRoundData, solarLARAvg, lastActual } = arrRef.current;
     const clip = lastActual >= 0 ? lastActual : TODAY;
     const span = win.end - win.start + 1; const bars = span < 60;
     const bt = Math.max(2, Math.floor((pw / span) * 0.82));
@@ -643,6 +646,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     if (showLAR && v.tempLAR) ds.push({ type: 'line', data: toXYWin(smooth(larP50, sw), win.start, win.end), borderColor: '#4aa8d8', borderWidth: 1, pointRadius: 0, borderDash: [10, 5], yAxisID: 'yR' });
     // Solar LAR = Temp LAR × Solar factor (Comparison view only) — shows how much sunlight limits growth
     if (comparisonOnly && showLAR && v.solarLAR) ds.push({ type: 'line', data: toXYWin(solarLARActual, win.start, win.end), borderColor: '#d4a020', borderWidth: 2, pointRadius: 0, tension: 0, yAxisID: 'yR' });
+    if (comparisonOnly && showLAR && v.solarLAR) ds.push({ type: 'line', data: toXYWin(smooth(solarLARAvg, sw), win.start, win.end), borderColor: '#d4a020', borderWidth: 1, pointRadius: 0, borderDash: [10, 5], yAxisID: 'yR' });
     if (showRound && v.tempRound) ds.push({ type: 'line', data: toXYWin(roundActual, win.start, win.end), borderColor: '#c47a12', borderWidth: 2.5, pointRadius: 0, tension: 0, yAxisID: 'yL' });
     if (showRound && v.tempRound) ds.push({ type: 'line', data: toXYWin(smooth(roundP50, sw), win.start, win.end), borderColor: '#c47a12', borderWidth: 1, pointRadius: 0, borderDash: [6, 3], yAxisID: 'yL' });
     if (comparisonOnly && showRound && v.solarRound) ds.push({ type: 'line', data: toXYWin(solarRoundActual, win.start, win.end), borderColor: '#d4a020', borderWidth: 2.5, pointRadius: 0, tension: 0, yAxisID: 'yL' });
@@ -788,12 +792,13 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     }
 
     // update React state for readouts / window label
-    const { dates, larData, solarLARData, larP50, roundData, roundP50, solarRoundData, tMeanData } = arrRef.current;
+    const { dates, larData, solarLARData, larP50, roundData, roundP50, solarRoundData, solarLARAvg, tMeanData } = arrRef.current;
     const ds = dates[cDay] || '';
     setCtr1(ds ? {
       dl:        fmtDayFull(ds),
       lar:       larData[cDay]   != null ? larData[cDay].toFixed(4)        : '—',
       solarLAR:  solarLARData[cDay] != null ? solarLARData[cDay].toFixed(4) : '—',
+      solarLARAvg: solarLARAvg[cDay] != null ? solarLARAvg[cDay].toFixed(4) : '—',
       solarRound: solarRoundData[cDay] != null ? solarRoundData[cDay].toFixed(0) + ' days' : '—',
       larAvg:    larP50[cDay]    != null ? larP50[cDay].toFixed(4)         : '—',
       round:     roundData[cDay] != null ? roundData[cDay].toFixed(0) + ' days' : '—',
@@ -1238,7 +1243,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px 12px' }}>
                     {(comparisonOnly
                       ? (compMetric === 'lar'
-                          ? [{ color: '#4aa8d8', dashed: false, label: 'Temp LAR' }, { color: '#d4a020', dashed: false, label: 'Solar LAR' }, { color: '#4aa8d8', dashed: true, label: 'LAR avg' }]
+                          ? [{ color: '#4aa8d8', dashed: false, label: 'Temp LAR' }, { color: '#d4a020', dashed: false, label: 'Solar LAR' }, { color: '#4aa8d8', dashed: true, label: 'LAR avg' }, { color: '#d4a020', dashed: true, label: 'Solar LAR avg' }]
                           : [{ color: '#c47a12', dashed: false, label: 'Round length' }, { color: '#d4a020', dashed: false, label: 'Solar round length' }, { color: '#c47a12', dashed: true, label: 'RL avg' }])
                       : [
                           { color: '#4aa8d8', dashed: false, label: 'Temp LAR' },
@@ -1265,7 +1270,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 10px' }}>
                       {(comparisonOnly
                         ? (compMetric === 'lar'
-                            ? [{ color: '#4aa8d8', dashed: false, label: 'Temp LAR', value: ctr1?.lar }, { color: '#d4a020', dashed: false, label: 'Solar LAR', value: ctr1?.solarLAR }, { color: '#4aa8d8', dashed: true, label: 'LAR avg', value: ctr1?.larAvg }]
+                            ? [{ color: '#4aa8d8', dashed: false, label: 'Temp LAR', value: ctr1?.lar }, { color: '#d4a020', dashed: false, label: 'Solar LAR', value: ctr1?.solarLAR }, { color: '#4aa8d8', dashed: true, label: 'LAR avg', value: ctr1?.larAvg }, { color: '#d4a020', dashed: true, label: 'Solar LAR avg', value: ctr1?.solarLARAvg }]
                             : [{ color: '#c47a12', dashed: false, label: 'Round length', value: ctr1?.round }, { color: '#d4a020', dashed: false, label: 'Solar round length', value: ctr1?.solarRound }, { color: '#c47a12', dashed: true, label: 'RL avg', value: ctr1?.roundAvg }])
                         : [
                             { color: '#4aa8d8', dashed: false, label: 'Temp LAR',    value: ctr1?.lar },
