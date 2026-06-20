@@ -1249,8 +1249,8 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px 12px' }}>
                     {(comparisonOnly
                       ? (compMetric === 'lar'
-                          ? [{ color: '#4aa8d8', dashed: false, label: 'Temp LAR' }, { color: '#d4a020', dashed: false, label: 'Solar LAR' }, { color: '#4aa8d8', dashed: true, label: 'LAR avg' }, { color: '#d4a020', dashed: true, label: 'Solar LAR avg' }]
-                          : [{ color: '#c47a12', dashed: false, label: 'Round length' }, { color: '#d4a020', dashed: false, label: 'Solar round length' }, { color: '#c47a12', dashed: true, label: 'RL avg' }, { color: '#d4a020', dashed: true, label: 'Solar RL avg' }])
+                          ? [{ color: '#4aa8d8', dashed: false, label: 'Temp LAR' }, { color: '#d4a020', dashed: false, label: 'Solar LAR' }, { color: '#4aa8d8', dashed: true, label: 'Temp LAR avg' }, { color: '#d4a020', dashed: true, label: 'Solar LAR avg' }]
+                          : [{ color: '#c47a12', dashed: false, label: 'Temp round length' }, { color: '#d4a020', dashed: false, label: 'Solar round length' }, { color: '#c47a12', dashed: true, label: 'Temp RL avg' }, { color: '#d4a020', dashed: true, label: 'Solar RL avg' }])
                       : [
                           { color: '#4aa8d8', dashed: false, label: 'Temp LAR' },
                           { color: '#4aa8d8', dashed: true,  label: 'LAR avg' },
@@ -1276,8 +1276,8 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 10px' }}>
                       {(comparisonOnly
                         ? (compMetric === 'lar'
-                            ? [{ color: '#4aa8d8', dashed: false, label: 'Temp LAR', value: ctr1?.lar }, { color: '#d4a020', dashed: false, label: 'Solar LAR', value: ctr1?.solarLAR }, { color: '#4aa8d8', dashed: true, label: 'LAR avg', value: ctr1?.larAvg }, { color: '#d4a020', dashed: true, label: 'Solar LAR avg', value: ctr1?.solarLARAvg }]
-                            : [{ color: '#c47a12', dashed: false, label: 'Round length', value: ctr1?.round }, { color: '#d4a020', dashed: false, label: 'Solar round length', value: ctr1?.solarRound }, { color: '#c47a12', dashed: true, label: 'RL avg', value: ctr1?.roundAvg }, { color: '#d4a020', dashed: true, label: 'Solar RL avg', value: ctr1?.solarRoundAvg }])
+                            ? [{ color: '#4aa8d8', dashed: false, label: 'Temp LAR', value: ctr1?.lar }, { color: '#d4a020', dashed: false, label: 'Solar LAR', value: ctr1?.solarLAR }, { color: '#4aa8d8', dashed: true, label: 'Temp LAR avg', value: ctr1?.larAvg }, { color: '#d4a020', dashed: true, label: 'Solar LAR avg', value: ctr1?.solarLARAvg }]
+                            : [{ color: '#c47a12', dashed: false, label: 'Temp round length', value: ctr1?.round }, { color: '#d4a020', dashed: false, label: 'Solar round length', value: ctr1?.solarRound }, { color: '#c47a12', dashed: true, label: 'Temp RL avg', value: ctr1?.roundAvg }, { color: '#d4a020', dashed: true, label: 'Solar RL avg', value: ctr1?.solarRoundAvg }])
                         : [
                             { color: '#4aa8d8', dashed: false, label: 'Temp LAR',    value: ctr1?.lar },
                             { color: '#4aa8d8', dashed: true,  label: 'LAR avg',     value: ctr1?.larAvg },
