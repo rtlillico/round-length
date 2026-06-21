@@ -216,7 +216,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   const [fTemp,   setFTemp]  = useState(false);
   const [infoRL,  setInfoRL]  = useState(false);
   const [infoLAR, setInfoLAR] = useState(false);
-  const [visC1,   setVisC1]  = useState({ tempLAR: true, tempRound: true, solarLAR: true, solarRound: true });
+  const [visC1,   setVisC1]  = useState({ tempLAR: true, tempRound: true, solarLAR: false, solarRound: true });
   const [compMetric, setCompMetric] = useState('lar'); // Comparison view: 'lar' | 'round'
   const compMetricRef = useRef('lar');
   const [rawC1,   setRawC1]  = useState({ lar: false, round: true }); // actual lines: false = smoothed, true = raw daily
@@ -527,10 +527,12 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     const showLAR   = comparisonOnly ? cm === 'lar'   : true;
     const showRound = comparisonOnly ? cm === 'round' : true;
     // Main chart always shows 730 days — use a wide window to smooth out daily noise
-    if (showLAR && v.tempLAR)   ds.push({ type: 'line', data: toXY(smooth(larData, 60).map((v, i) => i <= clip ? v : null)), borderColor: '#4aa8d8', borderWidth: 1.4, pointRadius: 0, tension: 0, yAxisID: 'yR' });
+    const solarLoss = comparisonOnly && showLAR && v.solarLAR;
+    let tempLARIdx = -1;
+    if (showLAR && v.tempLAR) { tempLARIdx = ds.length; ds.push({ type: 'line', data: toXY(smooth(larData, 60).map((v, i) => i <= clip ? v : null)), borderColor: '#4aa8d8', borderWidth: 1.4, pointRadius: 0, tension: 0, yAxisID: 'yR' }); }
+    if (solarLoss) ds.push({ type: 'line', data: toXY(smooth(solarLARData, 60).map((v, i) => i <= clip ? v : null)), borderColor: '#d4a020', borderWidth: 1.4, pointRadius: 0, tension: 0, yAxisID: 'yR', fill: tempLARIdx >= 0 ? { target: tempLARIdx } : false, backgroundColor: 'rgba(212,160,32,0.22)' });
     if (showLAR && v.tempLAR)   ds.push({ type: 'line', data: toXY(smooth(larP50, 30)),                                       borderColor: '#4aa8d8', borderWidth: 0.8, pointRadius: 0, borderDash: [8, 4], yAxisID: 'yR' });
-    if (comparisonOnly && showLAR && v.solarLAR) ds.push({ type: 'line', data: toXY(smooth(solarLARData, 60).map((v, i) => i <= clip ? v : null)), borderColor: '#d4a020', borderWidth: 1.4, pointRadius: 0, tension: 0, yAxisID: 'yR' });
-    if (comparisonOnly && showLAR && v.solarLAR) ds.push({ type: 'line', data: toXY(smooth(solarLARAvg, 30)), borderColor: '#d4a020', borderWidth: 0.8, pointRadius: 0, borderDash: [8, 4], yAxisID: 'yR' });
+    if (solarLoss) ds.push({ type: 'line', data: toXY(smooth(solarLARAvg, 30)), borderColor: '#d4a020', borderWidth: 0.8, pointRadius: 0, borderDash: [8, 4], yAxisID: 'yR' });
     if (showRound && v.tempRound) ds.push({ type: 'line', data: toXY(smooth(roundData, 60).map((v, i) => i <= clip ? v : null)), borderColor: '#c47a12', borderWidth: 1.4, pointRadius: 0, tension: 0, yAxisID: 'yL' });
     if (showRound && v.tempRound) ds.push({ type: 'line', data: toXY(smooth(roundP50, 30)),                                      borderColor: '#c47a12', borderWidth: 0.8, pointRadius: 0, borderDash: [6, 3], yAxisID: 'yL' });
     if (comparisonOnly && showRound && v.solarRound) ds.push({ type: 'line', data: toXY(smooth(solarRoundData, 60).map((v, i) => i <= clip ? v : null)), borderColor: '#d4a020', borderWidth: 1.4, pointRadius: 0, tension: 0, yAxisID: 'yL' });
@@ -644,13 +646,18 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
     const roundActual = (raw.round ? roundData : smooth(roundData, sw)).map((x, i) => i <= clip ? x : null);
     const solarLARActual = (raw.lar ? solarLARData : smooth(solarLARData, sw)).map((x, i) => i <= clip ? x : null);
     const solarRoundActual = (raw.round ? solarRoundData : smooth(solarRoundData, sw)).map((x, i) => i <= clip ? x : null);
-    if (showLAR && v.tempLAR) ds.push(bars
-      ? { type: 'bar',  data: toXYWin(larData, win.start, win.end), backgroundColor: 'rgba(74,168,216,0.45)', borderWidth: 0, barThickness: bt, yAxisID: 'yR' }
-      : { type: 'line', data: toXYWin(larActual, win.start, win.end), borderColor: '#4aa8d8', borderWidth: 2, pointRadius: 0, tension: 0, yAxisID: 'yR' });
+    const solarLoss = comparisonOnly && showLAR && v.solarLAR; // "+ Solar loss" toggle
+    let tempLARIdx = -1;
+    if (showLAR && v.tempLAR) {
+      tempLARIdx = ds.length;
+      ds.push(bars && !solarLoss
+        ? { type: 'bar',  data: toXYWin(larData, win.start, win.end), backgroundColor: 'rgba(74,168,216,0.45)', borderWidth: 0, barThickness: bt, yAxisID: 'yR' }
+        : { type: 'line', data: toXYWin(larActual, win.start, win.end), borderColor: '#4aa8d8', borderWidth: 2, pointRadius: 0, tension: 0, yAxisID: 'yR' });
+    }
+    // Solar LAR = Temp LAR × Solar factor; the shaded gap up to Temp LAR is the LAR lost to sunlight.
+    if (solarLoss) ds.push({ type: 'line', data: toXYWin(solarLARActual, win.start, win.end), borderColor: '#d4a020', borderWidth: 2, pointRadius: 0, tension: 0, yAxisID: 'yR', fill: tempLARIdx >= 0 ? { target: tempLARIdx } : false, backgroundColor: 'rgba(212,160,32,0.22)' });
     if (showLAR && v.tempLAR) ds.push({ type: 'line', data: toXYWin(smooth(larP50, sw), win.start, win.end), borderColor: '#4aa8d8', borderWidth: 1, pointRadius: 0, borderDash: [10, 5], yAxisID: 'yR' });
-    // Solar LAR = Temp LAR × Solar factor (Comparison view only) — shows how much sunlight limits growth
-    if (comparisonOnly && showLAR && v.solarLAR) ds.push({ type: 'line', data: toXYWin(solarLARActual, win.start, win.end), borderColor: '#d4a020', borderWidth: 2, pointRadius: 0, tension: 0, yAxisID: 'yR' });
-    if (comparisonOnly && showLAR && v.solarLAR) ds.push({ type: 'line', data: toXYWin(smooth(solarLARAvg, sw), win.start, win.end), borderColor: '#d4a020', borderWidth: 1, pointRadius: 0, borderDash: [10, 5], yAxisID: 'yR' });
+    if (solarLoss) ds.push({ type: 'line', data: toXYWin(smooth(solarLARAvg, sw), win.start, win.end), borderColor: '#d4a020', borderWidth: 1, pointRadius: 0, borderDash: [10, 5], yAxisID: 'yR' });
     if (showRound && v.tempRound) ds.push({ type: 'line', data: toXYWin(roundActual, win.start, win.end), borderColor: '#c47a12', borderWidth: 2.5, pointRadius: 0, tension: 0, yAxisID: 'yL' });
     if (showRound && v.tempRound) ds.push({ type: 'line', data: toXYWin(smooth(roundP50, sw), win.start, win.end), borderColor: '#c47a12', borderWidth: 1, pointRadius: 0, borderDash: [6, 3], yAxisID: 'yL' });
     if (comparisonOnly && showRound && v.solarRound) ds.push({ type: 'line', data: toXYWin(solarRoundActual, win.start, win.end), borderColor: '#d4a020', borderWidth: 2.5, pointRadius: 0, tension: 0, yAxisID: 'yL' });
@@ -1249,7 +1256,8 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px 12px' }}>
                     {(comparisonOnly
                       ? (compMetric === 'lar'
-                          ? [{ color: '#4aa8d8', dashed: false, label: 'Temp LAR' }, { color: '#d4a020', dashed: false, label: 'Solar LAR' }, { color: '#4aa8d8', dashed: true, label: 'Temp LAR avg' }, { color: '#d4a020', dashed: true, label: 'Solar LAR avg' }]
+                          ? [{ color: '#4aa8d8', dashed: false, label: 'Temp LAR' }, { color: '#4aa8d8', dashed: true, label: 'Temp LAR avg' },
+                             ...(visC1.solarLAR ? [{ fill: 'rgba(212,160,32,0.4)', label: 'Solar loss' }, { color: '#d4a020', dashed: false, label: 'Solar LAR' }, { color: '#d4a020', dashed: true, label: 'Solar LAR avg' }] : [])]
                           : [{ color: '#c47a12', dashed: false, label: 'Temp round length' }, { color: '#d4a020', dashed: false, label: 'Solar round length' }, { color: '#c47a12', dashed: true, label: 'Temp RL avg' }, { color: '#d4a020', dashed: true, label: 'Solar RL avg' }])
                       : [
                           { color: '#4aa8d8', dashed: false, label: 'Temp LAR' },
@@ -1257,12 +1265,14 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                           { color: '#c47a12', dashed: false, label: 'Round length' },
                           { color: '#c47a12', dashed: true,  label: 'RL avg' },
                         ]
-                    ).map(({ color, dashed, label }) => (
+                    ).map(({ color, dashed, fill, label }) => (
                       <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         <svg width="16" height="8" style={{ flexShrink: 0 }}>
-                          <line x1="0" y1="4" x2="16" y2="4" stroke={color} strokeWidth={dashed ? 1.5 : 2} strokeDasharray={dashed ? '4 3' : 'none'} />
+                          {fill
+                            ? <rect x="0" y="1" width="16" height="6" fill={fill} rx="1" />
+                            : <line x1="0" y1="4" x2="16" y2="4" stroke={color} strokeWidth={dashed ? 1.5 : 2} strokeDasharray={dashed ? '4 3' : 'none'} />}
                         </svg>
-                        <span style={{ color, whiteSpace: 'nowrap' }}>{label}</span>
+                        <span style={{ color: color || '#8a6410', whiteSpace: 'nowrap' }}>{label}</span>
                       </div>
                     ))}
                   </div>
@@ -1276,7 +1286,8 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 10px' }}>
                       {(comparisonOnly
                         ? (compMetric === 'lar'
-                            ? [{ color: '#4aa8d8', dashed: false, label: 'Temp LAR', value: ctr1?.lar }, { color: '#d4a020', dashed: false, label: 'Solar LAR', value: ctr1?.solarLAR }, { color: '#4aa8d8', dashed: true, label: 'Temp LAR avg', value: ctr1?.larAvg }, { color: '#d4a020', dashed: true, label: 'Solar LAR avg', value: ctr1?.solarLARAvg }]
+                            ? [{ color: '#4aa8d8', dashed: false, label: 'Temp LAR', value: ctr1?.lar }, { color: '#4aa8d8', dashed: true, label: 'Temp LAR avg', value: ctr1?.larAvg },
+                               ...(visC1.solarLAR ? [{ color: '#d4a020', dashed: false, label: 'Solar LAR', value: ctr1?.solarLAR }, { color: '#d4a020', dashed: true, label: 'Solar LAR avg', value: ctr1?.solarLARAvg }] : [])]
                             : [{ color: '#c47a12', dashed: false, label: 'Temp round length', value: ctr1?.round }, { color: '#d4a020', dashed: false, label: 'Solar round length', value: ctr1?.solarRound }, { color: '#c47a12', dashed: true, label: 'Temp RL avg', value: ctr1?.roundAvg }, { color: '#d4a020', dashed: true, label: 'Solar RL avg', value: ctr1?.solarRoundAvg }])
                         : [
                             { color: '#4aa8d8', dashed: false, label: 'Temp LAR',    value: ctr1?.lar },
@@ -1305,7 +1316,7 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
               <ToggleBar show={visC1} onToggle={k => setVisC1(p => ({ ...p, [k]: !p[k] }))} items={
                 comparisonOnly
                   ? (compMetric === 'lar'
-                      ? [{ key: 'tempLAR', label: 'Temp LAR', color: '#4aa8d8' }, { key: 'solarLAR', label: 'Solar LAR', color: '#d4a020' }]
+                      ? [{ key: 'tempLAR', label: 'Temp LAR', color: '#4aa8d8' }, { key: 'solarLAR', label: '+ Solar loss', color: '#d4a020' }]
                       : [{ key: 'tempRound', label: 'Temp round length', color: '#c47a12' }, { key: 'solarRound', label: 'Solar round length', color: '#d4a020' }])
                   : [{ key: 'tempLAR', label: 'Temp LAR', color: '#4aa8d8' }, { key: 'tempRound', label: 'Temp round length', color: '#c47a12' }]
               } />
