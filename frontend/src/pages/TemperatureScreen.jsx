@@ -479,7 +479,10 @@ export default function TemperatureScreen({ scenario, chartData, loading, onNavi
   const mkYS = () => ({                                     ticks: { color: '#5a6f48', font: { size: 9 }, maxTicksLimit: 4, callback: withUnit('°C')   }, grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false } });
   function mkYRZoom() {
     const { larData, larP50 } = arrRef.current;
-    const vals = [...larData, ...larP50].filter(v => v != null && isFinite(v) && v > 0);
+    // Size to the SMOOTHED data (what's actually drawn) so raw daily spikes don't
+    // inflate the axis and leave white space; if Raw is on, fit the raw values.
+    const larForMax = rawRef.current.lar ? larData : smooth(larData, 30);
+    const vals = [...larForMax, ...smooth(larP50, 30)].filter(v => v != null && isFinite(v) && v > 0);
     const rawMax = vals.length ? Math.max(...vals) : 0.15;
     const max = Math.ceil(rawMax * 20) / 20;
     return { type: 'linear', position: 'right', min: 0, max, ticks: { color: '#4aa8d8', font: { size: 9 }, maxTicksLimit: 3, callback: withUnit('LAR') }, grid: { display: false }, border: { display: false } };
